@@ -164,14 +164,14 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     <a href="./fieldiq.html" class="sidebar-link current"><i data-lucide="home"></i> Manager Home</a>
 
     <div class="sidebar-group-label">Management</div>
-    <a href="https://fieldiq.biz/dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a href="./dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a href="./fieldiq-operations.html" class="sidebar-link"><i data-lucide="activity"></i> Operations</a>
-    <a href="https://fieldiq.biz/fieldiq-actions.html" class="sidebar-link"><i data-lucide="check-square"></i> Open Actions</a>
-    <a href="https://fieldiq.biz/fieldiq-accounts.html" class="sidebar-link"><i data-lucide="building-2"></i> Account Directory</a>
+    <a href="./fieldiq-actions.html" class="sidebar-link"><i data-lucide="check-square"></i> Open Actions</a>
+    <a href="./fieldiq-accounts.html" class="sidebar-link"><i data-lucide="building-2"></i> Account Directory</a>
 
     <div class="sidebar-group-label">Intelligence</div>
-    <a href="https://fieldiq.biz/fieldiq-insights.html" class="sidebar-link"><i data-lucide="brain-circuit"></i> AI Insights</a>
-    <a href="https://fieldiq.biz/fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map</a>
+    <a href="./fieldiq-insights.html" class="sidebar-link"><i data-lucide="brain-circuit"></i> AI Insights</a>
+    <a href="./fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map</a>
 
     <div class="sidebar-group-label">Field &amp; Help</div>
     <a href="./fieldiq-log-visit.html" class="sidebar-link"><i data-lucide="mic"></i> Log Visit</a>
@@ -232,7 +232,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     </div>
 
     <div class="primary-actions">
-      <a class="primary-tile primary" href="https://fieldiq.biz/dashboard.html">
+      <a class="primary-tile primary" href="./dashboard.html">
         <div class="primary-tile-icon"><i data-lucide="layout-dashboard"></i></div>
         <div class="primary-tile-label">Dashboard</div>
       </a>
@@ -251,7 +251,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <div class="quick-actions more-tools-collapsible" id="moreToolsBody">
-      <a class="quick-action" href="https://fieldiq.biz/fieldiq-actions.html">
+      <a class="quick-action" href="./fieldiq-actions.html">
         <div class="qa-icon-wrap"><i data-lucide="check-square"></i></div>
         <div class="qa-title">Open Actions</div>
         <div class="qa-arrow">›</div>
@@ -261,17 +261,17 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
         <div class="qa-title">Visit History</div>
         <div class="qa-arrow">›</div>
       </a>
-      <a class="quick-action" href="https://fieldiq.biz/fieldiq-accounts.html">
+      <a class="quick-action" href="./fieldiq-accounts.html">
         <div class="qa-icon-wrap"><i data-lucide="building-2"></i></div>
         <div class="qa-title">Account Directory</div>
         <div class="qa-arrow">›</div>
       </a>
-      <a class="quick-action" href="https://fieldiq.biz/fieldiq-insights.html">
+      <a class="quick-action" href="./fieldiq-insights.html">
         <div class="qa-icon-wrap"><i data-lucide="brain-circuit"></i></div>
         <div class="qa-title">AI Insights</div>
         <div class="qa-arrow">›</div>
       </a>
-      <a class="quick-action" href="https://fieldiq.biz/fieldiq-visits-map.html">
+      <a class="quick-action" href="./fieldiq-visits-map.html">
         <div class="qa-icon-wrap"><i data-lucide="map-pin"></i></div>
         <div class="qa-title">Visit Map</div>
         <div class="qa-arrow">›</div>
@@ -374,7 +374,7 @@ function renderHomeSummary(agg){
     // picking one to silently hide.
     panel.classList.remove('all-clear');
     panelHead.innerHTML = priorityCount + ' visit' + (priorityCount !== 1 ? 's' : '') + ' awaiting review';
-    body.innerHTML = '<a class="summary-empty" style="padding:0 14px 14px;display:block;text-decoration:none;color:#2f8fff;font-weight:700" href="https://fieldiq.biz/dashboard.html">No accounts are individually flagged, but ' + priorityCount + ' visit' + (priorityCount !== 1 ? 's are' : ' is') + ' still awaiting your review. View Dashboard \u203a</a>';
+    body.innerHTML = '<a class="summary-empty" style="padding:0 14px 14px;display:block;text-decoration:none;color:#2f8fff;font-weight:700" href="./dashboard.html">No accounts are individually flagged, but ' + priorityCount + ' visit' + (priorityCount !== 1 ? 's are' : ' is') + ' still awaiting your review. View Dashboard \u203a</a>';
     return;
   }
   panel.classList.remove('all-clear');
@@ -386,27 +386,27 @@ function renderHomeSummary(agg){
       var hpTarget = acc.highPriorityVisitId || acc.visitId;
       dest = hpTarget
         ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(hpTarget) + '&source=manager-home'
-        : 'https://fieldiq.biz/dashboard.html';
+        : './dashboard.html';
     } else if (evidence.indexOf('Negative outcome not reviewed') > -1) {
       reason = 'Negative outcome — awaiting review';
       var negTarget = acc.negativeVisitId || acc.visitId;
       dest = negTarget
         ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(negTarget) + '&source=manager-home'
-        : 'https://fieldiq.biz/dashboard.html';
+        : './dashboard.html';
     } else if (evidence.indexOf('Follow-up overdue') > -1) {
       reason = 'Follow-up overdue' + truncateActionSnippet(acc.followUpOverdueActionText);
       dest = acc.followUpOverdueActionId
-        ? 'https://fieldiq.biz/fieldiq-actions.html?actionId=' + encodeURIComponent(acc.followUpOverdueActionId)
+        ? './fieldiq-actions.html?actionId=' + encodeURIComponent(acc.followUpOverdueActionId)
         : (acc.followUpOverdueVisitId
             ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(acc.followUpOverdueVisitId) + '&source=manager-home'
-            : 'https://fieldiq.biz/dashboard.html');
+            : './dashboard.html');
     } else {
       reason = 'Follow-up due today' + truncateActionSnippet(acc.followUpDueTodayActionText);
       dest = acc.followUpDueTodayActionId
-        ? 'https://fieldiq.biz/fieldiq-actions.html?actionId=' + encodeURIComponent(acc.followUpDueTodayActionId)
+        ? './fieldiq-actions.html?actionId=' + encodeURIComponent(acc.followUpDueTodayActionId)
         : (acc.followUpDueTodayVisitId
             ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(acc.followUpDueTodayVisitId) + '&source=manager-home'
-            : 'https://fieldiq.biz/dashboard.html');
+            : './dashboard.html');
     }
     return '<a class="attention-row" href="' + dest + '">' +
       '<div class="attention-rank">' + (idx + 1) + '</div>' +
@@ -511,9 +511,16 @@ function renderBriefingError(){
 }
 
 function loadHomeSummary(){
-  fetch(WORKER_URL_HOME + '/get-dashboard', { cache: 'no-store' })
-    .then(function(res){ return res.json(); })
-    .then(function(agg){ renderHomeSummary(agg); })
+  fetch(WORKER_URL_HOME + '/get-dashboard', { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
+    .then(function(res){
+      if (res.status === 401 || res.status === 403) {
+        expireCurrentSession();
+        document.getElementById('attentionBody').innerHTML = '<div class="summary-empty" style="padding:0 14px 14px">Your session has expired. Please sign in again.</div>';
+        return null;
+      }
+      return res.json();
+    })
+    .then(function(agg){ if (agg) renderHomeSummary(agg); })
     .catch(function(err){
       console.error('Could not load Manager Home summary:', err);
       document.getElementById('attentionBody').innerHTML = '<div class="summary-empty" style="padding:0 14px 14px">Could not load right now.</div>';
