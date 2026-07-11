@@ -212,8 +212,8 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
     </select>  
     <select class="filter-select" id="filterTerritory">  
       <option value="">All Territories</option>  
-      <option>UAE</option><option>Saudi Arabia</option><option>Qatar</option>  
-      <option>Kuwait</option><option>Bahrain</option><option>Oman</option>  
+      <option>Abu Dhabi</option><option>Dubai</option><option>Sharjah</option>  
+      <option>Ajman</option><option>Umm Al Quwain</option><option>Ras Al Khaimah</option><option>Fujairah</option>  
     </select>  
   </div>  
   <div class="filter-row">  
@@ -766,12 +766,13 @@ function getPeriodRange(period){
 function normalizeTerritoryForFilter(raw){
   var t=(raw||'').trim();if(!t)return'';
   var tu=t.toUpperCase();
-  if(tu.indexOf('SAUDI ARABIA')===0)return'Saudi Arabia';
-  if(tu==='UAE')return'UAE';
-  if(tu==='QATAR')return'Qatar';
-  if(tu==='KUWAIT')return'Kuwait';
-  if(tu==='BAHRAIN')return'Bahrain';
-  if(tu==='OMAN')return'Oman';
+  if(tu==='ABU DHABI')return'Abu Dhabi';
+  if(tu==='DUBAI')return'Dubai';
+  if(tu==='SHARJAH')return'Sharjah';
+  if(tu==='AJMAN')return'Ajman';
+  if(tu==='UMM AL QUWAIN')return'Umm Al Quwain';
+  if(tu==='RAS AL KHAIMAH')return'Ras Al Khaimah';
+  if(tu==='FUJAIRAH')return'Fujairah';
   return t;
 }
 function getFilteredRecords(){  
