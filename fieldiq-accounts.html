@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FieldIQ — Account Directory</title>
+<script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:20px 18px 40px}
+.container{max-width:780px;margin:0 auto}
+.topbar{margin-bottom:18px}
+.topbar-brand{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.brand-cloud{font-size:26px;line-height:1}
+.brand-text h1{font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#0b1f3a}
+.brand-text h1 span{color:#2f8fff}
+.brand-text p{font-size:10px;color:#8a9bb3;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-top:2px}
+p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text-transform:none;letter-spacing:normal}
+.topbar-sub{color:#7a8aa3;font-size:12.5px;margin-top:2px;font-weight:600}
+.manager-badge{display:inline-flex;align-items:center;gap:5px;background:#fff3e0;color:#d98a1c;border:1px solid #ffe5b3;border-radius:20px;font-size:10.5px;font-weight:800;padding:4px 12px;margin-left:10px;text-transform:uppercase;letter-spacing:0.4px;box-shadow:0 2px 8px rgba(217,138,28,0.1);vertical-align:middle;}
+.home-btn{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#2f8fff;font-size:13px;font-weight:700;text-decoration:none;padding:9px 16px;border-radius:30px;margin-bottom:14px;border:1px solid #e3ebf5;box-shadow:0 2px 8px rgba(11,31,58,0.05);}
+.home-btn:hover{border-color:#2f8fff}
+.filter-bar{background:#fff;border:1px solid #e3ebf5;border-radius:18px;padding:16px;margin-bottom:18px;box-shadow:0 4px 14px rgba(11,31,58,0.05)}
+.filter-bar h3{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1px;font-weight:800;margin-bottom:12px}
+.search-input{width:100%;padding:11px;background:#f4f8fc;border:1.5px solid #e3ebf5;border-radius:10px;color:#0b1f3a;font-size:13.5px;outline:none;font-weight:600;}
+.search-input:focus{border-color:#2f8fff}
+.count-label{font-size:11.5px;color:#aab8cc;font-weight:700;margin-bottom:10px}
+.territory-group{margin-bottom:10px}
+.territory-header{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #e3ebf5;border-radius:16px;padding:14px 16px;cursor:pointer;box-shadow:0 3px 10px rgba(11,31,58,0.04);transition:border-color 0.15s;}
+.territory-header:hover{border-color:#bcd8ff}
+.territory-name{font-size:14.5px;font-weight:800;color:#0b1f3a}
+.territory-count{font-size:11px;color:#7a8aa3;font-weight:700;margin-top:2px}
+.territory-chevron{color:#aab8cc;font-size:14px;font-weight:700;transition:transform 0.2s}
+.territory-chevron.rotated{transform:rotate(180deg)}
+.territory-accounts{display:none;padding-top:8px}
+.territory-accounts.open{display:block}
+.activity-item{background:#fff;border:1px solid #e3ebf5;border-radius:16px;padding:14px;margin-bottom:8px;box-shadow:0 3px 10px rgba(11,31,58,0.04);cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s}
+.activity-item:hover{border-color:#bcd8ff;box-shadow:0 4px 14px rgba(47,143,255,0.12)}
+.activity-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.activity-hospital{font-size:13.5px;font-weight:800;color:#0b1f3a}
+.activity-chevron{color:#bcc9da;font-size:16px;font-weight:700;line-height:1}
+.activity-meta{display:flex;gap:6px;flex-wrap:wrap}
+.activity-badge{font-size:10px;padding:3px 10px;border-radius:8px;font-weight:700}
+.badge-rep{background:#eaf3ff;color:#2f8fff}
+.badge-territory{background:#eef3f9;color:#5b6b85}
+.badge-status-active{background:#e6f7ed;color:#1a9c53}
+.badge-status-revisit{background:#fff4d6;color:#a36a00}
+.badge-status-dormant{background:#ffe1e5;color:#c43048}
+.activity-summary{font-size:11.5px;color:#7a8aa3;margin-top:8px;line-height:1.6}
+.loading{text-align:center;padding:50px;color:#aab8cc;font-weight:600}
+.spinner{width:36px;height:36px;border:4px solid #eaf3ff;border-top:4px solid #2f8fff;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;color:#aab8cc;font-size:13px;padding:30px;font-weight:600}
+.access-denied{text-align:center;padding:60px 20px;display:none;flex-direction:column;align-items:center;}
+.access-denied-icon{font-size:54px;margin-bottom:16px}
+.access-denied h2{font-size:20px;color:#0b1f3a;font-weight:800;margin-bottom:8px}
+.access-denied p{font-size:13.5px;color:#7a8aa3;font-weight:600;max-width:340px;line-height:1.6;margin-bottom:20px}
+.access-denied a{display:inline-block;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:12px;box-shadow:0 6px 16px rgba(47,143,255,0.3);}
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(11,31,58,0.45);z-index:1000;align-items:flex-end;justify-content:center;}
+.detail-panel{background:#f4f8fc;width:100%;max-width:780px;max-height:92vh;border-radius:22px 22px 0 0;overflow-y:auto;box-shadow:0 -10px 34px rgba(11,31,58,0.28);animation:slideUp 0.22s ease-out;}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.detail-header{position:sticky;top:0;background:#fff;padding:18px 50px 14px 18px;border-bottom:1px solid #e3ebf5;border-radius:22px 22px 0 0;z-index:2;}
+.detail-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;border:none;background:#f4f8fc;color:#7a8aa3;font-size:15px;font-weight:700;cursor:pointer;}
+.detail-close:hover{background:#eaf3ff;color:#2f8fff}
+.detail-header h2{font-size:18px;font-weight:800;color:#0b1f3a;letter-spacing:-0.3px}
+.detail-meta-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.detail-body{padding:16px 18px 36px}
+.detail-section{margin-bottom:18px}
+.detail-section-title{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1px;font-weight:800;margin-bottom:10px;}
+.status-hero{background:#fff;border:1px solid #e3ebf5;border-radius:16px;padding:6px 14px;box-shadow:0 4px 14px rgba(11,31,58,0.05)}
+.status-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f0f4f9}
+.status-row:last-child{border-bottom:none}
+.status-label{font-size:11.5px;color:#7a8aa3;font-weight:700;white-space:nowrap}
+.status-value{font-size:13px;font-weight:800;color:#0b1f3a;text-align:right}
+.trend-up{color:#1e9e52}.trend-down{color:#d9483c}.trend-flat{color:#7a8aa3}
+.ownership-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.ownership-card{background:#fff;border:1px solid #e3ebf5;border-radius:12px;padding:10px 12px}
+.ownership-label{font-size:9.5px;color:#aab8cc;font-weight:700;text-transform:uppercase;letter-spacing:0.3px}
+.ownership-name{font-size:13.5px;font-weight:800;color:#0b1f3a;margin-top:3px}
+.ownership-sub{font-size:10.5px;color:#7a8aa3;font-weight:600;margin-top:1px}
+.ownership-breakdown{background:#fff;border:1px solid #e3ebf5;border-radius:12px;padding:10px 12px}
+.ownership-bar-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;font-weight:700;color:#3a4a63}
+.filter-pills{display:flex;gap:6px}
+.filter-pill{flex:1;text-align:center;padding:9px 4px;border-radius:10px;font-size:12px;font-weight:800;background:#fff;border:1.5px solid #e3ebf5;color:#5b6b85;cursor:pointer}
+.filter-pill.active{background:#2f8fff;border-color:#2f8fff;color:#fff}
+.attn-group{margin-bottom:10px}
+.attn-group-title{font-size:10.5px;color:#5b6b85;font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px}
+.attn-item{background:#fff;border:1px solid #e3ebf5;border-left:3px solid #d9483c;border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.attn-item.attn-action{border-left-color:#2f8fff}
+.attn-item.attn-priority{border-left-color:#c9871c}
+.attn-item-top{display:flex;justify-content:space-between;font-size:11px;color:#7a8aa3;font-weight:700;margin-bottom:4px}
+.attn-item-text{font-size:12px;color:#3a4a63;line-height:1.5}
+.timeline-item{background:#fff;border:1px solid #e3ebf5;border-radius:12px;padding:12px;margin-bottom:8px}
+.timeline-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px}
+.timeline-date{font-size:12.5px;font-weight:800;color:#0b1f3a;white-space:nowrap}
+.timeline-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.timeline-meta{font-size:11.5px;color:#7a8aa3;font-weight:600}
+.intel-text{font-size:12px;color:#3a4a63;line-height:1.6;white-space:pre-wrap;margin-top:6px}
+.summary-toggle{color:#2f8fff;font-weight:700;font-size:11px;cursor:pointer;display:inline-block;margin-top:2px}
+.summary-wrap .summary-full{display:none}
+.summary-wrap.expanded .summary-short{display:none}
+.summary-wrap.expanded .summary-full{display:block}
+.summary-wrap.expanded .toggle-more{display:none}
+.summary-wrap:not(.expanded) .toggle-less{display:none}
+.priority-high{background:#fdeceb;color:#d9483c}.priority-medium{background:#fff6e0;color:#c9871c}.priority-low{background:#eef3f9;color:#5b6b85}
+.outcome-positive{background:#e9f9ee;color:#1e9e52}.outcome-negative{background:#fdeceb;color:#d9483c}.outcome-neutral{background:#eef3f9;color:#5b6b85}
+.section-toggle{display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#fff;border:1px solid #e3ebf5;border-radius:12px;padding:12px 14px}
+.section-toggle:hover{border-color:#bcd8ff}
+.toggle-arrow{color:#aab8cc;font-size:14px;transition:transform 0.2s}
+.toggle-arrow.rotated{transform:rotate(180deg)}
+.full-history-content{display:none;margin-top:8px}
+.full-history-content.open{display:block}
+.collapsible-content{display:none;margin-top:8px}
+.collapsible-content.open{display:block}
+.discovery-mini{font-size:11.5px;color:#3a4a63;background:#eaf3ff;border-radius:10px;padding:10px 12px;margin-bottom:10px;line-height:1.6}
+.discovery-mini b{color:#0b1f3a}
+.signal-badge{display:inline-block;font-size:10px;padding:3px 10px;border-radius:8px;font-weight:800;letter-spacing:0.3px;margin-top:6px;text-transform:uppercase}
+.badge-priority-high{background:#fdeceb;color:#d9483c}
+.badge-negative-outcome{background:#fdeceb;color:#d9483c}
+.oa-headline{font-size:12px;color:#3a4a63;margin-top:4px;line-height:1.4}
+.oa-full{font-size:12px;color:#3a4a63;margin-top:6px;line-height:1.5;white-space:pre-wrap}
+.oa-toggle{font-size:11px;color:#2f8fff;font-weight:700;cursor:pointer;display:inline-block;margin-top:4px;user-select:none}
+.view-in-timeline{font-size:11px;color:#2f8fff;font-weight:700;cursor:pointer;background:none;border:none;padding:0;display:inline-block;margin-top:6px;text-decoration:none;user-select:none}
+.view-in-timeline:hover{text-decoration:underline}
+@keyframes tlPulse{0%{background:#dbeeff;box-shadow:0 0 0 3px #2f8fff}60%{background:#dbeeff;box-shadow:0 0 0 3px #2f8fff}100%{background:transparent;box-shadow:none}}
+.tl-highlight{animation:tlPulse 1.8s ease-out;border-radius:12px}
+.detail-empty{font-size:12px;color:#aab8cc;font-weight:600;padding:14px;text-align:center;background:#fff;border:1px solid #e3ebf5;border-radius:12px}
+.footer{text-align:center;color:#aab8cc;font-size:11px;font-weight:600;margin-top:24px}
+[data-lucide]{display:inline-block;vertical-align:middle;stroke-width:1.8}
+.access-denied-icon [data-lucide]{width:54px;height:54px;color:#d98a1c}
+.detail-close [data-lucide]{width:15px;height:15px}
+.activity-chevron [data-lucide]{width:16px;height:16px}
+.territory-chevron [data-lucide]{width:14px;height:14px}
+.toggle-arrow [data-lucide]{width:14px;height:14px}
+.back-to-top{
+  position:fixed;right:18px;bottom:24px;width:44px;height:44px;border-radius:50%;
+  background:#2f8fff;color:#fff;border:none;box-shadow:0 6px 16px rgba(47,143,255,0.35);
+  display:none;align-items:center;justify-content:center;cursor:pointer;z-index:500;
+  font-size:20px;font-weight:900;line-height:1;
+}
+.back-to-top.visible{display:flex}
+
+/* ── Summary stat cards (compact, not lists) ── */
+.summary-stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.summary-stat-card{background:#fff;border:1px solid #e3ebf5;border-radius:14px;padding:14px;box-shadow:0 3px 10px rgba(11,31,58,0.04);cursor:pointer;transition:border-color 0.15s}
+.summary-stat-card:hover{border-color:#bcd8ff}
+.summary-stat-value{font-size:24px;font-weight:800;color:#0b1f3a;line-height:1}
+.summary-stat-label{font-size:10.5px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-top:5px}
+.summary-stat-card.summary-stat-alert .summary-stat-value{color:#c43048}
+.summary-stat-card.summary-stat-good .summary-stat-value{color:#1a9c53}
+
+/* ── Filter chips ── */
+.filter-chips-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
+.filter-chip{flex-shrink:0;background:#fff;border:1.5px solid #e3ebf5;color:#5b6b85;font-size:12px;font-weight:800;padding:9px 15px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.filter-chip.active{background:#2f8fff;border-color:#2f8fff;color:#fff}
+.filter-chip:not(.active):hover{border-color:#bcd8ff}
+.intel-section{margin-bottom:22px}
+.intel-section-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:0 2px}
+.intel-section-icon{font-size:15px;line-height:1}
+.intel-section-title{font-size:12.5px;font-weight:800;color:#0b1f3a;text-transform:uppercase;letter-spacing:0.6px}
+.intel-section-count{font-size:11px;color:#8a9bb3;font-weight:700}
+.intel-section.needs-attention .intel-section-title{color:#c43048}
+.intel-view-all{font-size:11.5px;color:#2f8fff;font-weight:700;cursor:pointer;text-decoration:none;padding:8px 2px;display:inline-block}
+.intel-view-all:hover{text-decoration:underline}
+.intel-empty{font-size:12px;color:#aab8cc;font-weight:600;padding:12px 2px}
+.badge-priority-flag{background:#fdeceb;color:#d9483c}
+.badge-actions-flag{background:#eaf3ff;color:#2f8fff}
+.territory-section-anchor{scroll-margin-top:16px}
+
+/* ── Upgraded status hero (top summary card in modal) ── */
+.status-hero-top{background:#fff;border:1px solid #e3ebf5;border-radius:16px;padding:16px 18px;box-shadow:0 4px 14px rgba(11,31,58,0.05);margin-bottom:14px}
+.status-hero-top-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.status-hero-status{font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px}
+.status-hero-next{margin-top:10px;padding-top:10px;border-top:1px solid #f0f4f9}
+.status-hero-next-label{font-size:10px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+.status-hero-next-text{font-size:12.5px;color:#0b1f3a;font-weight:700;line-height:1.5}
+
+/* ── Alert cards (Priority Attention) ── */
+.alert-card{display:flex;gap:12px;background:#fff;border:1px solid #f5d3d3;border-left:4px solid #d9483c;border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.alert-card.alert-card-priority{border-left-color:#c9871c;border-color:#f0e0bf}
+.alert-card-icon{font-size:16px;line-height:1.3;flex-shrink:0}
+.alert-card-body{flex:1;min-width:0}
+.alert-card-top{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#8a9bb3;font-weight:700;margin-bottom:4px}
+.alert-card-label{font-size:12.5px;font-weight:800;color:#0b1f3a;margin-bottom:6px}
+.alert-card-actions{display:flex;gap:8px;margin-top:8px}
+
+/* ── Task cards (Open Actions) ── */
+.task-card{display:flex;gap:12px;background:#fff;border:1px solid #e3ebf5;border-left:4px solid #2f8fff;border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.task-card-icon{font-size:16px;line-height:1.3;flex-shrink:0;color:#2f8fff}
+.task-card-body{flex:1;min-width:0}
+.task-card-top{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#8a9bb3;font-weight:700;margin-bottom:4px}
+.task-card-text{font-size:12.5px;color:#3a4a63;line-height:1.55}
+.task-card-actions{display:flex;gap:8px;margin-top:9px}
+
+/* ── Shared small pill buttons used inside cards ── */
+.card-btn{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:7px 12px;border-radius:8px;cursor:pointer;border:none;text-decoration:none;user-select:none}
+.card-btn-primary{background:#2f8fff;color:#fff}
+.card-btn-primary:hover{background:#1f6fe0}
+.card-btn-ghost{background:#f4f8fc;color:#5b6b85;border:1px solid #e3ebf5}
+.card-btn-ghost:hover{border-color:#bcd8ff;color:#2f8fff}
+
+/* ── Clean visit report rendering (replaces raw markdown) ── */
+.report-block{margin-bottom:10px}
+.report-block:last-child{margin-bottom:0}
+.report-block-title{font-size:9.5px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+.report-block-text{font-size:12px;color:#3a4a63;line-height:1.6}
+.report-block-primary .report-block-title{color:#2f8fff}
+
+/* ── Visit cards (Timeline) ── */
+.visit-card-upgraded{background:#fff;border:1px solid #e3ebf5;border-radius:14px;padding:14px 16px;margin-bottom:10px}
+
+/* ── Account update button ── */
+.add-note-btn{display:inline-flex;align-items:center;gap:6px;background:#eaf3ff;color:#2f8fff;border:1px solid #cfe4ff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:800;cursor:pointer;margin-top:10px}
+.add-note-btn:hover{background:#d5eaff}
+</style>
+  <!-- PWA v1 -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2f8fff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FieldIQ">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+</head>
+<body>
+<div class="container">
+<div class="topbar">
+  <div class="topbar-brand">
+    <span class="brand-cloud">☁️</span>
+    <div class="brand-text">
+      <h1>Field<span>IQ</span><span id="managerBadge" style="display:none" class="manager-badge">⭐ Manager</span></h1>
+      <p>Territory Intelligence Platform</p>
+      <p class="page-subtitle">Every account in your territory, at a glance.</p>
+    </div>
+  </div>
+  <p class="topbar-sub">Account Directory</p>
+</div>
+<a href="./fieldiq.html" class="home-btn" id="homeBtn">← Manager Home</a>
+<div id="accessDeniedEl" class="access-denied">
+  <div class="access-denied-icon"><i data-lucide="lock"></i></div>
+  <h2>Manager Access Required</h2>
+  <p>The Account Directory lists every account across all reps and territories. This page is restricted to Manager accounts.</p>
+  <a href="./index.html">Return Home</a>
+</div>
+<div id="loadingEl" class="loading"><div class="spinner"></div>Loading accounts...</div>
+<div id="directoryContent" style="display:none">
+  <div id="summaryStatsArea"></div>
+  <div class="filter-bar">
+    <h3>Search</h3>
+    <input type="text" id="directorySearch" class="search-input" placeholder="Search account name...">
+  </div>
+  <div id="filterChipsArea"></div>
+  <div class="count-label" id="directoryCount">0 accounts</div>
+  <div id="directoryList"></div>
+</div>
+<div class="footer">FieldIQ v2.1 · 2026</div>
+</div>
+<div id="accountDetailOverlay" class="detail-overlay" onclick="if(event.target===this)closeAccountDetail()">
+  <div class="detail-panel">
+    <div class="detail-header">
+      <button class="detail-close" onclick="closeAccountDetail()"><i data-lucide="x"></i></button>
+      <h2 id="detailAccountName"></h2>
+      <div class="detail-meta-row" id="detailMeta"></div>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+</div>
+<script>
+var WORKER_URL='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var role=localStorage.getItem('fieldiq_user_role');
+var currentUserName=localStorage.getItem('fieldiq_user_name')||'';
+var currentUserId=localStorage.getItem('fieldiq_user_id')||'';
+// Required by /get-accounts and /get-visits, which now reject any request
+// without a verified session token.
+var currentSessionToken=localStorage.getItem('fieldiq_session_token');
+var ACCOUNTS=[];
+var currentDetailAccountId=null;
+var currentDetailFilter='30';
+var currentAccountUpdates=[];
+
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  if(params.get('from')==='operations'){
+    var btn=document.getElementById('homeBtn');
+    if(btn){
+      btn.href='./fieldiq-operations.html';
+      btn.textContent='← Back to Operations';
+    }
+  }
+})();
+
+function formatDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function truncate(text,len){var t=String(text||'');if(t.length<=len)return t;return t.slice(0,len).trim()+'…';}
+var TERRITORY_ORDER=['UAE','Saudi Arabia','Qatar','Kuwait','Bahrain','Oman','Unassigned'];
+function getCanonicalTerritory(raw){
+  var t=(raw||'').trim();if(!t)return'Unassigned';var tu=t.toUpperCase();
+  if(tu.indexOf('SAUDI ARABIA')===0)return'Saudi Arabia';if(tu==='UAE')return'UAE';if(tu==='QATAR')return'Qatar';if(tu==='KUWAIT')return'Kuwait';if(tu==='BAHRAIN')return'Bahrain';if(tu==='OMAN')return'Oman';return'Unassigned';
+}
+async function loadDirectory(){
+  try{
+    var _authHeaders={headers:{'Authorization':'Bearer '+currentSessionToken},cache:'no-store'};
+    var [accRes,visRes]=await Promise.all([fetch(WORKER_URL+'/get-accounts',_authHeaders),fetch(WORKER_URL+'/get-visits',_authHeaders)]);
+    if(accRes.status===401||accRes.status===403||visRes.status===401||visRes.status===403){
+      localStorage.removeItem('fieldiq_user_id');localStorage.removeItem('fieldiq_user_name');localStorage.removeItem('fieldiq_user_role');localStorage.removeItem('fieldiq_user_record_id');localStorage.removeItem('fieldiq_session_token');
+      window.location.href='./index.html';
+      return;
+    }
+    var accData=await accRes.json();var visData=await visRes.json();
+    if(!accRes.ok)throw new Error(JSON.stringify(accData));if(!visRes.ok)throw new Error(JSON.stringify(visData));
+    var accountRecords=accData.records||[];var visitRecords=visData.records||[];
+    var byId={};var byNameLower={};
+    ACCOUNTS=accountRecords.map(function(r){
+      var f=r.fields||{};var acc={id:r.id,name:f['Account Name']||'Unknown',territory:f['Territory']||'',canonicalTerritory:getCanonicalTerritory(f['Territory']),city:f['City']||'',visitCount:0,lastVisit:null,matchedVisits:[]};
+      byId[r.id]=acc;byNameLower[acc.name.trim().toLowerCase()]=acc;return acc;
+    });
+    visitRecords.forEach(function(v){
+      var f=v.fields||{};var matched=null;
+      if(Array.isArray(f['Account'])&&f['Account'].length>0){matched=byId[f['Account'][0]]||null;}
+      if(!matched&&f['Hospital Name']){matched=byNameLower[String(f['Hospital Name']).trim().toLowerCase()]||null;}
+      if(matched){
+        matched.visitCount++;var vDate=f['Visit Date']?new Date(f['Visit Date']):null;var vDateValid=vDate&&!isNaN(vDate);
+        if(vDateValid&&(!matched.lastVisit||vDate>matched.lastVisit)){matched.lastVisit=vDate;}
+        matched.matchedVisits.push({id:v.id,date:vDateValid?vDate:null,type:f['Visit Type']||'',rep:f['Rep Name']||'Unknown rep',priority:f['Priority']||'',outcome:f['Outcome']||'',aiSummary:f['AI Summary']||'',actionItems:f['Action Items']||'',newAccount:f['New Account']===true,pendingReview:f['Pending Review']===true,reviewed:f['Reviewed']===true});
+      }
+    });
+    ACCOUNTS.sort(function(a,b){return a.name.localeCompare(b.name);});
+    document.getElementById('loadingEl').style.display='none';document.getElementById('directoryContent').style.display='block';renderDirectory();
+  }catch(err){console.error('Account Directory failed to load:',err);document.getElementById('loadingEl').innerHTML='<div class="empty">Could not load accounts. Please try again.</div>';}
+}
+// Account status thresholds — days since last visit. Adjust these two
+// numbers to change status behavior; nothing else needs to change.
+var ACCOUNT_STATUS_ACTIVE_DAYS=30;
+var ACCOUNT_STATUS_REVISIT_DAYS=90;
+function getAccountStatus(a){
+  if(!a.lastVisit)return{label:'Dormant',cls:'badge-status-dormant'};
+  var daysSince=Math.floor((new Date()-a.lastVisit)/86400000);
+  if(daysSince<=ACCOUNT_STATUS_ACTIVE_DAYS)return{label:'Active',cls:'badge-status-active'};
+  if(daysSince<=ACCOUNT_STATUS_REVISIT_DAYS)return{label:'Needs Revisit',cls:'badge-status-revisit'};
+  return{label:'Dormant',cls:'badge-status-dormant'};
+}
+function getAccountQuickStats(a){
+  var highPriorityCount=0,actionCount=0,lastRep='';
+  var sorted=a.matchedVisits.slice().sort(function(x,y){
+    var xd=x.date?x.date.getTime():0,yd=y.date?y.date.getTime():0;return yd-xd;
+  });
+  if(sorted.length)lastRep=sorted[0].rep;
+  a.matchedVisits.forEach(function(v){
+    if(String(v.priority).toLowerCase()==='high')highPriorityCount++;
+    if(v.actionItems&&String(v.actionItems).trim())actionCount++;
+  });
+  return{highPriorityCount:highPriorityCount,actionCount:actionCount,lastRep:lastRep};
+}
+function accountCardHtml(a){
+  var status=getAccountStatus(a);
+  var stats=getAccountQuickStats(a);
+  return'<div class="activity-item" onclick="openAccountDetail(\''+a.id+'\')">'+
+    '<div class="activity-header"><div class="activity-hospital">'+escapeHtml(a.name)+'</div><div class="activity-chevron"><i data-lucide="chevron-right"></i></div></div>'+
+    '<div class="activity-meta">'+
+      '<span class="activity-badge '+status.cls+'">'+status.label+'</span>'+
+      (a.territory?'<span class="activity-badge badge-territory">'+escapeHtml(a.territory)+'</span>':'')+
+      (a.city?'<span class="activity-badge badge-territory">'+escapeHtml(a.city)+'</span>':'')+
+      '<span class="activity-badge badge-rep">'+a.visitCount+' visit'+(a.visitCount!==1?'s':'')+'</span>'+
+      (stats.lastRep?'<span class="activity-badge badge-rep">'+escapeHtml(stats.lastRep)+'</span>':'')+
+      (stats.highPriorityCount>0?'<span class="activity-badge badge-priority-flag">'+stats.highPriorityCount+' high priority</span>':'')+
+      (stats.actionCount>0?'<span class="activity-badge badge-actions-flag">'+stats.actionCount+' action'+(stats.actionCount!==1?'s':'')+'</span>':'')+
+    '</div>'+
+    '<div class="activity-summary">'+(a.lastVisit?'Last visit: '+formatDate(a.lastVisit):'No visits logged yet')+'</div>'+
+  '</div>';
+}
+function renderDirectory(){
+  var q=document.getElementById('directorySearch').value.trim().toLowerCase();
+  if(q){renderFlatList(q);}else{renderTerritoryGroups();}
+}
+function renderFlatList(q){
+  var filtered=ACCOUNTS.filter(function(a){return a.name.toLowerCase().indexOf(q)>-1;});
+  document.getElementById('directoryCount').textContent=filtered.length+' account'+(filtered.length!==1?'s':'');
+  if(filtered.length===0){document.getElementById('directoryList').innerHTML='<div class="empty">No accounts match your search.</div>';return;}
+  document.getElementById('directoryList').innerHTML=filtered.map(accountCardHtml).join('');lucide.createIcons();
+}
+function computeAccountBuckets(){
+  // Buckets are independent lenses on the same data, not a mutually
+  // exclusive partition — an account can be both "Active" and "Needs
+  // Attention" at once (visited recently but flagged), which is what a
+  // filter-chip system should do. "No Visits" and "Dormant" are split
+  // apart here specifically because they mean different things to a
+  // manager: never touched at all, versus was active and has gone quiet.
+  var needsAttention=[],active=[],dormant=[],noVisits=[];
+  ACCOUNTS.forEach(function(a){
+    var status=getAccountStatus(a);
+    var flagged=a.matchedVisits.some(function(v){
+      return String(v.priority).toLowerCase()==='high'||String(v.outcome).toLowerCase()==='negative';
+    });
+    if(flagged)needsAttention.push(a);
+    if(status.label==='Active')active.push(a);
+    if(status.label==='Dormant'){
+      if(a.visitCount===0)noVisits.push(a);else dormant.push(a);
+    }
+  });
+  return{needsAttention:needsAttention,active:active,dormant:dormant,noVisits:noVisits};
+}
+var activeAccountFilter='all';
+function setAccountFilter(key){
+  activeAccountFilter=key;
+  renderDirectoryHome();
+}
+function renderSummaryStats(buckets){
+  var total=ACCOUNTS.length;
+  return'<div class="summary-stats-row">'+
+    '<div class="summary-stat-card" onclick="setAccountFilter(\'all\')"><div class="summary-stat-value">'+total+'</div><div class="summary-stat-label">Total Accounts</div></div>'+
+    '<div class="summary-stat-card summary-stat-alert" onclick="setAccountFilter(\'needs-attention\')"><div class="summary-stat-value">'+buckets.needsAttention.length+'</div><div class="summary-stat-label">Needs Attention</div></div>'+
+    '<div class="summary-stat-card summary-stat-good" onclick="setAccountFilter(\'active\')"><div class="summary-stat-value">'+buckets.active.length+'</div><div class="summary-stat-label">Recently Active</div></div>'+
+    '<div class="summary-stat-card" onclick="setAccountFilter(\'dormant\')"><div class="summary-stat-value">'+(buckets.dormant.length+buckets.noVisits.length)+'</div><div class="summary-stat-label">Dormant / No Visits</div></div>'+
+  '</div>';
+}
+function renderFilterChips(){
+  var chips=[['all','All'],['needs-attention','Needs Attention'],['active','Recently Active'],['dormant','Dormant'],['no-visits','No Visits']];
+  return'<div class="filter-chips-row">'+chips.map(function(c){
+    return'<button type="button" class="filter-chip'+(activeAccountFilter===c[0]?' active':'')+'" onclick="setAccountFilter(\''+c[0]+'\')">'+c[1]+'</button>';
+  }).join('')+'</div>';
+}
+// Territory account cards are NOT built into the DOM up front — only the
+// header rows (name + count) render immediately. The actual account cards
+// for a given territory are built once, the first time that territory is
+// expanded, then cached so re-collapsing/re-expanding never rebuilds them.
+// This is what makes the page viable at real scale (hundreds to
+// thousands of accounts), not just visually hiding a giant pre-rendered
+// DOM behind CSS.
+var _territoryAccountsCache={};
+function toggleTerritory(headerEl){
+  var body=headerEl.nextElementSibling;
+  if(!body.getAttribute('data-rendered')){
+    var territoryName=headerEl.getAttribute('data-territory');
+    var accs=_territoryAccountsCache[territoryName]||[];
+    body.innerHTML=accs.map(accountCardHtml).join('');
+    body.setAttribute('data-rendered','1');
+    lucide.createIcons({el:body});
+  }
+  body.classList.toggle('open');
+  headerEl.querySelector('.territory-chevron').classList.toggle('rotated');
+}
+function renderDirectoryHome(){
+  var total=ACCOUNTS.length;
+  var buckets=computeAccountBuckets();
+  document.getElementById('summaryStatsArea').innerHTML=renderSummaryStats(buckets);
+  document.getElementById('filterChipsArea').innerHTML=renderFilterChips();
+
+  if(total===0){
+    document.getElementById('directoryCount').textContent='0 accounts';
+    document.getElementById('directoryList').innerHTML='<div class="empty">No accounts found.</div>';
+    return;
+  }
+
+  var html='';
+  // Only render a flat account list when a filter other than "All" is
+  // active — this is the entire fix: the default view never dumps a
+  // list, it only ever shows counts, search, chips, and the collapsed
+  // territory structure below.
+  if(activeAccountFilter!=='all'){
+    var bucketMap={'needs-attention':buckets.needsAttention,'active':buckets.active,'dormant':buckets.dormant,'no-visits':buckets.noVisits};
+    var filtered=(bucketMap[activeAccountFilter]||[]).slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+    document.getElementById('directoryCount').textContent=filtered.length+' account'+(filtered.length!==1?'s':'');
+    if(!filtered.length){
+      html+='<div class="intel-empty">No accounts match this filter.</div>';
+    }else{
+      html+=filtered.map(accountCardHtml).join('');
+    }
+  }else{
+    document.getElementById('directoryCount').textContent=total+' account'+(total!==1?'s':'');
+  }
+
+  // Territory structure — always present, always collapsed by default,
+  // regardless of which filter chip is active. This is the permanent
+  // browsing method, not a fallback shown only sometimes.
+  html+='<div class="intel-section" id="territorySectionAnchor"><div class="intel-section-header"><span class="intel-section-icon">📍</span><span class="intel-section-title">All Accounts by Territory</span></div>';
+  var grouped={};ACCOUNTS.forEach(function(a){var key=a.canonicalTerritory;if(!grouped[key])grouped[key]=[];grouped[key].push(a);});
+  TERRITORY_ORDER.forEach(function(territoryName){
+    var accs=grouped[territoryName];if(!accs||accs.length===0)return;
+    accs.sort(function(a,b){return a.name.localeCompare(b.name);});
+    _territoryAccountsCache[territoryName]=accs;
+    html+='<div class="territory-group">'+
+      '<div class="territory-header" data-territory="'+escapeHtml(territoryName)+'" onclick="toggleTerritory(this)">'+
+        '<div><div class="territory-name">'+territoryName+'</div><div class="territory-count">'+accs.length+' account'+(accs.length!==1?'s':'')+'</div></div>'+
+        '<div class="territory-chevron"><i data-lucide="chevron-down"></i></div>'+
+      '</div>'+
+      '<div class="territory-accounts"></div>'+
+    '</div>';
+  });
+  html+='</div>';
+  document.getElementById('directoryList').innerHTML=html;lucide.createIcons();
+}
+function renderTerritoryGroups(){
+  renderDirectoryHome();
+}
+var _searchTimer;document.getElementById('directorySearch').addEventListener('input',function(){clearTimeout(_searchTimer);_searchTimer=setTimeout(renderDirectory,200);});
+function priorityClass(p){var s=String(p).toLowerCase();if(s==='high')return'priority-high';if(s==='medium'||s==='med')return'priority-medium';return'priority-low';}
+function outcomeClass(o){var s=String(o).toLowerCase();if(s==='positive')return'outcome-positive';if(s==='negative')return'outcome-negative';return'outcome-neutral';}
+function filterLabel(key){if(key==='7')return'Last 7 Days';if(key==='30')return'Last 30 Days';if(key==='90')return'Last 90 Days';return'All Time';}
+function getFilterDays(key){if(key==='7')return 7;if(key==='30')return 30;if(key==='90')return 90;return null;}
+function computeTrend(allVisits,filterKey){
+  var days=getFilterDays(filterKey);if(days===null)return null;var now=new Date();var curStart=new Date(now.getTime()-days*86400000);var priorStart=new Date(now.getTime()-2*days*86400000);var cur=[],prior=[];
+  allVisits.forEach(function(v){if(!v.date)return;if(v.date>curStart&&v.date<=now)cur.push(v);else if(v.date>priorStart&&v.date<=curStart)prior.push(v);});
+  function score(vs){var s=0;vs.forEach(function(v){var o=String(v.outcome).toLowerCase();if(o==='positive')s++;else if(o==='negative')s--;});return s;}
+  if(cur.length===0)return{label:'No recent activity',cls:'trend-flat',arrow:'—'};if(prior.length===0)return{label:'New activity',cls:'trend-flat',arrow:'•'};
+  var cs=score(cur),ps=score(prior);if(cs>ps)return{label:'Improving',cls:'trend-up',arrow:'↑'};if(cs<ps)return{label:'Declining',cls:'trend-down',arrow:'↓'};return{label:'Flat',cls:'trend-flat',arrow:'→'};
+}
+function stripMarkdownArtifacts(text){
+  return String(text||'')
+    .replace(/\*\*(.*?)\*\*/g,'$1')
+    .replace(/^#{1,6}\s*/gm,'')
+    .replace(/^-{2,}\s*$/gm,'')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+function parseVisitReportSections(text){
+  var sections={summary:'',contacts:'',outcomes:'',nextSteps:'',signals:'',sentiment:''};
+  var lines=String(text||'').split('\n');
+  var current='';
+  for(var i=0;i<lines.length;i++){
+    var raw=lines[i].trim();
+    var label=raw.replace(/\*\*/g,'').replace(/^#{1,6}\s*/,'');
+    if(/VISIT SUMMARY/i.test(label))current='summary';
+    else if(/KEY CONTACTS/i.test(label))current='contacts';
+    else if(/OUTCOMES/i.test(label))current='outcomes';
+    else if(/NEXT STEPS/i.test(label))current='nextSteps';
+    else if(/OPPORTUNITY/i.test(label))current='signals';
+    else if(/SENTIMENT/i.test(label))current='sentiment';
+    else if(/PRIORITY/i.test(label))current='';
+    else if(/^-{2,}$/.test(raw)){/* separator line — skip */}
+    else if(raw&&current){
+      var cleaned=stripMarkdownArtifacts(raw);
+      if(cleaned)sections[current]+=(sections[current]?'\n':'')+cleaned;
+    }
+  }
+  return sections;
+}
+var REPORT_SECTION_ORDER=[['summary','Summary'],['contacts','Key Contacts'],['outcomes','Outcomes'],['nextSteps','Next Steps'],['signals','Opportunity Signals'],['sentiment','Sentiment']];
+function buildSummaryHtml(text){
+  var raw=String(text||'').trim();
+  if(!raw)return'';
+  var s=parseVisitReportSections(raw);
+  var blocks=REPORT_SECTION_ORDER.filter(function(p){return s[p[0]];});
+  if(!blocks.length){
+    // No recognized section headers — still strip stray markdown so
+    // nothing raw ever reaches the screen, keep the original short/full
+    // toggle behaviour for long plain text.
+    var cleaned=stripMarkdownArtifacts(raw);
+    if(cleaned.length<=140)return'<div class="intel-text">'+escapeHtml(cleaned)+'</div>';
+    var shortPlain=cleaned.slice(0,140).trim()+'…';
+    return'<div class="summary-wrap"><div class="intel-text summary-short">'+escapeHtml(shortPlain)+'</div><div class="intel-text summary-full">'+escapeHtml(cleaned)+'</div><span class="summary-toggle toggle-more" onclick="this.closest(\'.summary-wrap\').classList.add(\'expanded\')">Show more</span><span class="summary-toggle toggle-less" onclick="this.closest(\'.summary-wrap\').classList.remove(\'expanded\')">Show less</span></div>';
+  }
+  var firstBlock=blocks[0];
+  var restBlocks=blocks.slice(1);
+  var firstText=s[firstBlock[0]];
+  var shortFirst=firstText.length>140?firstText.slice(0,140).trim()+'…':firstText;
+  var html='<div class="summary-wrap">';
+  html+='<div class="report-block report-block-primary summary-short"><div class="report-block-title">'+firstBlock[1]+'</div><div class="report-block-text">'+escapeHtml(shortFirst).replace(/\n/g,'<br>')+'</div></div>';
+  html+='<div class="summary-full">';
+  html+='<div class="report-block report-block-primary"><div class="report-block-title">'+firstBlock[1]+'</div><div class="report-block-text">'+escapeHtml(firstText).replace(/\n/g,'<br>')+'</div></div>';
+  restBlocks.forEach(function(p){
+    html+='<div class="report-block"><div class="report-block-title">'+p[1]+'</div><div class="report-block-text">'+escapeHtml(s[p[0]]).replace(/\n/g,'<br>')+'</div></div>';
+  });
+  html+='</div>';
+  html+='<span class="summary-toggle toggle-more" onclick="this.closest(\'.summary-wrap\').classList.add(\'expanded\')">Show more</span><span class="summary-toggle toggle-less" onclick="this.closest(\'.summary-wrap\').classList.remove(\'expanded\')">Show less</span>';
+  html+='</div>';
+  return html;
+}
+function openAccountDetail(id){currentDetailAccountId=id;currentDetailFilter='30';renderAccountDetail();document.getElementById('accountDetailOverlay').style.display='flex';document.body.style.overflow='hidden';loadAccountUpdates();}
+function loadAccountUpdates(){
+  var acc=ACCOUNTS.find(function(a){return a.id===currentDetailAccountId;});if(!acc)return;
+  currentAccountUpdates=[];
+  fetch(WORKER_URL+'/get-account-updates?accountName='+encodeURIComponent(acc.name),{cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(data){currentAccountUpdates=data.records||[];renderAccountUpdatesList();})
+    .catch(function(){renderAccountUpdatesList();});
+}
+function renderAccountUpdatesList(){
+  var el=document.getElementById('accountUpdatesList');if(!el)return;
+  if(!currentAccountUpdates.length){el.innerHTML='<div class="detail-empty">No updates recorded yet.</div>';return;}
+  el.innerHTML=currentAccountUpdates.map(function(u){
+    var f=u.fields||{};
+    var when=f['Created Date']?new Date(f['Created Date']).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+    var by=f['Created By']?escapeHtml(f['Created By']):'';
+    return '<div class="attn-item"><div class="attn-item-top"><span>'+when+'</span><span>'+by+'</span></div><div class="attn-item-text">'+escapeHtml(f['Update Text']||'')+'</div></div>';
+  }).join('');
+}
+function toggleAccountUpdateForm(show){
+  var wrap=document.getElementById('accountUpdateFormWrap');if(!wrap)return;
+  wrap.style.display=show?'block':'none';
+  if(show){document.getElementById('accountUpdateText').focus();}
+  else{document.getElementById('accountUpdateText').value='';}
+}
+function saveAccountUpdate(){
+  var acc=ACCOUNTS.find(function(a){return a.id===currentDetailAccountId;});if(!acc)return;
+  var textEl=document.getElementById('accountUpdateText');
+  var text=textEl.value.trim();
+  if(!text)return;
+  fetch(WORKER_URL+'/save-account-update',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+    body:JSON.stringify({accountId:acc.id,accountName:acc.name,updateText:text})
+  })
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data&&data.error){alert('Could not save update: '+data.error);return;}
+      toggleAccountUpdateForm(false);
+      loadAccountUpdates();
+    })
+    .catch(function(err){alert('Could not save update: '+err.message);});
+}
+function setDetailFilter(key){currentDetailFilter=key;renderAccountDetail();renderAccountUpdatesList();}
+function closeAccountDetail(){document.getElementById('accountDetailOverlay').style.display='none';document.body.style.overflow='';}
+function toggleSection(headerEl){headerEl.nextElementSibling.classList.toggle('open');headerEl.querySelector('.toggle-arrow').classList.toggle('rotated');}
+function toggleOA(id,btn){var el=document.getElementById(id);if(!el)return;var open=el.style.display!=='none';el.style.display=open?'none':'block';btn.textContent=open?'View details':'Hide details';}
+function gotoTimeline(itemId){
+  var body=document.getElementById('timeline-body');var toggle=document.getElementById('timeline-toggle');
+  if(body&&!body.classList.contains('open')){if(toggle)toggleSection(toggle);}
+  setTimeout(function(){
+    var el=document.getElementById(itemId);if(!el)return;
+    // Fix: the modal's own body (.detail-panel) is the scrolling container —
+    // the page behind it is locked (document.body.style.overflow='hidden'
+    // while the modal is open, set in openAccountDetail/closeAccountDetail),
+    // so window.scrollTo never moved anything visible. Scroll the panel's
+    // own scrollTop instead, computed from the element's position relative
+    // to the panel, not the viewport. Works identically whether the panel
+    // holds 1 visit or many. Falls back to window.scrollTo only if the
+    // panel element can't be found, so behaviour never silently breaks.
+    // Offset by the sticky .detail-header's actual rendered height (queried
+    // live, not hardcoded, since it can vary) plus a small gap, so the
+    // target card lands flush just below the header rather than partially
+    // hidden underneath it. Clamped to 0 so a card near the very top of the
+    // panel never scrolls to a negative position.
+    var panel=document.querySelector('.detail-panel');
+    if(panel){
+      var headerEl=panel.querySelector('.detail-header');
+      var headerOffset=headerEl?headerEl.getBoundingClientRect().height:0;
+      var panelRect=panel.getBoundingClientRect();
+      var elRect=el.getBoundingClientRect();
+      var targetScrollTop=panel.scrollTop+(elRect.top-panelRect.top)-headerOffset-10;
+      if(targetScrollTop<0)targetScrollTop=0;
+      panel.scrollTo({top:targetScrollTop,behavior:'smooth'});
+    }else{
+      var _targetTop=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0);
+      window.scrollTo({top:_targetTop,behavior:'smooth'});
+    }
+    el.classList.add('tl-highlight');setTimeout(function(){el.classList.remove('tl-highlight');},1700);var wrap=el.querySelector('.summary-wrap');if(wrap)wrap.classList.add('expanded');
+  },150);
+}
+function renderAccountDetail(){
+  var acc=ACCOUNTS.find(function(a){return a.id===currentDetailAccountId;});if(!acc)return;
+  document.getElementById('detailAccountName').textContent=acc.name;
+  var metaHtml='';if(acc.territory)metaHtml+='<span class="activity-badge badge-territory">'+escapeHtml(acc.territory)+'</span>';if(acc.city)metaHtml+='<span class="activity-badge badge-territory">'+escapeHtml(acc.city)+'</span>';
+  document.getElementById('detailMeta').innerHTML=metaHtml;
+  var allVisits=acc.matchedVisits.slice().sort(function(a,b){var ad=a.date?a.date.getTime():0,bd=b.date?b.date.getTime():0;return bd-ad;});
+  var days=getFilterDays(currentDetailFilter);var now=new Date();
+  var windowVisits=allVisits.filter(function(v){if(days===null)return true;if(!v.date)return false;return(now.getTime()-v.date.getTime())<=days*86400000&&v.date<=now;});
+  var lastVisit=allVisits.length?allVisits[0]:null;
+  var attnActions=windowVisits.filter(function(v){return v.actionItems&&String(v.actionItems).trim();});
+  var attnPriority=windowVisits.filter(function(v){return String(v.priority).toLowerCase()==='high';});
+  var attnNegative=windowVisits.filter(function(v){return String(v.outcome).toLowerCase()==='negative';});
+  var priorityAttnCount=attnPriority.length+attnNegative.length;
+  var openActionsCount=attnActions.length;var highPriorityCount=attnPriority.length;var nextAction=allVisits.find(function(v){return v.actionItems&&String(v.actionItems).trim();});var trend=computeTrend(allVisits,currentDetailFilter);
+  var allTimeRepCounts={};allVisits.forEach(function(v){allTimeRepCounts[v.rep]=(allTimeRepCounts[v.rep]||0)+1;});
+  var mostActiveRep=null,mostActiveCount=0;Object.keys(allTimeRepCounts).forEach(function(r){if(allTimeRepCounts[r]>mostActiveCount){mostActiveCount=allTimeRepCounts[r];mostActiveRep=r;}});
+  var periodRepCounts={};windowVisits.forEach(function(v){periodRepCounts[v.rep]=(periodRepCounts[v.rep]||0)+1;});
+  var periodRepList=Object.keys(periodRepCounts).map(function(r){return{rep:r,count:periodRepCounts[r]};}).sort(function(a,b){return b.count-a.count;});
+  var accStatus=getAccountStatus(acc);
+  var html='';
+  html+='<div class="status-hero-top">'+
+    '<div class="status-hero-top-row"><span class="status-hero-status '+accStatus.cls+'">'+accStatus.label+'</span>'+(trend?'<span class="'+trend.cls+'" style="font-size:11px;font-weight:800">'+trend.arrow+' '+trend.label+'</span>':'')+'</div>'+
+    '<div class="status-row"><span class="status-label">Last Visit</span><span class="status-value">'+(lastVisit&&lastVisit.date?formatDate(lastVisit.date):'—')+'</span></div>'+
+    '<div class="status-row"><span class="status-label">Last Rep</span><span class="status-value">'+(lastVisit?escapeHtml(lastVisit.rep):'—')+'</span></div>'+
+    '<div class="status-row"><span class="status-label">Current Sentiment</span><span class="status-value">'+(lastVisit&&lastVisit.outcome?'<span class="activity-badge '+outcomeClass(lastVisit.outcome)+'">'+escapeHtml(lastVisit.outcome)+'</span>':'—')+'</span></div>'+
+    '<div class="status-row"><span class="status-label">Open Actions ('+filterLabel(currentDetailFilter)+')</span><span class="status-value">'+openActionsCount+'</span></div>'+
+    '<div class="status-row"><span class="status-label">High Priority ('+filterLabel(currentDetailFilter)+')</span><span class="status-value">'+highPriorityCount+'</span></div>'+
+    '<div class="status-hero-next"><div class="status-hero-next-label">Next Required Action</div><div class="status-hero-next-text">'+(nextAction?escapeHtml(truncate(nextAction.actionItems,90)):'None recorded')+'</div></div>'+
+  '</div>';
+  html+='<div class="detail-section"><div class="detail-section-title">Account Updates</div><div id="accountUpdatesList"><div class="detail-empty">Loading updates...</div></div><div id="accountUpdateFormWrap" style="display:none;margin-top:10px"><textarea id="accountUpdateText" placeholder="What changed since the last visit?" style="width:100%;min-height:70px;padding:10px;border:1px solid #e3ebf5;border-radius:10px;font-family:inherit;font-size:13px;resize:vertical"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="filter-pill" style="flex:1;text-align:center" onclick="saveAccountUpdate()">Save</button><button class="filter-pill" style="flex:1;text-align:center" onclick="toggleAccountUpdateForm(false)">Cancel</button></div></div><button type="button" class="add-note-btn" onclick="toggleAccountUpdateForm(true)">+ Add note / contact update</button></div>';
+  html+='<div class="detail-section"><div class="detail-section-title">Account Ownership</div><div class="ownership-grid"><div class="ownership-card"><div class="ownership-label">Most Active (All-Time)</div><div class="ownership-name">'+(mostActiveRep?escapeHtml(mostActiveRep):'—')+'</div><div class="ownership-sub">'+mostActiveCount+' visit'+(mostActiveCount!==1?'s':'')+'</div></div><div class="ownership-card"><div class="ownership-label">Most Recent</div><div class="ownership-name">'+(lastVisit?escapeHtml(lastVisit.rep):'—')+'</div><div class="ownership-sub">'+(lastVisit&&lastVisit.date?formatDate(lastVisit.date):'—')+'</div></div></div><div class="ownership-breakdown"><div class="ownership-label" style="margin-bottom:4px">Visits in '+filterLabel(currentDetailFilter)+'</div>'+(periodRepList.length===0?'<div style="font-size:11.5px;color:#aab8cc;font-weight:600">No visits in this period.</div>':periodRepList.map(function(r){return'<div class="ownership-bar-row"><span>'+escapeHtml(r.rep)+'</span><span>'+r.count+'</span></div>';}).join(''))+'</div></div>';
+  html+='<div class="detail-section"><div class="detail-section-title">Activity Window</div><div class="filter-pills">'+['7','30','90','all'].map(function(k){return'<div class="filter-pill'+(currentDetailFilter===k?' active':'')+'" onclick="setDetailFilter(\''+k+'\')">'+filterLabel(k)+'</div>';}).join('')+'</div></div>';
+  html+='<div class="detail-section"><div class="section-toggle" onclick="toggleSection(this)"><span class="detail-section-title" style="margin-bottom:0">Priority Attention ('+priorityAttnCount+')</span><span class="toggle-arrow"><i data-lucide="chevron-down"></i></span></div><div class="collapsible-content">';
+  if(priorityAttnCount===0){html+='<div class="detail-empty">Nothing requires priority attention in '+filterLabel(currentDetailFilter).toLowerCase()+'.</div>';}
+  else{
+    attnPriority.forEach(function(v){
+      html+='<div class="alert-card alert-card-priority"><span class="alert-card-icon">🔴</span><div class="alert-card-body">'+
+        '<div class="alert-card-top"><span>'+(v.date?formatDate(v.date):'—')+'</span><span>'+escapeHtml(v.rep)+'</span></div>'+
+        '<div class="alert-card-label">High Priority Visit</div>'+
+        '<div class="alert-card-actions"><button type="button" class="card-btn card-btn-primary" onclick="gotoTimeline(\'tl-'+v.id+'\')">Open visit</button></div>'+
+      '</div></div>';
+    });
+    attnNegative.forEach(function(v){
+      html+='<div class="alert-card"><span class="alert-card-icon">🔴</span><div class="alert-card-body">'+
+        '<div class="alert-card-top"><span>'+(v.date?formatDate(v.date):'—')+'</span><span>'+escapeHtml(v.rep)+'</span></div>'+
+        '<div class="alert-card-label">Negative Outcome</div>'+
+        '<div class="alert-card-actions"><button type="button" class="card-btn card-btn-primary" onclick="gotoTimeline(\'tl-'+v.id+'\')">Open visit</button></div>'+
+      '</div></div>';
+    });
+  }
+  html+='</div></div>';
+  html+='<div class="detail-section"><div class="section-toggle" onclick="toggleSection(this)"><span class="detail-section-title" style="margin-bottom:0">Open Actions ('+attnActions.length+')</span><span class="toggle-arrow"><i data-lucide="chevron-down"></i></span></div><div class="collapsible-content">';
+  if(attnActions.length===0){html+='<div class="detail-empty">No open actions in '+filterLabel(currentDetailFilter).toLowerCase()+'.</div>';}
+  else{
+    attnActions.forEach(function(v,idx){
+      var aText=String(v.actionItems||'').trim();
+      var firstLine=aText.split('\n')[0].trim();
+      var headline=firstLine.length>70?firstLine.substring(0,70)+'…':firstLine;
+      var needsExpand=aText.length>80||aText.indexOf('\n')>-1;
+      var oid='oa-'+idx;
+      html+='<div class="task-card"><span class="task-card-icon">✓</span><div class="task-card-body">'+
+        '<div class="task-card-top"><span>'+(v.date?formatDate(v.date):'—')+'</span><span>'+escapeHtml(v.rep)+'</span></div>'+
+        (needsExpand
+          ?'<div class="task-card-text">'+escapeHtml(headline)+'</div><div class="task-card-text oa-full" id="'+oid+'" style="display:none">'+escapeHtml(aText)+'</div>'
+          :'<div class="task-card-text">'+escapeHtml(aText)+'</div>')+
+        '<div class="task-card-actions">'+
+          (needsExpand?'<button type="button" class="card-btn card-btn-ghost" id="'+oid+'-btn" onclick="toggleOA(\''+oid+'\',this)">View details</button>':'')+
+          '<button type="button" class="card-btn card-btn-primary" onclick="gotoTimeline(\'tl-'+v.id+'\')">Open visit</button>'+
+        '</div>'+
+      '</div></div>';
+    });
+  }
+  html+='</div></div>';
+  html+='<div class="detail-section"><div class="section-toggle" id="timeline-toggle" onclick="toggleSection(this)"><span class="detail-section-title" style="margin-bottom:0">Timeline ('+windowVisits.length+')</span><span class="toggle-arrow"><i data-lucide="chevron-down"></i></span></div><div class="collapsible-content" id="timeline-body">';
+  if(windowVisits.length===0){html+='<div class="detail-empty">No visits in this period.</div>';}
+  else{windowVisits.forEach(function(v){html+='<div class="visit-card-upgraded" id="tl-'+v.id+'"><div class="timeline-top"><div class="timeline-date">'+(v.date?formatDate(v.date):'—')+'</div><div class="timeline-badges">'+(v.priority?'<span class="activity-badge '+priorityClass(v.priority)+'">'+escapeHtml(v.priority)+'</span>':'')+(v.outcome?'<span class="activity-badge '+outcomeClass(v.outcome)+'">'+escapeHtml(v.outcome)+'</span>':'')+'</div></div><div class="timeline-meta">'+escapeHtml(v.rep)+(v.type?' · '+escapeHtml(v.type):'')+'</div>'+(v.aiSummary?buildSummaryHtml(v.aiSummary):'')+'</div>';});}
+  html+='</div></div>';
+  var discoveryVisit=allVisits.find(function(v){return v.newAccount;});
+  html+='<div class="detail-section"><div class="section-toggle" onclick="var c=this.nextElementSibling;c.classList.toggle(\'open\');this.querySelector(\'.toggle-arrow\').classList.toggle(\'rotated\')"><span class="detail-section-title" style="margin-bottom:0">Full History ('+allVisits.length+' total visits)</span><span class="toggle-arrow"><i data-lucide="chevron-down"></i></span></div><div class="full-history-content">';
+  if(discoveryVisit){var reviewStatus=discoveryVisit.reviewed?'Reviewed':(discoveryVisit.pendingReview?'Pending Review':'—');html+='<div class="discovery-mini"><b>Discovered</b> '+(discoveryVisit.date?formatDate(discoveryVisit.date):'—')+' by '+escapeHtml(discoveryVisit.rep)+' · Review status: '+reviewStatus+'</div>';}
+  if(allVisits.length===0){html+='<div class="detail-empty">No visits logged yet.</div>';}
+  else{allVisits.forEach(function(v){html+='<div class="visit-card-upgraded"><div class="timeline-top"><div class="timeline-date">'+(v.date?formatDate(v.date):'—')+'</div><div class="timeline-badges">'+(v.priority?'<span class="activity-badge '+priorityClass(v.priority)+'">'+escapeHtml(v.priority)+'</span>':'')+(v.outcome?'<span class="activity-badge '+outcomeClass(v.outcome)+'">'+escapeHtml(v.outcome)+'</span>':'')+'</div></div><div class="timeline-meta">'+escapeHtml(v.rep)+(v.type?' · '+escapeHtml(v.type):'')+'</div>'+(v.aiSummary?buildSummaryHtml(v.aiSummary):'')+'</div>';});}
+  html+='</div></div>';
+  document.getElementById('detailBody').innerHTML=html;lucide.createIcons();
+}
+if(role!=='Manager'){
+  document.getElementById('loadingEl').style.display='none';
+  document.getElementById('accessDeniedEl').style.display='flex';
+}else{
+  document.getElementById('managerBadge').style.display='inline-flex';
+  loadDirectory();
+}
+document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
+</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>
+// Back-to-top floating button — purely cosmetic, self-contained. Created
+// entirely via JS so no existing HTML/IDs/layout are touched. Appears only
+// after scrolling past 500px, scrolls smoothly to top on click. Does not
+// interact with navigation, business logic, or any data.
+(function(){
+  var btn=document.createElement('button');
+  btn.type='button';
+  btn.className='back-to-top';
+  btn.setAttribute('aria-label','Back to top');
+  btn.textContent='↑';
+  btn.addEventListener('click',function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+  document.addEventListener('DOMContentLoaded',function(){
+    document.body.appendChild(btn);
+  });
+  window.addEventListener('scroll',function(){
+    btn.classList.toggle('visible',(window.scrollY||document.documentElement.scrollTop)>500);
+  },{passive:true});
+})();
+</script>
+</body>
+</html>
