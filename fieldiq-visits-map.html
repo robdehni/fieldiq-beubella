@@ -88,7 +88,7 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .psum{margin-top:8px;padding-top:8px;border-top:1px solid #eef3f9;font-size:11.5px;color:#7a8aa3;line-height:1.5;max-height:70px;overflow-y:auto}
 </style>
   <!-- PWA v1 -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
@@ -169,6 +169,7 @@ if (!isManager) {
 }
 
 var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+function escapeHtml(str){return String(str||'').replace(/[&<>"']/g,function(m){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);});}
 var allVisits=[];
 var markers;
 var theMap;
@@ -317,13 +318,13 @@ function renderMarkers(visits){
     else if(sent==='neutral')n++;
     else if(sent==='negative')neg++;
     var popup=
-      '<div class="ph">'+(f['Hospital Name']||'Unknown Account')+'</div>'+
+      '<div class="ph">'+escapeHtml(f['Hospital Name']||'Unknown Account')+'</div>'+
       '<span class="ps" style="'+getBadgeStyle(sent)+'">'+sent.charAt(0).toUpperCase()+sent.slice(1)+'</span>'+
-      '<div class="pr"><span class="pl">Rep</span><span class="pv">'+(f['Rep Name']||'—')+'</span></div>'+
+      '<div class="pr"><span class="pl">Rep</span><span class="pv">'+escapeHtml(f['Rep Name']||'—')+'</span></div>'+
       '<div class="pr"><span class="pl">Date</span><span class="pv">'+formatDate(f['Visit Date'])+'</span></div>'+
       '<div class="pr"><span class="pl">Time</span><span class="pv">'+formatTime(v.createdTime)+'</span></div>'+
-      '<div class="pr"><span class="pl">Territory</span><span class="pv">'+(f['Territory']||'—')+'</span></div>'+
-      '<div class="pr"><span class="pl">Type</span><span class="pv">'+(f['Visit Type']||'—')+'</span></div>'+
+      '<div class="pr"><span class="pl">Territory</span><span class="pv">'+escapeHtml(normalizeTerritoryForMap(f['Territory'])||'—')+'</span></div>'+
+      '<div class="pr"><span class="pl">Type</span><span class="pv">'+escapeHtml(f['Visit Type']||'—')+'</span></div>'+
       '<div style="margin-top:8px"><a href="#" onclick="goToVisit(\''+encodeURIComponent(v.id)+'\');return false;" style="display:block;text-align:center;background:#2f8fff;color:#fff;font-weight:800;font-size:11.5px;padding:7px 0;border-radius:8px;text-decoration:none">View Visit</a></div>';
     var _marker=L.marker([f.Latitude,f.Longitude],{icon:makeIcon(getColor(sent))}).bindPopup(popup,{maxWidth:280});
     markersByVisitId[v.id]=_marker;
@@ -335,10 +336,13 @@ function renderMarkers(visits){
   document.getElementById('sNeg').textContent=neg;
 }
 
-// Same canonical mapping already used consistently in worker-biobella.js,
+// Same canonical mapping already used consistently in worker-beubella.js,
 // fieldiq-accounts.html, and fieldiq-log-visit.html.
 function normalizeTerritoryForMap(raw){
-  var t=(raw||'').trim();if(!t)return'';
+  var value=raw;
+  if(Array.isArray(value))value=value.length?value[0]:'';
+  var t=String(value||'').trim();if(!t)return'';
+  if(/^rec[a-zA-Z0-9]{14,}$/.test(t))return'';
   var tu=t.toUpperCase();
   if(tu==='ABU DHABI')return'Abu Dhabi';
   if(tu==='DUBAI')return'Dubai';
@@ -353,7 +357,8 @@ function populateFilters(visits){
   var t={},r={};
   visits.forEach(function(v){
     var f=v.fields;
-    if(f.Territory)t[normalizeTerritoryForMap(f.Territory)]=1;
+    var normalizedTerritory=normalizeTerritoryForMap(f.Territory);
+    if(normalizedTerritory)t[normalizedTerritory]=1;
     if(f['Rep Name'])r[f['Rep Name']]=1;
   });
   var ts=document.getElementById('fTerr');
@@ -448,6 +453,6 @@ async function loadVisits(){
 loadVisits();
 document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 </body>
 </html>
