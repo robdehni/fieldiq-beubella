@@ -105,7 +105,7 @@ audio{width:100%;border-radius:8px;margin:8px 0;display:none}
 .back-to-top.visible{display:flex}
 </style>
   <!-- PWA v1 -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
@@ -249,21 +249,9 @@ territorySelect.addEventListener('change',function(){
 // a security boundary — it relies on the same client-supplied identity the
 // rest of this page already used before today. Managers are entirely
 // unaffected: this block does nothing unless the signed-in role is a rep.
-// Runs after the change listener above so dispatching 'change' actually
-// reaches it and unlocks the account search box, exactly as a real user
-// selection would.
-if(currentUserRole!=='Manager'){
-  var repTerritory=localStorage.getItem('fieldiq_user_territory')||'';
-  var VALID_TERRITORIES=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah'];
-  if(repTerritory&&VALID_TERRITORIES.indexOf(repTerritory)>-1){
-    territorySelect.value=repTerritory;
-    territorySelect.disabled=true;
-    territorySelect.dispatchEvent(new Event('change'));
-  }
-  // else: unassigned, unrecognized, or not-yet-populated territory — leave
-  // the dropdown exactly as it works today rather than risk locking the
-  // rep out of logging a visit at all.
-}
+// (Moved further down in this file — see near updateMicAvailability — so
+// the dispatched 'change' event fires only after everything it touches is
+// actually defined.)
 
 var ACCOUNTS=[];var accountsLoaded=false;var selectedAccountId=null;
 
@@ -279,7 +267,7 @@ function loadAccounts(){
     return r.json();
   }).then(function(data){
     clearTimeout(timeoutId);var records=data.records||[];
-    ACCOUNTS=records.map(function(r){return {id:r.id,name:(r.fields&&r.fields['Account Name'])||'',territory:(r.fields&&r.fields['Territory'])||''};}).filter(function(a){return a.name;});
+    ACCOUNTS=records.map(function(r){return {id:r.id,name:(r.fields&&r.fields['Account Name'])||'',territory:normalizeTerritoryForDropdown((r.fields&&r.fields['Territory'])||'')};}).filter(function(a){return a.name;});
     applyPrefillFromURL();
     accountsLoaded=true;if(document.activeElement===hospitalInput){showList(hospitalInput.value);}else{hospitalList.classList.remove('open');}
   }).catch(function(err){
@@ -321,6 +309,30 @@ var validationMessageEl=document.getElementById('validationMessage');
 function getMissingFields(){var missing=[];if(!territorySelect.value)missing.push('Territory');var newAccountNameVal=notListedCheck.checked?document.getElementById('newAccountName').value.trim():'';var isDuplicateNewAccount=notListedCheck.checked&&newAccountNameVal.length>0&&findPossibleDuplicates(newAccountNameVal).length>0;var accountOk=!!selectedAccountId||(notListedCheck.checked&&newAccountNameVal.length>0&&!isDuplicateNewAccount);if(!accountOk)missing.push(isDuplicateNewAccount?'Account (duplicate)':'Account');if(!document.getElementById('visitDate').value)missing.push('Visit Date');if(!document.getElementById('visitType').value)missing.push('Visit Type');if(!currentUserId||!currentUserName)missing.push('Rep Identity');return missing;}
 function updateMicAvailability(){var missing=getMissingFields();if(missing.length>0){micBtn.disabled=true;if(validationMessageEl){if(missing.indexOf('Account (duplicate)')>-1){validationMessageEl.textContent='This account already exists. Please select it from Account Search instead of adding it as new.';}else{validationMessageEl.textContent='Complete required fields to start recording: '+missing.join(', ');}validationMessageEl.style.display='block';}}else{micBtn.disabled=false;if(validationMessageEl){validationMessageEl.style.display='none';}}}
 updateMicAvailability();
+
+// Reps are locked to their own assigned territory — the account list below
+// already filters by whatever this dropdown is set to, so locking it here
+// is the entire change needed. This is a display filter for the pilot, not
+// a security boundary — it relies on the same client-supplied identity the
+// rest of this page already used before today. Managers are entirely
+// unaffected: this block does nothing unless the signed-in role is a rep.
+// Placed here specifically — after micBtn and updateMicAvailability are
+// both defined — because the dispatched 'change' event below calls into
+// updateMicAvailability synchronously, and doing this earlier in the file
+// crashed with "Cannot set properties of undefined (setting 'disabled')"
+// since micBtn didn't exist yet at that point.
+if(currentUserRole!=='Manager'){
+  var repTerritory=localStorage.getItem('fieldiq_user_territory')||'';
+  var VALID_TERRITORIES=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah'];
+  if(repTerritory&&VALID_TERRITORIES.indexOf(repTerritory)>-1){
+    territorySelect.value=repTerritory;
+    territorySelect.disabled=true;
+    territorySelect.dispatchEvent(new Event('change'));
+  }
+  // else: unassigned, unrecognized, or not-yet-populated territory — leave
+  // the dropdown exactly as it works today rather than risk locking the
+  // rep out of logging a visit at all.
+}
 micBtn.addEventListener('click',function(){if(!isRecording)startRecording();else stopRecording();});
 function proceedToTranscribe(blob){
   statusEl.className='status transcribing';statusEl.textContent='Transcribing visit...';
@@ -494,7 +506,7 @@ document.getElementById('photoGalleryInput').addEventListener('change', function
 document.getElementById('clearBtn').addEventListener('click',function(){
   transcriptText.disabled=false;
   document.getElementById('autoStopChoice').style.display='none';
-  isRecording=false;transcriptText.value='';audioPlayer.style.display='none';audioPlayer.src='';successCard.style.display='none';processingOverlay.style.display='none';statusEl.textContent='Tap mic to start recording';statusEl.className='status';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';micBtn.className='mic-btn';micBtn.innerHTML='<i data-lucide="mic"></i>';lucide.createIcons({el:micBtn});document.getElementById('recordingIndicator').className='recording-indicator';clearTimeout(autoStopTimeout);clearInterval(timerInterval);seconds=0;document.getElementById('recordingTimer').textContent='0:00';if(streamRef)streamRef.getTracks().forEach(function(t){t.stop();});streamRef=null;mediaRecorder=null;document.getElementById('editNotice').className='edit-notice';notListedCheck.checked=false;newAccountFields.classList.remove('visible');hospitalInput.style.display='';document.getElementById('newAccountName').value='';document.getElementById('newAccountCity').value='';document.getElementById('newContactName').value='';document.getElementById('newContactRole').value='';document.getElementById('newContactPhone').value='';document.getElementById('newContactEmail').value='';selectedAccountId=null;hospitalInput.value='';document.getElementById('visitType').value='';if(currentUserRole!=='Manager'){var assignedTerritory=localStorage.getItem('fieldiq_user_territory')||'';territorySelect.value=assignedTerritory;territorySelect.disabled=true;if(assignedTerritory){accountBlock.style.opacity='1';accountBlock.style.pointerEvents='auto';hospitalInput.disabled=false;notListedCheck.disabled=false;hospitalInput.placeholder='Search '+assignedTerritory+' accounts...';}}else{territorySelect.value='';territorySelect.disabled=false;accountBlock.style.opacity='0.5';accountBlock.style.pointerEvents='none';hospitalInput.disabled=true;notListedCheck.disabled=true;hospitalInput.placeholder='Select a territory first';}duplicateWarningEl.style.display='none';
+  isRecording=false;transcriptText.value='';audioPlayer.style.display='none';audioPlayer.src='';successCard.style.display='none';processingOverlay.style.display='none';statusEl.textContent='Tap mic to start recording';statusEl.className='status';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';micBtn.className='mic-btn';micBtn.innerHTML='<i data-lucide="mic"></i>';lucide.createIcons({el:micBtn});document.getElementById('recordingIndicator').className='recording-indicator';clearTimeout(autoStopTimeout);clearInterval(timerInterval);seconds=0;document.getElementById('recordingTimer').textContent='0:00';if(streamRef)streamRef.getTracks().forEach(function(t){t.stop();});streamRef=null;mediaRecorder=null;document.getElementById('editNotice').className='edit-notice';notListedCheck.checked=false;newAccountFields.classList.remove('visible');hospitalInput.style.display='';document.getElementById('newAccountName').value='';document.getElementById('newAccountCity').value='';document.getElementById('newContactName').value='';document.getElementById('newContactRole').value='';document.getElementById('newContactPhone').value='';document.getElementById('newContactEmail').value='';selectedAccountId=null;hospitalInput.value='';document.getElementById('visitType').value='';if(currentUserRole!=='Manager'){var assignedTerritory=localStorage.getItem('fieldiq_user_territory')||'';var CLEAR_VALID_TERRITORIES=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah'];if(assignedTerritory&&CLEAR_VALID_TERRITORIES.indexOf(assignedTerritory)>-1){territorySelect.value=assignedTerritory;territorySelect.disabled=true;accountBlock.style.opacity='1';accountBlock.style.pointerEvents='auto';hospitalInput.disabled=false;notListedCheck.disabled=false;hospitalInput.placeholder='Search '+assignedTerritory+' accounts...';}else{territorySelect.value='';territorySelect.disabled=false;accountBlock.style.opacity='0.5';accountBlock.style.pointerEvents='none';hospitalInput.disabled=true;notListedCheck.disabled=true;hospitalInput.placeholder='Select a territory first';}}else{territorySelect.value='';territorySelect.disabled=false;accountBlock.style.opacity='0.5';accountBlock.style.pointerEvents='none';hospitalInput.disabled=true;notListedCheck.disabled=true;hospitalInput.placeholder='Select a territory first';}duplicateWarningEl.style.display='none';
   pendingPhotos.forEach(function(p){URL.revokeObjectURL(p.previewUrl);});
   pendingPhotos=[];renderPhotoPreviews();
   document.getElementById('photoUploading').style.display='none';
@@ -520,10 +532,13 @@ var prefillVisitThreadId=''; // holds the raw source visit id when arriving from
 // Matches the dropdown's exact option values (Abu Dhabi/Dubai/Sharjah/
 // Ajman/Umm Al Quwain/Ras Al Khaimah/Fujairah) against a raw Airtable
 // territory value that may be differently cased or formatted.
-// Same canonical mapping already used in worker-biobella.js and
+// Same canonical mapping already used in worker-beubella.js and
 // fieldiq-accounts.html.
 function normalizeTerritoryForDropdown(raw){
-  var t=(raw||'').trim();if(!t)return'';
+  var value=raw;
+  if(Array.isArray(value))value=value.length?value[0]:'';
+  var t=String(value||'').trim();if(!t)return'';
+  if(/^rec[a-zA-Z0-9]{14,}$/.test(t))return'';
   var tu=t.toUpperCase();
   if(tu==='ABU DHABI')return'Abu Dhabi';
   if(tu==='DUBAI')return'Dubai';
@@ -772,7 +787,7 @@ submitBtn.addEventListener('click',async function(){
 });
 document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 (function(){
   var btn=document.createElement('button');
