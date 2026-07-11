@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FieldIQ — Manager</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+
+.shell{display:flex;min-height:100vh}
+.sidebar{display:none}
+.main{flex:1;min-width:0;padding:20px 18px 90px}
+
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-cloud{font-size:24px;line-height:1}
+.brand-text h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#0b1f3a}
+.brand-text h1 span{color:#2f8fff}
+.brand-text p.eyebrow{font-size:10px;color:#8a9bb3;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-top:2px}
+.brand-text p.page-subtitle{color:#7a8aa3;font-size:12.5px;margin-top:4px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.exit-manager-btn{font-size:11px;color:#c43048;background:#fff;border:1px solid #f6c4cc;border-radius:20px;padding:6px 12px;cursor:pointer;font-weight:700}
+.exit-manager-btn:hover{background:#fff0f0}
+
+.section-label{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1.1px;font-weight:800;margin:32px 0 12px}
+.section-label:first-of-type{margin-top:0}
+
+.greeting{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;margin-bottom:4px}
+.greeting-sub{font-size:12.5px;color:#7a8aa3;font-weight:600;margin-bottom:24px}
+
+.command-strip{display:flex;background:#fff;border:1px solid #e8edf5;border-radius:14px;padding:14px 4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.command-stat{flex:1;text-align:center;padding:0 4px;border-right:1px solid #eef2f8}
+.command-stat:last-child{border-right:none}
+.command-stat-value{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;line-height:1}
+.command-stat-value.alert{color:#b9711f}
+.command-stat-label{font-size:9px;color:#8a9bb3;text-transform:uppercase;letter-spacing:0.5px;font-weight:800;margin-top:4px}
+
+.attention-panel{background:#fff;border:1px solid #ffe0a3;border-radius:16px;padding:4px;margin-bottom:22px;box-shadow:0 4px 14px rgba(11,31,58,0.05);overflow:hidden}
+.attention-panel.all-clear{border-color:#cdeedb}
+.attention-panel-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#b9711f;text-transform:uppercase;letter-spacing:0.6px;padding:12px 14px 8px}
+.attention-panel.all-clear .attention-panel-head{color:#1a9c53}
+.attention-panel-head svg{width:14px;height:14px;flex-shrink:0}
+.attention-row{display:flex;align-items:center;gap:10px;padding:11px 14px;text-decoration:none;border-top:1px solid #fbeecb}
+.attention-panel.all-clear .attention-row{border-top-color:#e3f5ea}
+.attention-rank{width:20px;height:20px;border-radius:50%;background:#fff3e0;color:#b9711f;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.attention-body{flex:1;min-width:0}
+.attention-name{font-size:13px;font-weight:800;color:#0b1f3a}
+.attention-reason{font-size:11px;color:#8a9bb3;margin-top:1px}
+.attention-arrow{color:#aab8cc;font-size:15px;flex-shrink:0}
+
+.ask-card{background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.ask-card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ask-card-icon{font-size:20px;line-height:1}
+.ask-card-title{font-size:13.5px;font-weight:800;color:#0b1f3a}
+.ask-card-sub{font-size:11px;color:#8a9bb3;font-weight:600;margin-top:1px}
+.ask-suggested-row{display:flex;flex-direction:column;gap:8px}
+.ask-chip{text-align:left;background:#f8fbff;border:1px solid #e3ebf5;color:#2f6fd8;font-size:12px;font-weight:700;padding:10px 12px;border-radius:10px;cursor:pointer}
+.ask-chip:hover:not(:disabled){border-color:#bcd8ff;background:#eef6ff}
+.ask-chip:disabled{opacity:.5;cursor:not-allowed}
+.ask-answer-box{margin-top:12px;background:#f4f9ff;border:1px solid #d3e6ff;border-radius:12px;padding:14px}
+.mgr-topline{font-size:13.5px;color:#0b1f3a;font-weight:700;margin-bottom:14px;background:linear-gradient(135deg,#f4f9ff,#eef6ff);border:1px solid #d3e6ff;border-radius:12px;padding:12px 14px}
+.mgr-section{margin-bottom:14px}
+.mgr-section:last-of-type{margin-bottom:0}
+.mgr-section-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#0b1f3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
+.mgr-section-icon{font-size:13px}
+.mgr-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fbff;border:1px solid #edf2f8;border-radius:10px;padding:9px 12px;margin-bottom:5px;text-decoration:none}
+.mgr-item:last-child{margin-bottom:0}
+.mgr-item-link{cursor:pointer}
+.mgr-item-link:hover{border-color:#bcd8ff;background:#eef6ff}
+.mgr-item-text{font-size:12.5px;color:#0b1f3a;font-weight:600;flex:1}
+.mgr-item-nav{font-size:10.5px;color:#2f8fff;font-weight:800;flex-shrink:0;white-space:nowrap}
+.ask-sources{margin-top:12px;padding-top:12px;border-top:1px solid #d3e6ff}
+.ask-sources-label{font-size:9.5px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
+.ask-sources-row{display:flex;flex-direction:column;gap:6px}
+.ask-source-btn{display:block;font-size:11.5px;font-weight:700;padding:8px 12px;border-radius:8px;text-decoration:none;background:#fff;border:1px solid #cfe4ff;color:#2f6fd8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ask-source-btn:hover{background:#eef6ff;border-color:#2f8fff}
+.ask-source-btn.visit{border-left:3px solid #2f8fff}
+.ask-source-btn.action{border-left:3px solid #c9871c}
+.ask-source-btn.account{border-left:3px solid #5b6b85}
+.ask-answer-question{font-size:11px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.ask-answer-text{font-size:13px;color:#0b1f3a;line-height:1.6;font-weight:600;white-space:pre-line}
+.ask-loading{margin-top:12px;font-size:12.5px;color:#8a9bb3;font-weight:600;display:flex;align-items:center;gap:8px}
+.ask-spinner{width:14px;height:14px;border:2px solid #d3e6ff;border-top:2px solid #2f8fff;border-radius:50%;animation:askSpin .7s linear infinite}
+@keyframes askSpin{to{transform:rotate(360deg)}}
+.ask-error{margin-top:12px;background:#fff3e0;border:1px solid #ffe0a3;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#7a6000;font-weight:600}
+.ask-retry-btn{margin-top:8px;border:none;background:#2f8fff;color:#fff;padding:8px 14px;border-radius:8px;font-weight:800;font-size:11.5px;cursor:pointer}
+.ask-again-link{margin-top:10px;font-size:11.5px;color:#2f8fff;font-weight:700;cursor:pointer;text-decoration:underline;display:inline-block}
+
+.primary-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:20px}
+.primary-tile{display:flex;flex-direction:column;align-items:center;gap:9px;background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:18px 6px;text-decoration:none;box-shadow:0 2px 8px rgba(11,31,58,0.03)}
+.primary-tile.primary{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
+.primary-tile-icon{width:42px;height:42px;border-radius:12px;background:#eaf3ff;display:flex;align-items:center;justify-content:center}
+.primary-tile.primary .primary-tile-icon{background:#fff}
+.primary-tile-icon [data-lucide]{width:20px;height:20px;stroke-width:1.9;color:#2f8fff}
+.primary-tile-label{font-size:12px;font-weight:800;color:#0b1f3a;text-align:center}
+.primary-tile.primary .primary-tile-label{color:#fff}
+
+.more-toggle{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:none;border:none;padding:10px;font-size:11.5px;font-weight:800;color:#7a8aa3;text-transform:uppercase;letter-spacing:0.6px;cursor:pointer}
+.more-toggle svg{width:13px;height:13px;transition:transform 0.15s}
+.more-toggle.open svg{transform:rotate(180deg)}
+.more-tools-collapsible{display:none}
+.more-tools-collapsible.open{display:block}
+
+.home-columns{display:block}
+
+
+.summary-empty{font-size:12.5px;color:#aab8cc;font-weight:600;padding:8px 2px}
+
+.quick-actions{display:flex;flex-direction:column;gap:10px}
+.quick-action{
+  display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e8edf5;border-radius:14px;
+  padding:14px 16px;text-decoration:none;
+}
+.quick-action.primary{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
+.quick-action.primary .qa-title{color:#fff}
+.quick-action.primary .qa-icon-wrap{background:#fff}
+.qa-icon-wrap{width:38px;height:38px;border-radius:11px;background:#eaf3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qa-icon-wrap [data-lucide]{width:19px;height:19px;stroke-width:1.9;color:#2f8fff}
+.quick-action.primary .qa-icon-wrap [data-lucide]{color:#2f8fff}
+.qa-title{font-size:13.5px;font-weight:800;color:#0b1f3a}
+.qa-arrow{margin-left:auto;color:#aab8cc}
+.quick-action.primary .qa-arrow{color:#fff}
+
+.footer{text-align:center;color:#aab8cc;font-size:11px;margin-top:32px;font-weight:600}
+
+@media(min-width:1100px){
+  .sidebar{
+    display:flex;flex-direction:column;width:240px;flex-shrink:0;background:#fff;
+    border-right:1px solid #e8edf5;padding:24px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  .sidebar-brand{display:flex;align-items:center;gap:9px;margin-bottom:4px;padding:0 8px}
+  .sidebar-brand h1{font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#0b1f3a}
+  .sidebar-brand h1 span{color:#2f8fff}
+  .sidebar-eyebrow{font-size:9px;color:#8a9bb3;letter-spacing:1px;text-transform:uppercase;font-weight:700;padding:0 8px;margin-bottom:26px}
+  .sidebar-group-label{font-size:10px;color:#aab8cc;text-transform:uppercase;letter-spacing:0.9px;font-weight:800;padding:0 8px;margin:18px 0 6px}
+  .sidebar-group-label:first-of-type{margin-top:0}
+  .sidebar-link{
+    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;text-decoration:none;
+    color:#5b6b85;font-size:13.5px;font-weight:700;margin-bottom:2px;
+  }
+  .sidebar-link:hover{background:#f4f8fc}
+  .sidebar-link.current{background:#eaf3ff;color:#1f6fe0;pointer-events:none;cursor:default}
+  .sidebar-link [data-lucide]{width:17px;height:17px;stroke-width:1.9;flex-shrink:0}
+
+  .main{padding:32px 40px 60px;max-width:1120px}
+  .header{margin-bottom:32px}
+  .command-strip{max-width:640px}
+  .attention-panel{max-width:640px}
+  .ask-card{max-width:640px}
+  .primary-actions{max-width:640px;grid-template-columns:repeat(3,180px)}
+  .more-toggle,.more-tools-collapsible{display:none}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="sidebar">
+    <div class="sidebar-brand"><span class="brand-cloud">☁️</span><h1>Field<span>IQ</span></h1></div>
+    <div class="sidebar-eyebrow">Territory Intelligence Platform</div>
+
+    <a href="./fieldiq.html" class="sidebar-link current"><i data-lucide="home"></i> Manager Home</a>
+
+    <div class="sidebar-group-label">Management</div>
+    <a href="https://fieldiq.biz/dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a href="./fieldiq-operations.html" class="sidebar-link"><i data-lucide="activity"></i> Operations</a>
+    <a href="https://fieldiq.biz/fieldiq-actions.html" class="sidebar-link"><i data-lucide="check-square"></i> Open Actions</a>
+    <a href="https://fieldiq.biz/fieldiq-accounts.html" class="sidebar-link"><i data-lucide="building-2"></i> Account Directory</a>
+
+    <div class="sidebar-group-label">Intelligence</div>
+    <a href="https://fieldiq.biz/fieldiq-insights.html" class="sidebar-link"><i data-lucide="brain-circuit"></i> AI Insights</a>
+    <a href="https://fieldiq.biz/fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map</a>
+
+    <div class="sidebar-group-label">Field &amp; Help</div>
+    <a href="./fieldiq-log-visit.html" class="sidebar-link"><i data-lucide="mic"></i> Log Visit</a>
+    <a href="./fieldiq-visit-history.html?source=manager-home" class="sidebar-link"><i data-lucide="clock"></i> Visit History</a>
+    <a href="./fieldiq-guide.html" class="sidebar-link"><i data-lucide="book-open"></i> Quick Start Guide</a>
+  </nav>
+
+  <div class="main">
+    <div class="header">
+      <div class="brand">
+        <span class="brand-cloud">☁️</span>
+        <div class="brand-text">
+          <h1>Field<span>IQ</span></h1>
+          <p class="eyebrow">Territory Intelligence Platform</p>
+          <p class="page-subtitle">Everything you need to manage your field team in one place.</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="exit-manager-btn" onclick="exitManager()">Exit Manager</button>
+      </div>
+    </div>
+
+    <div class="greeting" id="greetingText">Manager Command Centre</div>
+    <div class="greeting-sub">Here's what needs your attention today.</div>
+
+    <div class="command-strip" id="commandStrip">
+      <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">Today</div></div>
+      <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">Reps</div></div>
+      <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">Priority</div></div>
+      <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">New</div></div>
+    </div>
+
+    <div class="attention-panel" id="attentionPanel">
+      <div class="attention-panel-head" id="attentionPanelHead">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Requires Attention
+      </div>
+      <div id="attentionBody"><div class="summary-empty" style="padding:14px">Loading…</div></div>
+    </div>
+
+    <div class="ask-card" id="askCard">
+      <div class="ask-card-header">
+        <span class="ask-card-icon">🤖</span>
+        <div>
+          <div class="ask-card-title">Ask FieldIQ</div>
+          <div class="ask-card-sub">Your daily briefing, generated automatically</div>
+        </div>
+      </div>
+      <div id="briefingArea"><div class="ask-loading"><div class="ask-spinner"></div>Generating your daily briefing…</div></div>
+      <div class="ask-suggested-row" id="askSuggestedRow" style="margin-top:14px">
+        <button type="button" class="ask-chip" data-question="What is my team working on?">What is my team working on?</button>
+        <button type="button" class="ask-chip" data-question="Where do my reps need my help?">Where do my reps need my help?</button>
+        <button type="button" class="ask-chip" data-question="What is blocking commercial progress?">What is blocking commercial progress?</button>
+        <button type="button" class="ask-chip" data-question="Which opportunities should we push?">Which opportunities should we push?</button>
+        <button type="button" class="ask-chip" data-question="Who needs coaching or recognition?">Who needs coaching or recognition?</button>
+      </div>
+      <div id="askAnswerArea"></div>
+    </div>
+
+    <div class="primary-actions">
+      <a class="primary-tile primary" href="https://fieldiq.biz/dashboard.html">
+        <div class="primary-tile-icon"><i data-lucide="layout-dashboard"></i></div>
+        <div class="primary-tile-label">Dashboard</div>
+      </a>
+      <a class="primary-tile" href="./fieldiq-operations.html">
+        <div class="primary-tile-icon"><i data-lucide="activity"></i></div>
+        <div class="primary-tile-label">Operations</div>
+      </a>
+      <a class="primary-tile" href="./fieldiq-log-visit.html">
+        <div class="primary-tile-icon"><i data-lucide="mic"></i></div>
+        <div class="primary-tile-label">Log Visit</div>
+      </a>
+    </div>
+
+    <button type="button" class="more-toggle" id="moreToggle">
+      More Manager Tools
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="quick-actions more-tools-collapsible" id="moreToolsBody">
+      <a class="quick-action" href="https://fieldiq.biz/fieldiq-actions.html">
+        <div class="qa-icon-wrap"><i data-lucide="check-square"></i></div>
+        <div class="qa-title">Open Actions</div>
+        <div class="qa-arrow">›</div>
+      </a>
+      <a class="quick-action" href="./fieldiq-visit-history.html?source=manager-home">
+        <div class="qa-icon-wrap"><i data-lucide="clock"></i></div>
+        <div class="qa-title">Visit History</div>
+        <div class="qa-arrow">›</div>
+      </a>
+      <a class="quick-action" href="https://fieldiq.biz/fieldiq-accounts.html">
+        <div class="qa-icon-wrap"><i data-lucide="building-2"></i></div>
+        <div class="qa-title">Account Directory</div>
+        <div class="qa-arrow">›</div>
+      </a>
+      <a class="quick-action" href="https://fieldiq.biz/fieldiq-insights.html">
+        <div class="qa-icon-wrap"><i data-lucide="brain-circuit"></i></div>
+        <div class="qa-title">AI Insights</div>
+        <div class="qa-arrow">›</div>
+      </a>
+      <a class="quick-action" href="https://fieldiq.biz/fieldiq-visits-map.html">
+        <div class="qa-icon-wrap"><i data-lucide="map-pin"></i></div>
+        <div class="qa-title">Visit Map</div>
+        <div class="qa-arrow">›</div>
+      </a>
+      <a class="quick-action" href="./fieldiq-guide.html">
+        <div class="qa-icon-wrap"><i data-lucide="book-open"></i></div>
+        <div class="qa-title">Quick Start Guide</div>
+        <div class="qa-arrow">›</div>
+      </a>
+    </div>
+
+    <div class="footer">FieldIQ v2.1 · Manager Home · 2026</div>
+  </div>
+</div>
+<script>
+var currentSessionToken = localStorage.getItem('fieldiq_session_token');
+
+// Clears everything that represents an authenticated session. Deliberately
+// preserves fieldiq_last_user_id — that key only controls which profile is
+// preselected on index.html's next visit, it has never authenticated
+// anyone, so clearing it here would just be worse UX for no security
+// benefit.
+function clearActiveSession(){
+  localStorage.removeItem('fieldiq_user_id');
+  localStorage.removeItem('fieldiq_user_name');
+  localStorage.removeItem('fieldiq_user_role');
+  localStorage.removeItem('fieldiq_user_record_id');
+  localStorage.removeItem('fieldiq_session_token');
+}
+function exitManager(){
+  clearActiveSession();
+  window.location.href = './index.html';
+}
+function expireCurrentSession(){
+  localStorage.removeItem('fieldiq_session_token');
+  currentSessionToken = '';
+}
+function renderSignInAgainState(targetElId){
+  var el = document.getElementById(targetElId);
+  if (!el) return;
+  el.innerHTML = '<div class="ask-error">Your session needs to be refreshed. <a href="./index.html" style="color:#2f8fff;font-weight:800">Sign in again</a> to load this.</div>';
+}
+
+// ── Manager Home summary — small, purpose-built rendering only. ──────────
+// Uses the same /get-dashboard endpoint dashboard.html relies on, so there
+// is exactly one source of truth for these numbers, but renders its own
+// compact view here rather than reusing dashboard.html's widget markup or
+// functions. This page never becomes a second copy of the Dashboard.
+var WORKER_URL_HOME = 'https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+
+function truncateActionSnippet(text){
+  var t = String(text || '').trim();
+  if (!t) return '';
+  var short = t.length > 40 ? t.slice(0, 40).trim() + '…' : t;
+  return ': ' + short;
+}
+
+function escapeHtmlHome(str){
+  return String(str||'').replace(/[&<>"']/g,function(m){
+    return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
+  });
+}
+
+function renderHomeSummary(agg){
+  var strip = document.getElementById('commandStrip');
+  var priorityCount = (agg.priorityReview.high.length + agg.priorityReview.medium.length + agg.priorityReview.low.length);
+  var values = [agg.kpi.today, agg.kpi.repCount, priorityCount, agg.kpi.newAccountsPending];
+  var cells = strip.querySelectorAll('.command-stat');
+  cells.forEach(function(cell, i){
+    var valEl = cell.querySelector('.command-stat-value');
+    valEl.textContent = values[i];
+    if (i === 2 && priorityCount > 0) valEl.classList.add('alert');
+    if (i === 3 && agg.kpi.newAccountsPending > 0) valEl.classList.add('alert');
+  });
+
+  var panel = document.getElementById('attentionPanel');
+  var panelHead = document.getElementById('attentionPanelHead');
+  var body = document.getElementById('attentionBody');
+  var actionable = (agg.managementRadar || []).filter(function(acc){
+    var evidence = acc.evidence || [];
+    return evidence.indexOf('High Priority visit not reviewed') > -1 ||
+           evidence.indexOf('Negative outcome not reviewed') > -1 ||
+           evidence.indexOf('Follow-up overdue') > -1 ||
+           evidence.indexOf('Follow-up due today') > -1;
+  });
+  var top = actionable.slice(0, 3);
+  if (!top.length && priorityCount === 0) {
+    panel.classList.add('all-clear');
+    panelHead.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> All Clear';
+    body.innerHTML = '<div class="summary-empty" style="padding:0 14px 14px">Nothing needs your attention right now.</div>';
+    return;
+  }
+  if (!top.length && priorityCount > 0) {
+    // Management Radar has nothing flagged, but unreviewed visits still
+    // exist — these are two genuinely different signals (account-level
+    // evidence vs. a raw visit count), and showing "All Clear" right next
+    // to a nonzero Priority number in the strip above was the actual bug:
+    // the same screen telling the manager two different things at once.
+    // This state is honest about which signal is nonzero instead of
+    // picking one to silently hide.
+    panel.classList.remove('all-clear');
+    panelHead.innerHTML = priorityCount + ' visit' + (priorityCount !== 1 ? 's' : '') + ' awaiting review';
+    body.innerHTML = '<a class="summary-empty" style="padding:0 14px 14px;display:block;text-decoration:none;color:#2f8fff;font-weight:700" href="https://fieldiq.biz/dashboard.html">No accounts are individually flagged, but ' + priorityCount + ' visit' + (priorityCount !== 1 ? 's are' : ' is') + ' still awaiting your review. View Dashboard \u203a</a>';
+    return;
+  }
+  panel.classList.remove('all-clear');
+  body.innerHTML = top.map(function(acc, idx){
+    var evidence = acc.evidence || [];
+    var reason, dest;
+    if (evidence.indexOf('High Priority visit not reviewed') > -1) {
+      reason = 'High Priority — awaiting review';
+      var hpTarget = acc.highPriorityVisitId || acc.visitId;
+      dest = hpTarget
+        ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(hpTarget) + '&source=manager-home'
+        : 'https://fieldiq.biz/dashboard.html';
+    } else if (evidence.indexOf('Negative outcome not reviewed') > -1) {
+      reason = 'Negative outcome — awaiting review';
+      var negTarget = acc.negativeVisitId || acc.visitId;
+      dest = negTarget
+        ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(negTarget) + '&source=manager-home'
+        : 'https://fieldiq.biz/dashboard.html';
+    } else if (evidence.indexOf('Follow-up overdue') > -1) {
+      reason = 'Follow-up overdue' + truncateActionSnippet(acc.followUpOverdueActionText);
+      dest = acc.followUpOverdueActionId
+        ? 'https://fieldiq.biz/fieldiq-actions.html?actionId=' + encodeURIComponent(acc.followUpOverdueActionId)
+        : (acc.followUpOverdueVisitId
+            ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(acc.followUpOverdueVisitId) + '&source=manager-home'
+            : 'https://fieldiq.biz/dashboard.html');
+    } else {
+      reason = 'Follow-up due today' + truncateActionSnippet(acc.followUpDueTodayActionText);
+      dest = acc.followUpDueTodayActionId
+        ? 'https://fieldiq.biz/fieldiq-actions.html?actionId=' + encodeURIComponent(acc.followUpDueTodayActionId)
+        : (acc.followUpDueTodayVisitId
+            ? './fieldiq-visit-history.html?visitId=' + encodeURIComponent(acc.followUpDueTodayVisitId) + '&source=manager-home'
+            : 'https://fieldiq.biz/dashboard.html');
+    }
+    return '<a class="attention-row" href="' + dest + '">' +
+      '<div class="attention-rank">' + (idx + 1) + '</div>' +
+      '<div class="attention-body"><div class="attention-name">' + escapeHtmlHome(acc.name) + '</div>' +
+      '<div class="attention-reason">' + escapeHtmlHome(reason) + '</div></div>' +
+      '<div class="attention-arrow">›</div></a>';
+  }).join('');
+}
+
+// ── Manager Agent: proactive daily briefing ──────────────────────────────
+// Fires automatically on load, reusing the exact same /ask-fieldiq
+// endpoint the tap-to-ask chips already use — no new Worker route. Kept
+// as its own small function rather than folded into askFieldIQ() so the
+// already-verified chip flow is never touched by this addition.
+//
+// Deliberately does NOT ask "what changed since yesterday" — the context
+// digest /ask-fieldiq builds has no prior-day snapshot to compare against,
+// so asking that question would invite a guess instead of an honest "I
+// don't have that." Left out until real day-over-day data exists, rather
+// than asked and hoped the model declines correctly.
+var MANAGER_BRIEFING_QUESTION = "Give me a short daily briefing: top priorities today, accounts needing immediate attention, overdue follow-ups, high-risk customers, new business opportunities, and any reps who may need coaching based on their activity.";
+// Renders the typed sources array [{type,id,label,url}] as clickable
+// buttons beneath an answer. Shared by both the auto-briefing and the
+// chip-tap flow, so a source only ever renders one way. Every URL here
+// came from the Worker's own deterministic construction — nothing in
+// this function invents a link, it only displays what was returned.
+function renderSourcesHtml(sources){
+  if (!sources || !sources.length) return '';
+  var typeFallback = { visit: 'Open Visit', action: 'Open Action', account: 'View Account' };
+  var html = '<div class="ask-sources"><div class="ask-sources-label">Sources</div><div class="ask-sources-row">';
+  sources.forEach(function(s){
+    // The visible button text IS the specific label ("MediClinic — High
+    // Priority visit"), not a generic type name — a row of identical
+    // "Open Visit" buttons is meaningless on a phone with no hover.
+    var displayText = s.label || typeFallback[s.type] || 'Open';
+    html += '<a class="ask-source-btn ' + escapeHtmlHome(s.type || '') + '" href="' + escapeHtmlHome(s.url) + '">' + escapeHtmlHome(displayText) + '</a>';
+  });
+  html += '</div></div>';
+  return html;
+}
+// Renders the structured {greeting, topLine, sections, sources} shape —
+// same philosophy as the rep briefing: real data in short scannable
+// sections, each item with its own specific destination where one exists.
+function renderManagerBriefingContent(data){
+  var html = '<div class="mgr-topline">' + escapeHtmlHome(data.topLine || '') + '</div>';
+  var sections = data.sections || [];
+  sections.forEach(function(sec){
+    html += '<div class="mgr-section">';
+    html += '<div class="mgr-section-title"><span class="mgr-section-icon">' + escapeHtmlHome(sec.icon || '') + '</span>' + escapeHtmlHome(sec.title || '') + '</div>';
+    (sec.items || []).forEach(function(item){
+      var inner = '<div class="mgr-item-text">' + escapeHtmlHome(item.text || '') + '</div>' +
+        (item.nav ? '<div class="mgr-item-nav">' + escapeHtmlHome(item.nav.label) + ' \u203a</div>' : '');
+      if (item.nav && item.nav.url) {
+        html += '<a class="mgr-item mgr-item-link" href="' + escapeHtmlHome(item.nav.url) + '">' + inner + '</a>';
+      } else {
+        html += '<div class="mgr-item">' + inner + '</div>';
+      }
+    });
+    html += '</div>';
+  });
+  return html;
+}
+function loadManagerBriefing(){
+  var area = document.getElementById('briefingArea');
+  if (!area) return;
+  if (!currentSessionToken) {
+    renderSignInAgainState('briefingArea');
+    return;
+  }
+  area.innerHTML = '<div class="ask-loading"><div class="ask-spinner"></div>Generating your daily briefing…</div>';
+  fetch(WORKER_URL_HOME + '/ask-fieldiq', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentSessionToken },
+    body: JSON.stringify({ question: MANAGER_BRIEFING_QUESTION })
+  })
+    .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; }); })
+    .then(function(result){
+      if (result.status === 401 || result.status === 403) {
+        expireCurrentSession();
+        renderSignInAgainState('briefingArea');
+        return;
+      }
+      if (!result.ok || !result.data) { renderBriefingError(); return; }
+      if (result.data.sections) {
+        area.innerHTML = renderManagerBriefingContent(result.data) + renderSourcesHtml(result.data.sources);
+        return;
+      }
+      // Falls back to the original prose rendering if the Worker ever
+      // returns the older shape — keeps this page working even if the
+      // two sides of a deploy briefly disagree.
+      if (!result.data.answer) { renderBriefingError(); return; }
+      area.innerHTML = '<div class="ask-answer-box"><div class="ask-answer-text">' + escapeHtmlHome(result.data.answer) + '</div>' + renderSourcesHtml(result.data.sources) + '</div>';
+    })
+    .catch(function(){ renderBriefingError(); });
+}
+function renderBriefingError(){
+  var area = document.getElementById('briefingArea');
+  if (!area) return;
+  area.innerHTML = '<div class="ask-error">Could not generate today\u2019s briefing.<br><button type="button" class="ask-retry-btn" id="briefingRetryBtn">Retry</button></div>';
+  var retryBtn = document.getElementById('briefingRetryBtn');
+  if (retryBtn) retryBtn.addEventListener('click', loadManagerBriefing);
+}
+
+function loadHomeSummary(){
+  fetch(WORKER_URL_HOME + '/get-dashboard', { cache: 'no-store' })
+    .then(function(res){ return res.json(); })
+    .then(function(agg){ renderHomeSummary(agg); })
+    .catch(function(err){
+      console.error('Could not load Manager Home summary:', err);
+      document.getElementById('attentionBody').innerHTML = '<div class="summary-empty" style="padding:0 14px 14px">Could not load right now.</div>';
+    });
+}
+
+// ── Ask FieldIQ — Phase 1 Deal Intelligence Agent ────────────────────────
+// Single-shot only: one question in, one short answer back. No
+// conversation history is kept or sent. The five suggested questions are
+// the only intended entry point for this MVP — no free-text input.
+var askInFlight = false;
+function renderAskError(question){
+  var area = document.getElementById('askAnswerArea');
+  area.innerHTML = '<div class="ask-error">Could not get an answer right now. Please try again.<br>' +
+    '<button type="button" class="ask-retry-btn" id="askRetryBtn">Retry</button></div>';
+  document.getElementById('askRetryBtn').addEventListener('click', function(){ askFieldIQ(question); });
+}
+function askFieldIQ(question){
+  if (askInFlight) return;
+  var area = document.getElementById('askAnswerArea');
+  if (!currentSessionToken) {
+    renderSignInAgainState('askAnswerArea');
+    return;
+  }
+  askInFlight = true;
+  document.querySelectorAll('.ask-chip').forEach(function(c){ c.disabled = true; });
+  area.innerHTML = '<div class="ask-loading"><div class="ask-spinner"></div>Thinking…</div>';
+  fetch(WORKER_URL_HOME + '/ask-fieldiq', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentSessionToken },
+    body: JSON.stringify({ question: question })
+  })
+    .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; }); })
+    .then(function(result){
+      askInFlight = false;
+      document.querySelectorAll('.ask-chip').forEach(function(c){ c.disabled = false; });
+      if (result.status === 401 || result.status === 403) {
+        expireCurrentSession();
+        renderSignInAgainState('askAnswerArea');
+        return;
+      }
+      if (!result.ok || !result.data || !result.data.answer) {
+        renderAskError(question);
+        return;
+      }
+      area.innerHTML =
+        '<div class="ask-answer-box">' +
+          '<div class="ask-answer-question">' + escapeHtmlHome(question) + '</div>' +
+          '<div class="ask-answer-text">' + escapeHtmlHome(result.data.answer) + '</div>' +
+          renderSourcesHtml(result.data.sources) +
+        '</div>' +
+        '<span class="ask-again-link" id="askAgainLink">Ask another question</span>';
+      document.getElementById('askAgainLink').addEventListener('click', function(){
+        document.getElementById('askAnswerArea').innerHTML = '';
+      });
+    })
+    .catch(function(){
+      askInFlight = false;
+      document.querySelectorAll('.ask-chip').forEach(function(c){ c.disabled = false; });
+      renderAskError(question);
+    });
+}
+
+// Real access gate: a saved fieldiq_user_role of 'Manager' is never
+// trusted on its own — it's editable in browser dev tools. This page only
+// renders after the Worker has actually verified the signed session
+// token via GET /validate-session. No token at all skips the network
+// call entirely (nothing to validate, straight back to sign-in); a token
+// that fails verification is cleared before redirecting, exactly like any
+// other expired or invalid session elsewhere in this app.
+function initManagerHome(){
+  lucide.createIcons();
+  loadHomeSummary();
+  loadManagerBriefing();
+  var toggle = document.getElementById('moreToggle');
+  var body = document.getElementById('moreToolsBody');
+  if (toggle && body) {
+    toggle.addEventListener('click', function(){
+      var isOpen = body.classList.toggle('open');
+      toggle.classList.toggle('open', isOpen);
+    });
+  }
+  document.querySelectorAll('.ask-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      askFieldIQ(chip.getAttribute('data-question'));
+    });
+  });
+}
+function validateAndInit(){
+  if (!currentSessionToken) {
+    window.location.href = './index.html';
+    return;
+  }
+  fetch(WORKER_URL_HOME + '/validate-session', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
+    .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+    .then(function(result){
+      if (!result.ok || !result.data || !result.data.valid || result.data.role !== 'Manager') {
+        clearActiveSession();
+        window.location.href = './index.html';
+        return;
+      }
+      // Confirmed by the Worker, not assumed from whatever was already in
+      // localStorage — refresh the stored identity fields to match
+      // exactly what the verified token says.
+      localStorage.setItem('fieldiq_user_id', result.data.userId);
+      localStorage.setItem('fieldiq_user_name', result.data.name);
+      localStorage.setItem('fieldiq_user_role', result.data.role);
+      localStorage.setItem('fieldiq_user_record_id', result.data.recordId);
+      initManagerHome();
+    })
+    .catch(function(){
+      // Network failure during validation — never proceed as if
+      // authenticated on a guess. Back to sign-in, not a silent bypass.
+      window.location.href = './index.html';
+    });
+}
+document.addEventListener('DOMContentLoaded', validateAndInit);
+
+// Ensures a fresh /get-dashboard fetch happens if this page is restored
+// from the browser's back-forward cache (e.g. the manager marks a visit
+// Reviewed on Visit History, then taps the browser Back button to return
+// here) — bfcache restoration does not re-fire DOMContentLoaded, so
+// without this the page would keep showing whatever it rendered before
+// navigating away. Same pattern already used elsewhere in this app
+// (fieldiq-visit-history.html) for the same reason.
+window.addEventListener('pageshow', function(event){
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+</script>
+</body>
+</html>
