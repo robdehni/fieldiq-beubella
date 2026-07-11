@@ -137,7 +137,7 @@ audio{width:100%;border-radius:8px;margin:8px 0;display:none}
 <div class="fields">
   <div class="field field-full">
     <label>Territory</label>
-    <select id="territory"><option value="">Select territory first</option><option>UAE</option><option>Saudi Arabia</option><option>Qatar</option><option>Kuwait</option><option>Bahrain</option><option>Oman</option></select>
+    <select id="territory"><option value="">Select territory first</option><option>Abu Dhabi</option><option>Dubai</option><option>Sharjah</option><option>Ajman</option><option>Umm Al Quwain</option><option>Ras Al Khaimah</option><option>Fujairah</option></select>
   </div>
   <div class="field field-full" id="accountBlock" style="opacity:0.5;pointer-events:none">
     <label>Account</label>
@@ -254,7 +254,7 @@ territorySelect.addEventListener('change',function(){
 // selection would.
 if(currentUserRole!=='Manager'){
   var repTerritory=localStorage.getItem('fieldiq_user_territory')||'';
-  var VALID_TERRITORIES=['UAE','Saudi Arabia','Qatar','Kuwait','Bahrain','Oman'];
+  var VALID_TERRITORIES=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah'];
   if(repTerritory&&VALID_TERRITORIES.indexOf(repTerritory)>-1){
     territorySelect.value=repTerritory;
     territorySelect.disabled=true;
@@ -517,19 +517,21 @@ document.getElementById('discardRecordingLink').addEventListener('click',functio
 var prefillSourceRef='';
 var prefillAccountTerritory='';
 var prefillVisitThreadId=''; // holds the raw source visit id when arriving from a Log Update — sent as sourceVisitId; the Worker resolves the actual thread id at save time
-// Matches the dropdown's exact option values (UAE/Saudi Arabia/Qatar/Kuwait/
-// Bahrain/Oman) against a raw Airtable territory value that may be
-// differently cased, phrased, or formatted (e.g. "Saudi Arabia - Riyadh").
-// Same canonical mapping already used in worker.js and fieldiq-accounts.html.
+// Matches the dropdown's exact option values (Abu Dhabi/Dubai/Sharjah/
+// Ajman/Umm Al Quwain/Ras Al Khaimah/Fujairah) against a raw Airtable
+// territory value that may be differently cased or formatted.
+// Same canonical mapping already used in worker-biobella.js and
+// fieldiq-accounts.html.
 function normalizeTerritoryForDropdown(raw){
   var t=(raw||'').trim();if(!t)return'';
   var tu=t.toUpperCase();
-  if(tu.indexOf('SAUDI ARABIA')===0)return'Saudi Arabia';
-  if(tu==='UAE')return'UAE';
-  if(tu==='QATAR')return'Qatar';
-  if(tu==='KUWAIT')return'Kuwait';
-  if(tu==='BAHRAIN')return'Bahrain';
-  if(tu==='OMAN')return'Oman';
+  if(tu==='ABU DHABI')return'Abu Dhabi';
+  if(tu==='DUBAI')return'Dubai';
+  if(tu==='SHARJAH')return'Sharjah';
+  if(tu==='AJMAN')return'Ajman';
+  if(tu==='UMM AL QUWAIN')return'Umm Al Quwain';
+  if(tu==='RAS AL KHAIMAH')return'Ras Al Khaimah';
+  if(tu==='FUJAIRAH')return'Fujairah';
   return t;
 }
 
@@ -583,10 +585,7 @@ async function applyPrefillFromURL(){
         if(resolvedTerritory){
           // Normalize the raw Airtable value to the dropdown's canonical
           // form — same mapping used consistently in the Worker and
-          // Account Directory. Any value beginning with "Saudi Arabia"
-          // (regardless of region suffix) collapses to exactly "Saudi
-          // Arabia" — this is Airtable's own naming, not a renamed or
-          // invented value.
+          // Account Directory.
           var normalizedTerritory=normalizeTerritoryForDropdown(resolvedTerritory);
           var tSelect=document.getElementById('territory');
           for(var j=0;j<tSelect.options.length;j++){
