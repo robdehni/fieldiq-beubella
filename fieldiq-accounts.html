@@ -214,7 +214,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
 .add-note-btn:hover{background:#d5eaff}
 </style>
   <!-- PWA v1 -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
@@ -292,7 +292,11 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 function truncate(text,len){var t=String(text||'');if(t.length<=len)return t;return t.slice(0,len).trim()+'…';}
 var TERRITORY_ORDER=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah','Unassigned'];
 function getCanonicalTerritory(raw){
-  var t=(raw||'').trim();if(!t)return'Unassigned';var tu=t.toUpperCase();
+  var value=raw;
+  if(Array.isArray(value))value=value.length?value[0]:'';
+  var t=String(value||'').trim();if(!t)return'Unassigned';
+  if(/^rec[a-zA-Z0-9]{14,}$/.test(t))return'Unassigned';
+  var tu=t.toUpperCase();
   if(tu==='ABU DHABI')return'Abu Dhabi';if(tu==='DUBAI')return'Dubai';if(tu==='SHARJAH')return'Sharjah';if(tu==='AJMAN')return'Ajman';if(tu==='UMM AL QUWAIN')return'Umm Al Quwain';if(tu==='RAS AL KHAIMAH')return'Ras Al Khaimah';if(tu==='FUJAIRAH')return'Fujairah';return'Unassigned';
 }
 async function loadDirectory(){
@@ -309,7 +313,7 @@ async function loadDirectory(){
     var accountRecords=accData.records||[];var visitRecords=visData.records||[];
     var byId={};var byNameLower={};
     ACCOUNTS=accountRecords.map(function(r){
-      var f=r.fields||{};var acc={id:r.id,name:f['Account Name']||'Unknown',territory:f['Territory']||'',canonicalTerritory:getCanonicalTerritory(f['Territory']),city:f['City']||'',visitCount:0,lastVisit:null,matchedVisits:[]};
+      var f=r.fields||{};var acc={id:r.id,name:f['Account Name']||'Unknown',territory:getCanonicalTerritory(f['Territory']),canonicalTerritory:getCanonicalTerritory(f['Territory']),city:f['City']||'',visitCount:0,lastVisit:null,matchedVisits:[]};
       byId[r.id]=acc;byNameLower[acc.name.trim().toLowerCase()]=acc;return acc;
     });
     visitRecords.forEach(function(v){
@@ -738,7 +742,7 @@ if(role!=='Manager'){
 }
 document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 // Back-to-top floating button — purely cosmetic, self-contained. Created
 // entirely via JS so no existing HTML/IDs/layout are touched. Appears only
