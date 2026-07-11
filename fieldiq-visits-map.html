@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FieldIQ — Territory Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<style>
+[data-lucide]{display:inline-block;vertical-align:middle;stroke-width:2}
+.access-denied-icon [data-lucide]{width:54px;height:54px;stroke:#d98a1c}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;width:100%;overflow:hidden}
+body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+
+/* ── Topbar: ☁️ cloud + Field/IQ treatment, white pill home button ── */
+.topbar{background:#fff;border-bottom:1px solid #e3ebf5;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.page-subtitle{color:#7a8aa3;font-size:11px;margin-top:2px;font-weight:600}
+.topbar-left{display:flex;align-items:center;gap:8px}
+.topbar-cloud{font-size:20px;line-height:1}
+.topbar h1{font-size:17px;color:#0b1f3a;font-weight:800;letter-spacing:-0.3px}
+.topbar h1 span{color:#2f8fff}
+
+/* ── Home button — white pill matching fieldiq.html ── */
+.home-btn{
+  display:inline-flex;align-items:center;gap:6px;color:#2f8fff;font-size:12px;font-weight:700;text-decoration:none;
+  padding:7px 14px;border-radius:30px;background:#fff;border:1px solid #e3ebf5;
+  box-shadow:0 2px 8px rgba(11,31,58,0.05);white-space:nowrap;
+}
+.home-btn:hover{border-color:#2f8fff}
+
+.filters{background:#fff;border-bottom:1px solid #e3ebf5;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;align-items:center}
+.filters select{
+  background:#f4f8fc;border:1.5px solid #dde8f5;border-radius:10px;color:#0b1f3a;padding:8px 12px;
+  font-size:12.5px;outline:none;max-width:150px;font-weight:600;
+}
+.filters select:focus{border-color:#2f8fff}
+.fbtn{
+  background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none;border-radius:10px;color:#fff;padding:9px 16px;
+  font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(47,143,255,0.3);
+}
+.fbtn.sec{background:#fff;color:#7a8aa3;border:1.5px solid #e3ebf5;box-shadow:none}
+
+.stats{background:#fff;border-bottom:1px solid #e3ebf5;padding:10px 18px;display:flex;gap:18px;flex-shrink:0;flex-wrap:wrap}
+.stat{font-size:12px;color:#7a8aa3;font-weight:600}
+.stat span{font-weight:800}
+
+#map{flex:1;min-height:0;width:100%}
+
+/* ── Legend — radius 16px matching reference standard ── */
+.legend{
+  position:absolute;bottom:16px;right:14px;background:#fff;border:1px solid #e3ebf5;border-radius:16px;
+  padding:14px;z-index:1000;font-size:12px;box-shadow:0 6px 18px rgba(11,31,58,0.12);
+}
+.li{display:flex;align-items:center;gap:7px;margin:5px 0;color:#3a4a63;font-weight:600}
+.ld{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+
+.overlay{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #e3ebf5;
+  border-radius:18px;padding:32px 40px;text-align:center;z-index:2000;min-width:240px;
+  box-shadow:0 12px 32px rgba(11,31,58,0.15);
+}
+.spinner{width:36px;height:36px;border:4px solid #eaf3ff;border-top:4px solid #2f8fff;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay p{color:#7a8aa3;font-size:13.5px;font-weight:600}
+.err p{color:#e0344a}
+
+.access-denied{
+  position:absolute;top:0;left:0;right:0;bottom:0;background:#f4f8fc;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:3000;padding:24px;text-align:center;
+}
+.access-denied-icon{font-size:54px;margin-bottom:16px}
+.access-denied h2{font-size:20px;color:#0b1f3a;font-weight:800;margin-bottom:8px}
+.access-denied p{font-size:13.5px;color:#7a8aa3;font-weight:600;max-width:320px;line-height:1.6;margin-bottom:20px}
+.access-denied a{
+  display:inline-block;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-weight:700;
+  text-decoration:none;padding:13px 28px;border-radius:14px;box-shadow:0 8px 20px rgba(47,143,255,0.32);font-size:14px;
+}
+
+.leaflet-popup-content-wrapper{background:#fff;border:1px solid #e3ebf5;border-radius:14px;box-shadow:0 8px 24px rgba(11,31,58,0.18)}
+.leaflet-popup-content{color:#3a4a63;font-size:12.5px;line-height:1.6;margin:12px 16px;min-width:190px;max-width:260px}
+.leaflet-popup-tip{background:#fff}
+.ph{font-size:14.5px;font-weight:800;color:#0b1f3a;margin-bottom:6px}
+.pr{display:flex;justify-content:space-between;gap:8px;margin:3px 0;font-size:11.5px}
+.pl{color:#aab8cc;font-weight:600}.pv{color:#3a4a63;text-align:right;font-weight:700}
+.ps{display:inline-block;padding:3px 10px;border-radius:8px;font-size:10.5px;font-weight:800;margin:5px 0}
+.psum{margin-top:8px;padding-top:8px;border-top:1px solid #eef3f9;font-size:11.5px;color:#7a8aa3;line-height:1.5;max-height:70px;overflow-y:auto}
+</style>
+  <!-- PWA v1 -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2f8fff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FieldIQ">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-cloud">☁️</span>
+    <h1>Field<span>IQ</span> — Territory Map</h1>
+    <p class="page-subtitle">Visualise field activity, visit locations and territory coverage.</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="updated" style="color:#aab8cc;font-size:11.5px;font-weight:600">Loading...</span>
+    <a href="./index.html" id="topHomeBtn" class="home-btn">← Home</a>
+  </div>
+</div>
+<div class="filters">
+  <select id="fPeriod">
+    <option value="today">Today</option>
+    <option value="yesterday">Yesterday</option>
+    <option value="thisWeek">This Week</option>
+    <option value="7">Last 7 Days</option>
+    <option value="30" selected>Last 30 Days</option>
+    <option value="90">Last 90 Days</option>
+    <option value="">All Time</option>
+  </select>
+  <select id="fTerr"><option value="">All Territories</option></select>
+  <select id="fRep"><option value="">All Reps</option></select>
+  <select id="fSent"><option value="">All Sentiment</option><option value="positive">Positive</option><option value="neutral">Neutral</option><option value="negative">Negative</option></select>
+  <button class="fbtn" onclick="applyFilters()">Apply</button>
+  <button class="fbtn sec" onclick="resetFilters()">Reset</button>
+  <button class="fbtn sec" onclick="fitToResults()">Fit to Results</button>
+</div>
+<div class="stats">
+  <div class="stat">Visits: <span id="sCount" style="color:#2f8fff">0</span></div>
+  <div class="stat">Positive: <span id="sPos" style="color:#1fa861">0</span></div>
+  <div class="stat">Neutral: <span id="sNeu" style="color:#d98a1c">0</span></div>
+  <div class="stat">Negative: <span id="sNeg" style="color:#e0344a">0</span></div>
+</div>
+<div id="map"></div>
+<div class="legend">
+  <div class="li"><div class="ld" style="background:#1fa861"></div>Positive</div>
+  <div class="li"><div class="ld" style="background:#d98a1c"></div>Neutral</div>
+  <div class="li"><div class="ld" style="background:#e0344a"></div>Negative</div>
+  <div class="li"><div class="ld" style="background:#aab8cc"></div>Unknown</div>
+</div>
+<div class="overlay" id="loadingEl">
+  <div class="spinner"></div>
+  <p>Loading visits...</p>
+</div>
+<div class="overlay err" id="errorEl" style="display:none">
+  <p id="errorMsg">Could not load visits.</p>
+  <button class="fbtn" style="margin-top:12px" onclick="loadVisits()">Retry</button>
+</div>
+<div class="access-denied" id="accessDeniedEl" style="display:none">
+  <div class="access-denied-icon"><i data-lucide="lock"></i></div>
+  <h2>Manager Access Required</h2>
+  <p>The Territory Map shows GPS locations and visit data for all reps. This page is restricted to Manager accounts.</p>
+  <a href="./index.html" id="accessDeniedHomeBtn">Return Home</a>
+</div>
+
+<script>
+var role = localStorage.getItem('fieldiq_user_role');
+var isManager = (role === 'Manager');
+// Required by /get-visits, which now rejects any request without a
+// verified session token.
+var currentSessionToken = localStorage.getItem('fieldiq_session_token');
+
+document.getElementById('topHomeBtn').href = isManager ? './fieldiq.html' : './index.html';
+document.getElementById('topHomeBtn').textContent = isManager ? '← Manager Home' : '← Home';
+document.getElementById('accessDeniedHomeBtn').href = isManager ? './dashboard.html' : './index.html';
+
+if (!isManager) {
+  document.getElementById('loadingEl').style.display = 'none';
+  document.getElementById('accessDeniedEl').style.display = 'flex';
+  throw new Error('Access denied: Manager role required.');
+}
+
+var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var allVisits=[];
+var markers;
+var theMap;
+var markersByVisitId={};
+var currentFilteredVisits=[];
+
+theMap=L.map('map',{zoomControl:true}).setView([24.5,54.0],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap',maxZoom:18
+}).addTo(theMap);
+markers=L.layerGroup().addTo(theMap);
+
+setTimeout(function(){theMap.invalidateSize();},300);
+
+function formatDate(d){
+  if(!d)return'—';
+  return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function formatTime(t){
+  if(!t)return'—';
+  return new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+function getSent(s){
+  if(!s)return'unknown';
+  s=s.toLowerCase();
+  var i=s.indexOf('sentiment');
+  if(i>-1){
+    var t=s.substring(i,i+120);
+    if(t.indexOf('positive')>-1)return'positive';
+    if(t.indexOf('negative')>-1)return'negative';
+    if(t.indexOf('neutral')>-1)return'neutral';
+  }
+  if(s.indexOf('positive')>-1)return'positive';
+  if(s.indexOf('negative')>-1)return'negative';
+  if(s.indexOf('neutral')>-1)return'neutral';
+  return'unknown';
+}
+function getColor(s){return s==='positive'?'#44cc88':s==='neutral'?'#ffaa44':s==='negative'?'#ff6666':'#888';}
+function getBadgeStyle(s){
+  if(s==='positive')return'background:#44cc8822;color:#44cc88;border:1px solid #44cc8844';
+  if(s==='neutral')return'background:#ffaa4422;color:#ffaa44;border:1px solid #ffaa4444';
+  if(s==='negative')return'background:#ff666622;color:#ff6666;border:1px solid #ff666644';
+  return'background:#88888822;color:#888;border:1px solid #88888844';
+}
+function makeIcon(c){
+  return L.divIcon({
+    className:'',
+    html:'<div style="width:14px;height:14px;border-radius:50%;background:'+c+';border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.6)"></div>',
+    iconSize:[14,14],iconAnchor:[7,7],popupAnchor:[0,-10]
+  });
+}
+function trunc(t,n){
+  if(!t)return'';
+  var i=t.indexOf('VISIT SUMMARY');
+  if(i>-1){var s=t.substring(i+13,i+13+n).trim();return s.length===n?s+'...':s;}
+  return t.length>n?t.substring(0,n)+'...':t;
+}
+
+// A visit only counts as mappable when it has both coordinates AND, if an
+// Accuracy value was recorded for it, that accuracy is at or better than
+// this threshold — same 500m value already agreed for Log Visit's own save
+// gate. A visit with no Accuracy value at all (older records saved before
+// that field existed) is not excluded by this second check, since there is
+// no evidence either way for those — only a visit with a known, recorded,
+// poor accuracy is filtered out. This is what keeps a stale low-accuracy
+// pin (e.g. one that resolved somewhere like an airport) from rendering,
+// without deleting or modifying anything in Airtable.
+var MAP_GPS_ACCURACY_THRESHOLD_METERS=500;
+function hasValidMapCoordinates(f){
+  if(!f||!f.Latitude||!f.Longitude)return false;
+  if(f.Accuracy!=null&&f.Accuracy>MAP_GPS_ACCURACY_THRESHOLD_METERS)return false;
+  return true;
+}
+
+function getDateCutoffs(period){
+  var now=new Date();
+  var today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(period==='today'){
+    return {start:today,end:null};
+  }
+  if(period==='yesterday'){
+    var yest=new Date(today);yest.setDate(today.getDate()-1);
+    var yestEnd=new Date(today);yestEnd.setMilliseconds(-1);
+    return {start:yest,end:yestEnd};
+  }
+  if(period==='thisWeek'){
+    var dow=today.getDay();
+    var diff=(dow===0?6:dow-1);
+    var monday=new Date(today);monday.setDate(today.getDate()-diff);
+    return {start:monday,end:null};
+  }
+  if(period==='30'){
+    var cutoff=new Date(today);cutoff.setDate(today.getDate()-30);
+    return {start:cutoff,end:null};
+  }
+  if(period==='7'){
+    var cutoff7=new Date(today);cutoff7.setDate(today.getDate()-7);
+    return {start:cutoff7,end:null};
+  }
+  if(period==='90'){
+    var cutoff90=new Date(today);cutoff90.setDate(today.getDate()-90);
+    return {start:cutoff90,end:null};
+  }
+  return {start:null,end:null};
+}
+
+function fitToResults(){
+  var coords=currentFilteredVisits
+    .filter(function(v){return hasValidMapCoordinates(v.fields);})
+    .map(function(v){return [v.fields.Latitude,v.fields.Longitude];});
+
+  if(coords.length===0)return;
+
+  if(coords.length===1){
+    theMap.setView(coords[0],11);
+    return;
+  }
+
+  theMap.fitBounds(coords,{padding:[40,40],maxZoom:11});
+}
+function goToVisit(visitId){
+  var c=theMap.getCenter();
+  var z=theMap.getZoom();
+  var fPeriod=document.getElementById('fPeriod').value;
+  var fTerr=document.getElementById('fTerr').value;
+  var fRep=document.getElementById('fRep').value;
+  var fSent=document.getElementById('fSent').value;
+  var mapVisitIds=currentFilteredVisits.filter(function(v){return hasValidMapCoordinates(v.fields);}).map(function(v){return v.id;});
+  try{sessionStorage.setItem('fieldiq_map_visit_list',JSON.stringify(mapVisitIds));}catch(e){}
+  var returnUrl='./fieldiq-visits-map.html?mapLat='+encodeURIComponent(c.lat)+'&mapLng='+encodeURIComponent(c.lng)+'&mapZoom='+encodeURIComponent(z)+'&mapVisitId='+encodeURIComponent(visitId)+'&fPeriod='+encodeURIComponent(fPeriod)+'&fTerr='+encodeURIComponent(fTerr)+'&fRep='+encodeURIComponent(fRep)+'&fSent='+encodeURIComponent(fSent);
+  var navUrl='./fieldiq-visit-history.html?visitId='+encodeURIComponent(visitId)+'&source=map&rep='+encodeURIComponent(fRep)+'&territory='+encodeURIComponent(fTerr)+'&returnTo='+encodeURIComponent(returnUrl);
+  window.location.href=navUrl;
+}
+function renderMarkers(visits){
+  markers.clearLayers();
+  markersByVisitId={};
+  var p=0,n=0,neg=0,shown=0;
+  visits.forEach(function(v){
+    var f=v.fields;
+    if(!hasValidMapCoordinates(f))return;
+    shown++;
+    var sent=v._sent;
+    if(sent==='positive')p++;
+    else if(sent==='neutral')n++;
+    else if(sent==='negative')neg++;
+    var popup=
+      '<div class="ph">'+(f['Hospital Name']||'Unknown Account')+'</div>'+
+      '<span class="ps" style="'+getBadgeStyle(sent)+'">'+sent.charAt(0).toUpperCase()+sent.slice(1)+'</span>'+
+      '<div class="pr"><span class="pl">Rep</span><span class="pv">'+(f['Rep Name']||'—')+'</span></div>'+
+      '<div class="pr"><span class="pl">Date</span><span class="pv">'+formatDate(f['Visit Date'])+'</span></div>'+
+      '<div class="pr"><span class="pl">Time</span><span class="pv">'+formatTime(v.createdTime)+'</span></div>'+
+      '<div class="pr"><span class="pl">Territory</span><span class="pv">'+(f['Territory']||'—')+'</span></div>'+
+      '<div class="pr"><span class="pl">Type</span><span class="pv">'+(f['Visit Type']||'—')+'</span></div>'+
+      '<div style="margin-top:8px"><a href="#" onclick="goToVisit(\''+encodeURIComponent(v.id)+'\');return false;" style="display:block;text-align:center;background:#2f8fff;color:#fff;font-weight:800;font-size:11.5px;padding:7px 0;border-radius:8px;text-decoration:none">View Visit</a></div>';
+    var _marker=L.marker([f.Latitude,f.Longitude],{icon:makeIcon(getColor(sent))}).bindPopup(popup,{maxWidth:280});
+    markersByVisitId[v.id]=_marker;
+    markers.addLayer(_marker);
+  });
+  document.getElementById('sCount').textContent=shown;
+  document.getElementById('sPos').textContent=p;
+  document.getElementById('sNeu').textContent=n;
+  document.getElementById('sNeg').textContent=neg;
+}
+
+// Same canonical mapping already used consistently in worker.js,
+// fieldiq-accounts.html, and fieldiq-log-visit.html — any territory
+// beginning with "Saudi Arabia" (regardless of region suffix) collapses
+// to the single canonical "Saudi Arabia", matching Airtable's own actual
+// stored value. This file previously output "KSA" here, which does not
+// exist anywhere in Airtable's data — the one page in the app that had
+// not yet been brought in line with the rename applied everywhere else.
+function normalizeTerritoryForMap(raw){
+  var t=(raw||'').trim();if(!t)return'';
+  var tu=t.toUpperCase();
+  if(tu.indexOf('SAUDI ARABIA')===0||tu==='KSA')return'Saudi Arabia';
+  if(tu==='UAE')return'UAE';
+  if(tu==='QATAR')return'Qatar';
+  if(tu==='KUWAIT')return'Kuwait';
+  if(tu==='BAHRAIN')return'Bahrain';
+  if(tu==='OMAN')return'Oman';
+  return t;
+}
+function populateFilters(visits){
+  var t={},r={};
+  visits.forEach(function(v){
+    var f=v.fields;
+    if(f.Territory)t[normalizeTerritoryForMap(f.Territory)]=1;
+    if(f['Rep Name'])r[f['Rep Name']]=1;
+  });
+  var ts=document.getElementById('fTerr');
+  while(ts.options.length>1)ts.remove(1);
+  Object.keys(t).sort().forEach(function(x){
+    var o=document.createElement('option');o.value=x;o.textContent=x;ts.appendChild(o);
+  });
+  var rs=document.getElementById('fRep');
+  while(rs.options.length>1)rs.remove(1);
+  Object.keys(r).sort().forEach(function(x){
+    var o=document.createElement('option');o.value=x;o.textContent=x;rs.appendChild(o);
+  });
+}
+
+function applyFilters(){
+  var period=document.getElementById('fPeriod').value;
+  var t=document.getElementById('fTerr').value;
+  var r=document.getElementById('fRep').value;
+  var s=document.getElementById('fSent').value;
+  var cutoffs=getDateCutoffs(period);
+  var filtered=allVisits.filter(function(v){
+    var f=v.fields;
+    if(t&&normalizeTerritoryForMap(f.Territory)!==t)return false;
+    if(r&&f['Rep Name']!==r)return false;
+    if(s&&getSent(f['AI Summary']||'')!==s)return false;
+    if(cutoffs.start||cutoffs.end){
+      if(!f['Visit Date'])return false;
+      var vDate=new Date(f['Visit Date']);
+      if(cutoffs.start&&vDate<cutoffs.start)return false;
+      if(cutoffs.end&&vDate>cutoffs.end)return false;
+    }
+    return true;
+  });
+  currentFilteredVisits=filtered;
+  renderMarkers(filtered);
+}
+
+function resetFilters(){
+  document.getElementById('fPeriod').value='30';
+  document.getElementById('fTerr').value='';
+  document.getElementById('fRep').value='';
+  document.getElementById('fSent').value='';
+  try{history.replaceState(null,'',window.location.pathname);}catch(e){}
+  applyFilters();
+}
+
+async function loadVisits(){
+  document.getElementById('loadingEl').style.display='block';
+  document.getElementById('errorEl').style.display='none';
+  try{
+    var res=await fetch(WORKER+'/get-visits',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    if(res.status===401||res.status===403){
+      localStorage.removeItem('fieldiq_user_id');localStorage.removeItem('fieldiq_user_name');localStorage.removeItem('fieldiq_user_role');localStorage.removeItem('fieldiq_user_record_id');localStorage.removeItem('fieldiq_session_token');
+      window.location.href='./index.html';
+      return;
+    }
+    var data=await res.json();
+    if(!res.ok)throw new Error('Worker error '+res.status+': '+JSON.stringify(data));
+    allVisits=data.records||[];
+    allVisits.forEach(function(v){v._sent=getSent(v.fields['AI Summary']||'');});
+    if(allVisits.length===0){
+      document.getElementById('loadingEl').style.display='none';
+      document.getElementById('errorEl').style.display='block';
+      document.getElementById('errorMsg').textContent='No visits found in Airtable yet. Log a visit first.';
+      return;
+    }
+    populateFilters(allVisits);
+    var _restoreParams=new URLSearchParams(window.location.search);
+    var _mLat=_restoreParams.get('mapLat'),_mLng=_restoreParams.get('mapLng'),_mZoom=_restoreParams.get('mapZoom'),_mVisitId=_restoreParams.get('mapVisitId');
+    var _fPeriod=_restoreParams.get('fPeriod'),_fTerr=_restoreParams.get('fTerr'),_fRep=_restoreParams.get('fRep'),_fSent=_restoreParams.get('fSent');
+    document.getElementById('fPeriod').value=(_fPeriod!==null)?_fPeriod:'30';
+    if(_fTerr!==null)document.getElementById('fTerr').value=_fTerr;
+    if(_fRep!==null)document.getElementById('fRep').value=_fRep;
+    if(_fSent!==null)document.getElementById('fSent').value=_fSent;
+    applyFilters();
+    if(_mLat&&_mLng&&_mZoom){
+      theMap.setView([parseFloat(_mLat),parseFloat(_mLng)],parseInt(_mZoom,10));
+      if(_mVisitId&&markersByVisitId[_mVisitId]){
+        markersByVisitId[_mVisitId].openPopup();
+      }
+    }
+    document.getElementById('updated').textContent='Updated '+new Date().toLocaleTimeString();
+    document.getElementById('loadingEl').style.display='none';
+    setTimeout(function(){theMap.invalidateSize();},100);
+  }catch(err){
+    document.getElementById('loadingEl').style.display='none';
+    document.getElementById('errorEl').style.display='block';
+    document.getElementById('errorMsg').textContent='Error: '+err.message;
+  }
+}
+
+loadVisits();
+document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
+</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+</body>
+</html>
