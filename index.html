@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FieldIQ</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+<script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 20px 50px}
+
+/* ── Brand block — matches fieldiq.html reference ── */
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.brand-cloud{font-size:26px;line-height:1}
+.brand-text h1{font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#0b1f3a}
+.brand-text h1 span{color:#2f8fff}
+.brand-text p{font-size:10px;color:#8a9bb3;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-top:2px}
+.logo{text-align:left;margin-bottom:28px}
+
+.modules{width:100%;max-width:380px;display:flex;flex-direction:column;gap:12px}
+
+/* ── Module cards — standardised to fieldiq.html spec ── */
+.module{
+  display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #e3ebf5;border-radius:18px;
+  padding:18px 20px;text-decoration:none;color:#0b1f3a;box-shadow:0 4px 14px rgba(11,31,58,0.05);transition:transform 0.15s;position:relative;
+}
+.module:active{transform:scale(0.98)}
+.module-icon-wrap{
+  width:50px;height:50px;border-radius:14px;background:#eaf3ff;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;
+}
+.module-icon-wrap [data-lucide]{width:26px;height:26px;stroke-width:1.8;color:#2f8fff}
+.module-text{flex:1}
+.module-title{font-size:15.5px;font-weight:800;color:#0b1f3a;margin-bottom:2px}
+.module-desc{font-size:12px;color:#7a8aa3;font-weight:500}
+.module-arrow{color:#aab8cc;font-size:18px;font-weight:700}
+
+.module-badge{
+  position:absolute;right:40px;top:16px;min-width:22px;height:22px;border-radius:999px;background:#e0344a;color:#fff;
+  display:none;align-items:center;justify-content:center;font-size:11px;font-weight:800;padding:0 7px;
+  box-shadow:0 4px 10px rgba(224,52,74,0.25);
+}
+.module-badge.visible{display:inline-flex}
+
+.module.primary{border-color:transparent;background:linear-gradient(135deg,#3d9bff,#1f6fe0);box-shadow:0 10px 26px rgba(47,143,255,0.32)}
+.module.primary .module-title{color:#fff}
+.module.primary .module-desc{color:#dbecff}
+.module.primary .module-icon-wrap{background:#fff}
+.module.primary .module-icon-wrap [data-lucide]{color:#2f8fff}
+.module.primary .module-arrow{color:#fff}
+
+/* ── Section labels — matches fieldiq.html ── */
+.section-label{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1px;font-weight:800;margin:22px 0 10px;width:100%;max-width:380px}
+
+.footer{margin-top:32px;text-align:center;color:#aab8cc;font-size:11px;font-weight:600}
+
+/* ── Sign-in welcome copy ── */
+.signin-welcome{width:100%;max-width:380px;margin-bottom:16px}
+.signin-welcome h2{font-size:19px;font-weight:800;color:#0b1f3a;letter-spacing:-0.3px;margin-bottom:4px}
+.signin-welcome p{font-size:13px;color:#7a8aa3;font-weight:600;line-height:1.5}
+
+/* ── User search ── */
+.user-search-box{width:100%;max-width:380px;margin-bottom:12px}
+.user-search-box input{
+  width:100%;padding:13px 16px;background:#fff;border:1.5px solid #dde8f5;border-radius:14px;
+  font-size:14px;font-weight:600;color:#0b1f3a;outline:none;box-shadow:0 4px 14px rgba(11,31,58,0.05);
+}
+.user-search-box input:focus{border-color:#2f8fff}
+
+/* ── User list (replaces native <select> — larger tap targets) ── */
+.user-list{width:100%;max-width:380px;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:360px;overflow-y:auto;padding-right:2px}
+.user-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1.5px solid #e3ebf5;
+  border-radius:14px;padding:14px 16px;cursor:pointer;text-align:left;width:100%;box-shadow:0 2px 8px rgba(11,31,58,0.04);
+  font-family:inherit;
+}
+.user-row:active{transform:scale(0.98)}
+.user-row.last-used{border-color:#2f8fff;background:#f4f9ff}
+.user-row-name{font-size:14.5px;font-weight:800;color:#0b1f3a}
+.user-row-meta{font-size:11.5px;color:#8a9bb3;font-weight:600;margin-top:2px}
+.user-row-tag{font-size:9.5px;font-weight:800;color:#2f8fff;background:#eaf3ff;border-radius:999px;padding:3px 9px;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;white-space:nowrap}
+.user-list-empty{font-size:12.5px;color:#8a9bb3;font-weight:600;text-align:center;padding:20px 4px}
+.user-list-retry-btn{margin-top:10px;border:none;background:#2f8fff;color:#fff;padding:10px 18px;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;display:block;margin-left:auto;margin-right:auto}
+
+.pin-box{
+  width:100%;max-width:380px;margin-bottom:16px;background:#fff;border:1px solid #e3ebf5;
+  border-radius:16px;padding:18px;box-shadow:0 4px 14px rgba(11,31,58,0.05);
+}
+.pin-box label{font-size:11px;color:#8a9bb3;margin-bottom:10px;display:block;text-transform:uppercase;letter-spacing:0.6px;font-weight:700}
+.pin-box-userline{font-size:13px;font-weight:700;color:#0b1f3a;margin-bottom:12px}
+.pin-box-userline span{color:#8a9bb3;font-weight:600}
+.pin-box input{
+  width:100%;padding:16px;background:#f4f8fc;border:1.5px solid #dde8f5;border-radius:12px;color:#0b1f3a;
+  font-size:20px;letter-spacing:6px;text-align:center;outline:none;font-weight:700;
+}
+.pin-box input:focus{border-color:#2f8fff}
+.pin-box .pin-btn{
+  width:100%;padding:14px;margin-top:12px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;
+  box-shadow:0 6px 16px rgba(47,143,255,0.3);
+}
+.pin-error{color:#e0344a;font-size:12px;margin-top:10px;text-align:center;display:none;font-weight:600}
+.pin-error.visible{display:block}
+.pin-cancel{font-size:12px;color:#8a9bb3;text-align:center;margin-top:12px;display:block;cursor:pointer;text-decoration:underline;font-weight:600}
+
+/* ── Post-PIN-success confirmation bar — NOT a login bypass. Only ever
+   shown after a PIN has actually been entered correctly during this page
+   load; never rendered from localStorage alone on a fresh visit. ── */
+.user-locked{
+  width:100%;max-width:380px;display:flex;align-items:center;justify-content:space-between;
+  background:#fff;border:1px solid #e3ebf5;border-radius:16px;padding:14px 18px;margin-bottom:18px;
+  box-shadow:0 4px 14px rgba(11,31,58,0.05);
+}
+.user-locked-info{display:flex;align-items:center;gap:10px}
+.user-locked-avatar{font-size:20px}
+.user-locked-name{font-size:14.5px;font-weight:700;color:#0b1f3a}
+.user-locked-role{font-size:11px;color:#8a9bb3;margin-top:2px;font-weight:600}
+.switch-user-btn{font-size:11px;color:#2f8fff;background:none;border:none;cursor:pointer;text-decoration:underline;padding:4px;font-weight:600}
+.switch-user-btn:hover{color:#1f6fe0}
+
+/* ── Manager reminder notifications ── */
+.notif-panel{background:#ffe1e5;border:1px solid #f5c2c8;border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.notif-panel-header{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.notif-bell{font-size:14px;line-height:1}
+.notif-title{font-size:12px;font-weight:900;color:#c43048;text-transform:uppercase;letter-spacing:.5px}
+.notif-body{font-size:12.5px;color:#3d4f6b;line-height:1.5;font-weight:500;margin-bottom:12px}
+.notif-action-btn{display:inline-flex;align-items:center;gap:6px;background:#c43048;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:800;cursor:pointer;text-decoration:none}
+.notif-action-btn:hover{background:#a82840}
+/* ── Rep Assistant: daily briefing ── */
+.rep-briefing-card{background:#fff;border:1px solid #e3ebf5;border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 4px 14px rgba(11,31,58,0.05)}
+.rep-briefing-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.rep-briefing-icon{font-size:20px;line-height:1}
+.rep-briefing-title{font-size:14px;font-weight:800;color:#0b1f3a}
+.rep-briefing-sub{font-size:11px;color:#8a9bb3;font-weight:600;margin-top:1px}
+.rep-briefing-loading{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#8a9bb3;font-weight:600}
+.rep-briefing-spinner{width:14px;height:14px;border:2px solid #eaf3ff;border-top:2px solid #2f8fff;border-radius:50%;animation:repBriefSpin .7s linear infinite}
+@keyframes repBriefSpin{to{transform:rotate(360deg)}}
+.rep-briefing-error{font-size:12.5px;color:#7a6000;background:#fff3e0;border:1px solid #ffe0a3;border-radius:10px;padding:10px 12px}
+.rep-briefing-retry{margin-top:8px;border:none;background:#2f8fff;color:#fff;padding:7px 13px;border-radius:8px;font-weight:800;font-size:11.5px;cursor:pointer}
+.rep-briefing-empty{font-size:12.5px;color:#aab8cc;font-weight:600;padding:6px 0}
+.rep-greeting{font-size:16px;font-weight:800;color:#0b1f3a;margin-bottom:4px}
+.rep-topline{font-size:13px;color:#5b6b85;font-weight:600;margin-bottom:16px}
+.rep-section{margin-bottom:16px}
+.rep-section:last-of-type{margin-bottom:14px}
+.rep-section-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#0b1f3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
+.rep-section-icon{font-size:13px}
+.rep-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fbff;border:1px solid #edf2f8;border-radius:10px;padding:9px 12px;margin-bottom:5px;text-decoration:none}
+.rep-item:last-child{margin-bottom:0}
+.rep-item-link{cursor:pointer}
+.rep-item-link:hover{border-color:#bcd8ff;background:#eef6ff}
+.rep-item-text{font-size:12.5px;color:#0b1f3a;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rep-item-nav{font-size:10.5px;color:#2f8fff;font-weight:800;flex-shrink:0;white-space:nowrap}
+.rep-focus-btn{display:block;text-align:center;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-size:13.5px;font-weight:800;padding:12px;border-radius:12px;text-decoration:none}
+</style>
+  <!-- PWA v1 -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2f8fff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FieldIQ">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+</head>
+<body>
+
+<div class="logo">
+  <div class="brand">
+    <span class="brand-cloud">☁️</span>
+    <div class="brand-text">
+      <h1>Field<span>IQ</span></h1>
+      <p>Territory Intelligence Platform</p>
+    </div>
+  </div>
+</div>
+
+<div id="identitySection" style="width:100%;max-width:380px"></div>
+
+<div id="repBriefingSection" style="width:100%;max-width:380px"></div>
+
+<!-- Notification banners injected here for rep users only -->
+<div id="notificationsSection" style="width:100%;max-width:380px"></div>
+
+<div id="modulesSection"></div>
+
+<div class="footer">FieldIQ v2.1 · 2026</div>
+
+<script>
+var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var pendingUser=null;
+var allUsers=[];
+var lastUserId=localStorage.getItem('fieldiq_last_user_id')||'';
+
+// Territory on the Users table may be a linked-record field, which the
+// Airtable API returns as an array of raw record IDs (e.g.
+// ["rec3SrvviZjYjxcqh"]) rather than a resolved name — not a plain text
+// value. Displaying that ID would leak an internal database identifier.
+// This never attempts to resolve the real territory name (that would
+// require a separate fetch against a Territories table — out of scope
+// for this file); it only ever guarantees a raw record ID is never shown.
+// If Territory can't be safely displayed, the UI simply omits it — same
+// fallback already used everywhere else in this file for a missing value.
+function isAirtableRecordId(val){
+  return typeof val==='string' && /^rec[a-zA-Z0-9]{14,}$/.test(val);
+}
+function safeTerritoryDisplay(raw){
+  var val=raw;
+  if(Array.isArray(val))val=val.length?val[0]:'';
+  if(typeof val!=='string')val='';
+  if(isAirtableRecordId(val))return '';
+  return val;
+}
+
+function escapeHtml(str){
+  return String(str||'').replace(/[&<>"']/g,function(m){
+    return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
+  });
+}
+
+// ── Identity / sign-in ──────────────────────────────────────────────────────
+// Always shows the profile picker + PIN — never bypasses PIN entry from a
+// saved localStorage identity. The last-selected user (fieldiq_last_user_id,
+// the one new convenience key added by this change) is used only to
+// highlight that profile in the list and pre-open the PIN box for it,
+// reducing taps without ever skipping PIN verification itself.
+function renderIdentity(){
+  var section=document.getElementById('identitySection');
+  section.innerHTML=
+    '<div class="signin-welcome">'+
+      '<h2>Welcome back to FieldIQ</h2>'+
+      '<p>Select your profile and enter your PIN to continue.</p>'+
+    '</div>'+
+    '<div class="user-search-box">'+
+      '<input type="search" id="userSearchInput" placeholder="Search your name…" autocomplete="off" autocorrect="off" autocapitalize="off">'+
+    '</div>'+
+    '<div class="user-list" id="userListBox"><div class="user-list-empty">Loading FieldIQ profiles…</div></div>'+
+    '<div id="pinSection"></div>';
+
+  document.getElementById('userSearchInput').addEventListener('input',function(e){
+    var q=e.target.value.trim().toLowerCase();
+    if(!q){renderUserList(allUsers);return;}
+    var filtered=allUsers.filter(function(u){
+      return (u.name||'').toLowerCase().indexOf(q)>-1 ||
+             (u.role||'').toLowerCase().indexOf(q)>-1 ||
+             (u.territory||'').toLowerCase().indexOf(q)>-1;
+    });
+    renderUserList(filtered);
+  });
+
+  loadUsers();
+}
+
+// Renders the confirmation bar after a successful PIN entry. This is purely
+// a "here's who's signed in this session" indicator — it is only ever
+// called from checkPin() after a correct PIN, never from stored
+// localStorage identity on page load, so it can never be used to skip PIN
+// entry on a future visit.
+function renderSignedInBar(u){
+  var section=document.getElementById('identitySection');
+  var metaLine=[u.role];
+  if(u.territory)metaLine.push(u.territory);
+  section.innerHTML=
+    '<div class="user-locked">'+
+      '<div class="user-locked-info">'+
+        '<div class="user-locked-avatar">👤</div>'+
+        '<div>'+
+          '<div class="user-locked-name">'+escapeHtml(u.name)+'</div>'+
+          '<div class="user-locked-role">'+escapeHtml(metaLine.join(' · '))+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<button class="switch-user-btn" id="notYouBtn">Not you?</button>'+
+    '</div>';
+  document.getElementById('notYouBtn').addEventListener('click',function(){
+    localStorage.removeItem('fieldiq_user_id');
+    localStorage.removeItem('fieldiq_user_name');
+    localStorage.removeItem('fieldiq_user_role');
+    localStorage.removeItem('fieldiq_user_record_id');
+    localStorage.removeItem('fieldiq_session_token');
+    location.reload();
+  });
+}
+
+function renderUserList(list){
+  var listBox=document.getElementById('userListBox');
+  if(!list.length){
+    listBox.innerHTML='<div class="user-list-empty">No matching profiles.</div>';
+    return;
+  }
+  listBox.innerHTML=list.map(function(u){
+    var meta=[u.role];
+    if(u.territory)meta.push(u.territory);
+    var isLast=(u.id && u.id===lastUserId);
+    return '<button type="button" class="user-row'+(isLast?' last-used':'')+'" data-user-id="'+escapeHtml(u.id)+'">'+
+      '<div>'+
+        '<div class="user-row-name">'+escapeHtml(u.name)+'</div>'+
+        '<div class="user-row-meta">'+escapeHtml(meta.join(' · '))+'</div>'+
+      '</div>'+
+      (isLast?'<span class="user-row-tag">Last used</span>':'')+
+    '</button>';
+  }).join('');
+  listBox.querySelectorAll('.user-row').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var u=allUsers.find(function(x){return x.id===btn.getAttribute('data-user-id');});
+      if(u)showPinBox(u);
+    });
+  });
+}
+
+function showPinBox(u){
+  pendingUser=u;
+  var pinSection=document.getElementById('pinSection');
+  var metaLine=[u.role];
+  if(u.territory)metaLine.push(u.territory);
+  pinSection.innerHTML=
+    '<div class="pin-box">'+
+      '<label>Enter your 4-digit PIN</label>'+
+      '<div class="pin-box-userline">'+escapeHtml(u.name)+' <span>· '+escapeHtml(metaLine.join(' · '))+'</span></div>'+
+      '<input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="••••">'+
+      '<button class="pin-btn" id="pinSubmitBtn">Confirm</button>'+
+      '<div class="pin-error" id="pinError">PIN incorrect. Please try again.</div>'+
+      '<span class="pin-cancel" id="pinCancel">Cancel</span>'+
+    '</div>';
+
+  document.getElementById('pinSubmitBtn').addEventListener('click',checkPin);
+  document.getElementById('pinInput').addEventListener('keydown',function(e){
+    if(e.key==='Enter')checkPin();
+  });
+  document.getElementById('pinCancel').addEventListener('click',function(){
+    pendingUser=null;
+    document.getElementById('pinSection').innerHTML='';
+  });
+  document.getElementById('pinInput').focus();
+
+  var targetRow=document.querySelector('.user-row[data-user-id="'+u.id+'"]');
+  if(targetRow)targetRow.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function checkPin(){
+  var entered=document.getElementById('pinInput').value.trim();
+  var errorEl=document.getElementById('pinError');
+  var submitBtn=document.getElementById('pinSubmitBtn');
+  if(!pendingUser){return;}
+  if(!entered){
+    errorEl.textContent='PIN incorrect. Please try again.';
+    errorEl.className='pin-error visible';
+    return;
+  }
+  submitBtn.disabled=true;
+  submitBtn.textContent='Checking…';
+  errorEl.className='pin-error';
+  fetch(WORKER+'/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({userId:pendingUser.id,pin:entered})
+  })
+    .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; }); })
+    .then(function(result){
+      submitBtn.disabled=false;
+      submitBtn.textContent='Confirm';
+      if(result.ok && result.data && result.data.token){
+        var signedInUser={
+          id: result.data.userId,
+          name: result.data.name,
+          role: result.data.role,
+          recordId: result.data.recordId
+        };
+        localStorage.setItem('fieldiq_user_id',signedInUser.id);
+        localStorage.setItem('fieldiq_user_name',signedInUser.name);
+        localStorage.setItem('fieldiq_user_role',signedInUser.role);
+        localStorage.setItem('fieldiq_user_record_id',signedInUser.recordId);
+        localStorage.setItem('fieldiq_last_user_id',signedInUser.id);
+        // Rep's own territory, for the account-list filter in Log Visit.
+        // Manager accounts have no territory of their own and are
+        // unaffected — they always see everything regardless of this value.
+        localStorage.setItem('fieldiq_user_territory', result.data.territory || '');
+        // The session token, not the PIN, is what now proves identity to
+        // /ask-fieldiq and /get-rep-briefing. Stored in localStorage on
+        // purpose: the token's own 12-hour expiry (enforced server-side
+        // on every verify) already bounds how long it's useful, so
+        // persisting it lets a rep stay signed in across reloads,
+        // navigation, and reopening the app within that window, rather
+        // than losing their session every time a tab closes.
+        localStorage.setItem('fieldiq_session_token', result.data.token);
+        if(signedInUser.role==='Manager'){
+          window.location.href='./fieldiq.html';
+          return;
+        }
+        pendingUser=null;
+        renderSignedInBar(signedInUser);
+        renderModules();
+        loadRepBriefing();
+        return;
+      }
+      // Not a success — distinguish WHY, so a server problem is never
+      // misreported as the user having typed the wrong PIN. A 401 really
+      // does mean the PIN was wrong; nothing else does.
+      if(result.status===401){
+        errorEl.textContent='PIN incorrect. Please try again.';
+      }else if(result.status===429){
+        errorEl.textContent=(result.data&&result.data.error)?result.data.error:'Too many attempts. Please wait a moment and try again.';
+      }else if(!result.ok){
+        errorEl.textContent='FieldIQ could not complete sign-in. Please try again.';
+      }else{
+        errorEl.textContent='FieldIQ returned an invalid sign-in response. Please try again.';
+      }
+      errorEl.className='pin-error visible';
+      document.getElementById('pinInput').value='';
+      document.getElementById('pinInput').focus();
+    })
+    .catch(function(){
+      submitBtn.disabled=false;
+      submitBtn.textContent='Confirm';
+      errorEl.textContent='Could not reach FieldIQ. Please check your connection and try again.';
+      errorEl.className='pin-error visible';
+    });
+}
+
+// If the last-selected user is still present in the active user list,
+// pre-open their PIN box automatically — the "preselect" half of the
+// friction-reduction goal. PIN entry itself is still fully required;
+// this only saves the initial search/tap.
+function maybeAutoOpenLastUser(){
+  if(!lastUserId)return;
+  var u=allUsers.find(function(x){return x.id===lastUserId;});
+  if(u)showPinBox(u);
+}
+
+// get-users fetch — same endpoint, same fields, same Active? filter as
+// before. Adds a 7s timeout and a Retry action; neither existed in the
+// prior version of this file.
+function loadUsers(){
+  var listBox=document.getElementById('userListBox');
+  if(listBox)listBox.innerHTML='<div class="user-list-empty">Loading FieldIQ profiles…</div>';
+
+  var ctrl=new AbortController();
+  var timer=setTimeout(function(){ctrl.abort();},7000);
+
+  fetch(WORKER+'/get-users',{signal:ctrl.signal})
+    .then(function(res){return res.json();})
+    .then(function(data){
+      clearTimeout(timer);
+      allUsers=(data.records||[]).filter(function(r){
+        return r.fields['Active?']!==false;
+      }).map(function(r){
+        var f=r.fields||{};
+        return {
+          id: f['User ID']||'',
+          name: f['Display Name']||f['User ID']||'Unknown',
+          role: f['Role']||'Sales Rep',
+          territory: safeTerritoryDisplay(f['Territory']),
+          recordId: r.id
+        };
+      });
+      renderUserList(allUsers);
+      maybeAutoOpenLastUser();
+    })
+    .catch(function(err){
+      clearTimeout(timer);
+      var box=document.getElementById('userListBox');
+      if(!box)return;
+      box.innerHTML='<div class="user-list-empty">Could not load profiles. Check connection and retry.'+
+        '<button type="button" class="user-list-retry-btn" id="userListRetryBtn">Retry</button></div>';
+      var retryBtn=document.getElementById('userListRetryBtn');
+      if(retryBtn)retryBtn.addEventListener('click',loadUsers);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function updateOpenActionsBadge(){
+  var badge=document.getElementById('openActionsBadge');
+  if(!badge)return;
+
+  var userId=localStorage.getItem('fieldiq_user_id');
+  var role=localStorage.getItem('fieldiq_user_role')||'Sales Rep';
+  if(!userId)return;
+
+  try{
+    var res=await fetch(WORKER+'/get-actions?userId='+encodeURIComponent(userId)+'&role='+encodeURIComponent(role)+'&status=Open');
+    var data=await res.json();
+    if(!res.ok)throw new Error('Failed');
+    var count=(data.records||[]).length;
+    if(count>0){
+      badge.textContent=count>99?'99+':count;
+      badge.className='module-badge visible';
+    }else{
+      badge.className='module-badge';
+    }
+  }catch(e){
+    badge.className='module-badge';
+  }
+}
+
+// ── Notifications ────────────────────────────────────────────────────────────
+
+async function loadNotifications(){
+  var section=document.getElementById('notificationsSection');
+  if(!section)return;
+  section.innerHTML='';
+
+  var userId=localStorage.getItem('fieldiq_user_id');
+  if(!userId)return;
+
+  try{
+    var res=await fetch(WORKER+'/get-notifications?userId='+encodeURIComponent(userId));
+    var data=await res.json();
+    var records=(data.records||[]).filter(function(r){return !r.fields['Is Read'];});
+    if(!records.length)return;
+
+    var count=records.length;
+    var urgency=records.some(function(r){
+      var due=(r.fields||{})['Due Date']||'';
+      return due && due<=new Date().toISOString().slice(0,10);
+    });
+    var bodyText='You have '+count+' reminder'+(count>1?'s':'')+' from your manager.'+(urgency?' Some require immediate attention.':'');
+    section.innerHTML=
+      '<div class="notif-panel">'+
+        '<div class="notif-panel-header">'+
+          '<span class="notif-bell">🔔</span>'+
+          '<span class="notif-title">Manager Reminder'+(count>1?'s':'')+' ('+count+')</span>'+
+        '</div>'+
+        '<div class="notif-body">'+escapeHtml(bodyText)+'</div>'+
+        '<a class="notif-action-btn" href="./fieldiq-open-actions.html">View Reminders →</a>'+
+      '</div>';
+  }catch(e){
+    // Silent fail — notifications are non-critical
+  }
+}
+
+// Mark notification read then navigate to the action card.
+async function viewAction(notifId,actionId){
+  var sessionToken=localStorage.getItem('fieldiq_session_token')||'';
+  // Fire mark-as-read without waiting — navigation is the priority.
+  try{
+    fetch(WORKER+'/mark-notification-read',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
+      body:JSON.stringify({notificationId:notifId})
+    });
+  }catch(e){}
+  window.location.href='./fieldiq-open-actions.html?actionId='+encodeURIComponent(actionId);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Rep Assistant: daily briefing ────────────────────────────────────────
+// Fires once, right after a successful rep PIN login. Read-only: uses the
+// new /get-rep-briefing endpoint only, never writes anything. Every item
+// links straight to the existing Open Actions page — no new destination
+// page, no duplicated logic for showing/completing/dismissing an action.
+function renderRepBriefingContent(data){
+  var html = '<div class="rep-greeting">' + escapeHtml(data.greeting || '') + '</div>';
+  if (data.topLine) {
+    html += '<div class="rep-topline">' + escapeHtml(data.topLine) + '</div>';
+  }
+  var sections = data.sections || [];
+  sections.forEach(function(sec){
+    html += '<div class="rep-section">';
+    html += '<div class="rep-section-title"><span class="rep-section-icon">' + escapeHtml(sec.icon || '') + '</span>' + escapeHtml(sec.title || '') + '</div>';
+    (sec.items || []).forEach(function(item){
+      var inner = '<div class="rep-item-text">' + escapeHtml(item.text || '') + '</div>' +
+        (item.nav ? '<div class="rep-item-nav">' + escapeHtml(item.nav.label) + ' \u203a</div>' : '');
+      if (item.nav && item.nav.url) {
+        html += '<a class="rep-item rep-item-link" href="' + escapeHtml(item.nav.url) + '">' + inner + '</a>';
+      } else {
+        html += '<div class="rep-item">' + inner + '</div>';
+      }
+    });
+    html += '</div>';
+  });
+  html += '<a class="rep-focus-btn" href="./fieldiq-open-actions.html">Open Actions</a>';
+  return html;
+}
+// Clears everything that represents an authenticated session. Deliberately
+// preserves fieldiq_last_user_id — that key only controls which profile is
+// preselected/highlighted on the next visit, it has never been used to
+// authenticate anyone, so clearing it here would just be worse UX for no
+// security benefit.
+function clearActiveSession(){
+  localStorage.removeItem('fieldiq_user_id');
+  localStorage.removeItem('fieldiq_user_name');
+  localStorage.removeItem('fieldiq_user_role');
+  localStorage.removeItem('fieldiq_user_record_id');
+  localStorage.removeItem('fieldiq_session_token');
+}
+function renderRepBriefingError(){
+  var body = document.getElementById('repBriefingBody');
+  if (!body) return;
+  body.innerHTML = '<div class="rep-briefing-error">Could not load your briefing right now.<br><button type="button" class="rep-briefing-retry" id="repBriefingRetryBtn">Retry</button></div>';
+  var btn = document.getElementById('repBriefingRetryBtn');
+  if (btn) btn.addEventListener('click', loadRepBriefing);
+}
+function loadRepBriefing(){
+  var section = document.getElementById('repBriefingSection');
+  if (!section) return;
+  var token = localStorage.getItem('fieldiq_session_token');
+  if (!token) return;
+  section.innerHTML =
+    '<div class="rep-briefing-card">' +
+      '<div id="repBriefingBody"><div class="rep-briefing-loading"><div class="rep-briefing-spinner"></div>Preparing your briefing\u2026</div></div>' +
+    '</div>';
+  // Time-of-day framing is decided from the REP'S OWN LOCAL time, computed
+  // right here in the browser (which always knows it correctly, everywhere
+  // in the world) — never the Worker's own clock, which runs in UTC and
+  // would misjudge evening for anyone outside it. This is the one piece
+  // that has to travel client-to-server for the framing to be right.
+  var now = new Date();
+  var localHour = now.getHours();
+  var localDate = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  var qs = '?localHour=' + encodeURIComponent(localHour) + '&localDate=' + encodeURIComponent(localDate);
+  fetch(WORKER + '/rep-daily-briefing' + qs, { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; }); })
+    .then(function(result){
+      // An expired/invalid session is not a "try again" situation — the
+      // same dead token would just fail again. Clear it and put the rep
+      // back at the profile/PIN screen, same as any fresh visit.
+      if (result.status === 401 || result.status === 403) {
+        clearActiveSession();
+        section.innerHTML = '<div class="rep-briefing-card"><div class="rep-briefing-error">Your session has expired. Please sign in again.</div></div>';
+        renderIdentity();
+        return;
+      }
+      var body = document.getElementById('repBriefingBody');
+      if (!body) return;
+      if (!result.ok || !result.data || !result.data.sections) { renderRepBriefingError(); return; }
+      body.innerHTML = renderRepBriefingContent(result.data);
+    })
+    .catch(function(){ renderRepBriefingError(); });
+}
+
+function renderModules(){
+  var role=localStorage.getItem('fieldiq_user_role');
+  var section=document.getElementById('modulesSection');
+  var isManager=(role==='Manager');
+
+  var html='<div class="modules">';
+
+  if(isManager){
+    html+='<div class="section-label">Management</div>';
+    html+=
+      '<a class="module primary" href="./dashboard.html">'+
+        '<div class="module-icon-wrap"><i data-lucide="layout-dashboard"></i></div>'+
+        '<div class="module-text">'+
+          '<div class="module-title">Dashboard</div>'+
+          '<div class="module-desc">KPIs, rep performance, territory coverage, filters</div>'+
+        '</div>'+
+        '<div class="module-arrow">›</div>'+
+      '</a>'+
+      '<a class="module" href="./fieldiq-actions.html">'+
+        '<div class="module-icon-wrap"><i data-lucide="check-square"></i></div>'+
+        '<div class="module-text">'+
+          '<div class="module-title">Open Actions</div>'+
+          '<div class="module-desc">Outstanding action items by account and rep</div>'+
+        '</div>'+
+        '<div class="module-arrow">›</div>'+
+      '</a>'+
+      '<a class="module" href="./fieldiq-visits-map.html">'+
+        '<div class="module-icon-wrap"><i data-lucide="map-pin"></i></div>'+
+        '<div class="module-text">'+
+          '<div class="module-title">Visit Map</div>'+
+          '<div class="module-desc">Live GPS map of all field activity across GCC</div>'+
+        '</div>'+
+        '<div class="module-arrow">›</div>'+
+      '</a>'+
+      '<a class="module" href="./fieldiq-insights.html">'+
+        '<div class="module-icon-wrap"><i data-lucide="brain-circuit"></i></div>'+
+        '<div class="module-text">'+
+          '<div class="module-title">AI Insights</div>'+
+          '<div class="module-desc">Account intelligence, territory trends, institutional memory</div>'+
+        '</div>'+
+        '<div class="module-arrow">›</div>'+
+      '</a>';
+    html+='<div class="section-label">Field Operations</div>';
+  }
+
+  html+=
+    '<a class="module'+(isManager?'':' primary')+'" href="./fieldiq-log-visit.html">'+
+      '<div class="module-icon-wrap"><i data-lucide="mic"></i></div>'+
+      '<div class="module-text">'+
+        '<div class="module-title">Log Visit</div>'+
+        '<div class="module-desc">Record a field visit — voice to intelligence</div>'+
+      '</div>'+
+      '<div class="module-arrow">›</div>'+
+    '</a>'+
+    '<a class="module" href="./fieldiq-visit-history.html">'+
+      '<div class="module-icon-wrap"><i data-lucide="clock"></i></div>'+
+      '<div class="module-text">'+
+        '<div class="module-title">Visit History</div>'+
+        '<div class="module-desc">Your logged visits — dates, accounts, summaries</div>'+
+      '</div>'+
+      '<div class="module-arrow">›</div>'+
+    '</a>';
+
+  if(!isManager){
+    html+=
+      '<a class="module" href="./fieldiq-open-actions.html">'+
+        '<div class="module-icon-wrap"><i data-lucide="check-square"></i></div>'+
+        '<div class="module-text">'+
+          '<div class="module-title">Open Actions</div>'+
+          '<div class="module-desc">Complete follow-up tasks assigned to you</div>'+
+        '</div>'+
+        '<span class="module-badge" id="openActionsBadge"></span>'+
+        '<div class="module-arrow">›</div>'+
+      '</a>'+
+      '<a class="module" href="./fieldiq-calendar.html">'+
+        '<div class="module-icon-wrap"><i data-lucide="calendar-days"></i></div>'+
+        '<div class="module-text">'+
+          '<div class="module-title">Calendar</div>'+
+          '<div class="module-desc">Upcoming visits and follow-ups</div>'+
+        '</div>'+
+        '<div class="module-arrow">›</div>'+
+      '</a>';
+  }
+
+  html+='<div class="section-label">Help</div>'+
+    '<a class="module" href="./fieldiq-guide.html">'+
+      '<div class="module-icon-wrap"><i data-lucide="book-open"></i></div>'+
+      '<div class="module-text">'+
+        '<div class="module-title">Quick Start Guide</div>'+
+        '<div class="module-desc">How to use FieldIQ</div>'+
+      '</div>'+
+      '<div class="module-arrow">›</div>'+
+    '</a>';
+
+  html+='</div>';
+  section.innerHTML=html;
+  if(typeof lucide!=='undefined'){lucide.createIcons();}
+
+  if(!isManager){
+    Promise.all([updateOpenActionsBadge(), loadNotifications()]);
+  }
+}
+
+// Real session restoration, not a localStorage shortcut. A saved
+// fieldiq_user_role or fieldiq_user_id is never trusted on its own — both
+// are editable in browser dev tools. If a token exists, it is confirmed
+// with the Worker via GET /validate-session before anything is restored;
+// only a server-verified valid token skips PIN re-entry. No token at all
+// (fresh visit, tab was previously closed past its 12-hour session, or
+// "Not you?"/Exit was used) goes straight to the normal picker/PIN screen,
+// with no network call wasted on nothing to validate.
+function startUp(){
+  var existingToken = localStorage.getItem('fieldiq_session_token');
+  if (!existingToken) {
+    renderIdentity();
+    return;
+  }
+  fetch(WORKER + '/validate-session', { headers: { 'Authorization': 'Bearer ' + existingToken } })
+    .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+    .then(function(result){
+      if (!result.ok || !result.data || !result.data.valid) {
+        // Expired, tampered, or otherwise invalid — never restore access
+        // on a guess. Clear the dead session and show the real picker.
+        localStorage.removeItem('fieldiq_user_id');
+        localStorage.removeItem('fieldiq_user_name');
+        localStorage.removeItem('fieldiq_user_role');
+        localStorage.removeItem('fieldiq_user_record_id');
+        localStorage.removeItem('fieldiq_session_token');
+        renderIdentity();
+        return;
+      }
+      // Confirmed by the Worker, not assumed from whatever was already in
+      // localStorage — refresh the stored identity fields to match
+      // exactly what the verified token says.
+      var restoredUser = {
+        id: result.data.userId,
+        name: result.data.name,
+        role: result.data.role,
+        recordId: result.data.recordId
+      };
+      localStorage.setItem('fieldiq_user_id', restoredUser.id);
+      localStorage.setItem('fieldiq_user_name', restoredUser.name);
+      localStorage.setItem('fieldiq_user_territory', result.data.territory || '');
+      localStorage.setItem('fieldiq_user_role', restoredUser.role);
+      localStorage.setItem('fieldiq_user_record_id', restoredUser.recordId);
+      localStorage.setItem('fieldiq_last_user_id', restoredUser.id);
+      if (restoredUser.role === 'Manager') {
+        window.location.href = './fieldiq.html';
+        return;
+      }
+      renderSignedInBar(restoredUser);
+      renderModules();
+      loadRepBriefing();
+    })
+    .catch(function(){
+      // Network failure during validation — do not silently restore
+      // access on a guess. Show the real picker/PIN screen instead.
+      renderIdentity();
+    });
+}
+startUp();
+</script>
+<script>document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+</body>
+</html>
