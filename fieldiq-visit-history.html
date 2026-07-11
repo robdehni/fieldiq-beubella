@@ -179,7 +179,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
 </style>
 
   <!-- PWA v1 -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
@@ -679,7 +679,7 @@ function renderVisits(records){
           '<div class="visit-date">'+formatDate(f['Visit Date'])+'</div>'+  
         '</div>'+  
         '<div class="visit-meta">'+  
-          (f['Territory']?'<span class="badge badge-territory">'+f['Territory']+'</span>':'')+  
+          (f['Territory']?'<span class="badge badge-territory">'+escapeHtmlLocal(normalizeTerritoryForFilter(f['Territory']))+'</span>':'')+  
           (f['Visit Type']?'<span class="badge badge-type">'+f['Visit Type']+'</span>':'')+  
           '<span class="badge '+getPriorityClass(priority)+'">'+priority+'</span>'+  
           (f['Rep Name']?'<span class="badge badge-territory">'+f['Rep Name']+'</span>':'')+  
@@ -764,7 +764,10 @@ function getPeriodRange(period){
 }  
   
 function normalizeTerritoryForFilter(raw){
-  var t=(raw||'').trim();if(!t)return'';
+  var value=raw;
+  if(Array.isArray(value))value=value.length?value[0]:'';
+  var t=String(value||'').trim();if(!t)return'';
+  if(/^rec[a-zA-Z0-9]{14,}$/.test(t))return'';
   var tu=t.toUpperCase();
   if(tu==='ABU DHABI')return'Abu Dhabi';
   if(tu==='DUBAI')return'Dubai';
@@ -971,7 +974,7 @@ document.getElementById('repSearch').addEventListener('input',function(){
   },150);
 });
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 // Back-to-top floating button — purely cosmetic, self-contained. Created
 // entirely via JS so no existing HTML/IDs/layout are touched. Appears only
