@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Be U Bella — Dashboard</title>
+<title>Beu Bella Cosmetics — Dashboard</title>
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<script src="./brand-config.js" defer></script>
 <style>
 [data-lucide]{display:inline-block;vertical-align:middle;stroke-width:2}
 .nav-icon [data-lucide]{width:22px;height:22px}
@@ -181,8 +182,8 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:5px;font-weight:600;text
     <span class="brand-cloud">☁️</span>
     <div class="brand-text">
       <div class="page-kind">ANALYTICS</div>
-      <h1>Be U Bella<span id="managerBadge" style="display:none" class="manager-badge">⭐ Manager</span></h1>
-      <p>by FieldIQ</p>
+      <h1 data-brand-name>Beu Bella Cosmetics<span id="managerBadge" style="display:none" class="manager-badge">⭐ Manager</span></h1>
+      <p data-brand-tagline>by FieldIQ</p>
       <p class="page-subtitle">Review today's priorities and monitor your team's field performance.</p>
     </div>
   </div>
@@ -292,6 +293,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:5px;font-weight:600;text
 var role = localStorage.getItem('fieldiq_user_role');
 var isManager = (role === 'Manager');
 var WORKER_URL='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var currentSessionToken = localStorage.getItem('fieldiq_session_token');
 var allRecordsRawLoaded=false;
 var lastNewAccountsFeed=[];
 var lastPriorityReviewFeed=[];
@@ -326,7 +328,8 @@ async function updatePriority(recordId,newPriority,cardEl){
     renderPrioritySection(lastPriorityReviewFeed);
   }
   try{
-    var res=await fetch(WORKER_URL+'/update-visit',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:recordId,priority:newPriority})});
+    var res=await fetch(WORKER_URL+'/update-visit',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({recordId:recordId,priority:newPriority})});
+    if(res.status===401||res.status===403){localStorage.removeItem('fieldiq_session_token');window.location.href='./index.html';return;}
     if(!res.ok){
       if(rec){rec.fields['Priority']=_oldPriority;renderPrioritySection(lastPriorityReviewFeed);}
       alert('Could not update priority. Please try again.');
@@ -345,7 +348,8 @@ async function markReviewed(recordId,btnEl){
     renderPrioritySection(lastPriorityReviewFeed);
   }
   try{
-    var res=await fetch(WORKER_URL+'/update-visit',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:recordId,reviewed:true})});
+    var res=await fetch(WORKER_URL+'/update-visit',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({recordId:recordId,reviewed:true})});
+    if(res.status===401||res.status===403){localStorage.removeItem('fieldiq_session_token');window.location.href='./index.html';return;}
     if(!res.ok){
       if(_removedRec){lastPriorityReviewFeed.push(_removedRec);renderPrioritySection(lastPriorityReviewFeed);}
       btnEl.disabled=false;btnEl.textContent='✓ Mark Reviewed';alert('Could not mark as reviewed. Please try again.');
@@ -495,14 +499,29 @@ function renderManagementRadar(radarItems){
 var allRecordsRaw=[];
 // Populates the rep filter dropdown's option list directly from the fast
 // /get-dashboard response — called once, on the initial unfiltered load
-// only, so the dropdown always shows every rep regardless of which filter
-// is currently active (matches original behavior, which built this list
-// once from the full record set rather than re-deriving it on every
-// filter change).
-function populateRepFilterFromAgg(agg){
+// Populates the rep filter dropdown from the authoritative /get-users
+// roster — active, non-manager users only — not from whichever reps
+// happen to have visits in the currently loaded aggregate. A rep with
+// zero logged visits still appears here, since they're still a real rep
+// who could be selected to filter by (and would correctly show 0 results).
+async function loadRepRoster(){
+  var res=await fetch(WORKER_URL+'/get-users');
+  var data=await res.json();
+  if(!res.ok)throw new Error(data.error||'Could not load reps');
+  return (data.records||[])
+    .filter(function(u){return u.fields['Active?']!==false && u.fields['Role']!=='Manager';})
+    .map(function(u){return {id:u.id, userId:u.fields['User ID']||'', name:u.fields['Display Name']||u.fields['User ID']||'Unknown'};})
+    .sort(function(a,b){return a.name.localeCompare(b.name);});
+}
+async function populateRepFilterFromRoster(){
   var sel=document.getElementById('filterRep');
   while(sel.options.length>1)sel.remove(1);
-  agg.reps.map(function(r){return r.name;}).sort().forEach(function(r){var o=document.createElement('option');o.value=r;o.textContent=r;sel.appendChild(o);});
+  try{
+    var roster=await loadRepRoster();
+    roster.forEach(function(r){var o=document.createElement('option');o.value=r.name;o.textContent=r.name;sel.appendChild(o);});
+  }catch(err){
+    console.error('Could not load rep roster:',err);
+  }
 }
 // On-demand full-record loader. NOT called automatically on page load —
 // only when the user actually triggers something that genuinely needs raw
@@ -733,7 +752,7 @@ async function loadDashboard(){
     var res=await fetch(WORKER_URL+'/get-dashboard',{signal:_ctrl.signal});
     clearTimeout(_timer);
     var agg=await res.json();if(!res.ok)throw new Error(JSON.stringify(agg));
-    populateRepFilterFromAgg(agg);
+    populateRepFilterFromRoster();
     document.getElementById('filterBar').style.display='block';
     var _returnParams=new URLSearchParams(window.location.search);
     var _hasReturnContext=!!(_returnParams.get('rep')||_returnParams.get('territory')||_returnParams.get('priority')||_returnParams.get('period'));
@@ -873,7 +892,7 @@ if (role !== 'Manager') {
 }
 document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 // Back-to-top floating button — purely cosmetic, self-contained. Created
 // entirely via JS so no existing HTML/IDs/layout are touched. Appears only
