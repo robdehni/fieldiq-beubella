@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Be U Bella — AI Insights</title>
+<title>Beu Bella Cosmetics — AI Insights</title>
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<script src="./brand-config.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:16px;padding-bottom:80px}
@@ -104,8 +105,8 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
   <div class="topbar-brand">
     <span class="brand-cloud">☁️</span>
     <div class="brand-text">
-      <h1>Be U Bella</h1>
-      <p>by FieldIQ</p>
+      <h1 data-brand-name>Beu Bella Cosmetics</h1>
+      <p data-brand-tagline>by FieldIQ</p>
       <p class="page-subtitle">Discover trends, patterns and institutional memory from every visit.</p>
     </div>
   </div>
@@ -134,6 +135,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
 </nav>
 <script>
 var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var currentSessionToken = localStorage.getItem('fieldiq_session_token');
 var role = localStorage.getItem('fieldiq_user_role');
 if (role !== 'Manager') {
   window.location.href = './index.html';
@@ -168,13 +170,12 @@ function buildAccountMap(records){
 }
 function renderAccountCard(acc){
   var latestPriority=acc.priorities.length>0?acc.priorities[acc.priorities.length-1]:'—';var latestOutcome=acc.outcomes.length>0?acc.outcomes[acc.outcomes.length-1]:'—';var latestSentiment=acc.sentiments.length>0?acc.sentiments[acc.sentiments.length-1]:'unknown';var repNames=Object.keys(acc.reps);
-  var competitors=extractMentions(acc.visits.map(function(v){return v.fields['AI Summary']||'';}).join(' '),['Medtronic','Johnson & Johnson','J&J','Stryker','Zimmer','B. Braun','BBraun','Becton','BD','Abbott','Siemens','Philips','GE Healthcare','Olympus','Karl Storz','Covidien','Boston Scientific','Edwards','Baxter']);
   var priorityColor=latestPriority==='High'?'#ff4444':latestPriority==='Low'?'#44cc88':'#ffaa44';var pillClass=latestSentiment==='positive'?'pill-positive':latestSentiment==='negative'?'pill-negative':'pill-neutral';
   var sortedVisits=acc.visits.slice().sort(function(a,b){var da=a.fields['Visit Date']?new Date(a.fields['Visit Date']):new Date(0);var db=b.fields['Visit Date']?new Date(b.fields['Visit Date']):new Date(0);return db-da;});
   var visitsHtml=sortedVisits.map(function(v){var f=v.fields;var sent=getSentiment(f['AI Summary']||'');var summary=f['Meeting Notes']?truncate(f['Meeting Notes'],120):'No notes recorded.';return'<div class="visit-item '+sent+'"><div class="visit-header"><span class="visit-rep">'+(f['User Name']||'Unknown')+'</span><span class="visit-date">'+formatDate(f['Visit Date'])+(f['Visit Type']?' · '+f['Visit Type']:'')+'</span></div><div class="visit-summary">'+summary+'</div></div>';}).join('');
   var actionsHtml='';var allActions=[];acc.actionItems.forEach(function(a){if(a){a.split('\n').forEach(function(line){line=line.trim();if(line&&line.length>2)allActions.push(line);});}});
   if(allActions.length>0){actionsHtml='<div class="sr-section"><div class="sr-label">Open Action Items</div>'+allActions.slice(-6).map(function(a){return'<div class="sr-value">'+truncate(a,100)+'</div>';}).join('')+'</div>';}
-  return'<div class="search-result"><div class="search-result-name">'+acc.name+'</div><div class="search-result-meta">'+acc.visits.length+' visit'+(acc.visits.length!==1?'s':'')+(acc.territory?' · '+acc.territory:'')+(acc.lastVisit?' · Last: '+formatDate(acc.lastVisit):'')+'</div><div class="sr-tags">'+(latestPriority!=='—'?'<span class="tag" style="background:'+priorityColor+'22;color:'+priorityColor+';border:1px solid '+priorityColor+'33">'+latestPriority+' Priority</span>':'')+'<span class="sentiment-pill '+pillClass+'">'+latestSentiment+'</span>'+(latestOutcome!=='—'?'<span class="tag tag-green">'+latestOutcome+'</span>':'')+repNames.map(function(r){return'<span class="tag tag-blue">'+r+'</span>';}).join('')+(competitors.length>0?competitors.map(function(c){return'<span class="tag tag-red">'+c+'</span>';}).join(''):'')+' </div>'+(actionsHtml)+'<div class="sr-section"><div class="sr-label">Visit History ('+acc.visits.length+')</div>'+visitsHtml+'</div><button class="timeline-btn" data-hospital="'+acc.name.replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'">📜 View Visit Timeline ('+acc.visits.length+' visits)</button><div class="timeline-container" data-tlid="'+acc.name.replace(/[^a-z0-9]/gi,"_")+'"></div></div>';
+  return'<div class="search-result"><div class="search-result-name">'+acc.name+'</div><div class="search-result-meta">'+acc.visits.length+' visit'+(acc.visits.length!==1?'s':'')+(acc.territory?' · '+acc.territory:'')+(acc.lastVisit?' · Last: '+formatDate(acc.lastVisit):'')+'</div><div class="sr-tags">'+(latestPriority!=='—'?'<span class="tag" style="background:'+priorityColor+'22;color:'+priorityColor+';border:1px solid '+priorityColor+'33">'+latestPriority+' Priority</span>':'')+'<span class="sentiment-pill '+pillClass+'">'+latestSentiment+'</span>'+(latestOutcome!=='—'?'<span class="tag tag-green">'+latestOutcome+'</span>':'')+repNames.map(function(r){return'<span class="tag tag-blue">'+r+'</span>';}).join('')+' </div>'+(actionsHtml)+'<div class="sr-section"><div class="sr-label">Visit History ('+acc.visits.length+')</div>'+visitsHtml+'</div><button class="timeline-btn" data-hospital="'+acc.name.replace(/&/g,"&amp;").replace(/"/g,"&quot;")+'">📜 View Visit Timeline ('+acc.visits.length+' visits)</button><div class="timeline-container" data-tlid="'+acc.name.replace(/[^a-z0-9]/gi,"_")+'"></div></div>';
 }
 function renderTimeline(hospitalName){
   var visits=allRecords.filter(function(r){return(r.fields['Customer Name']||'').toLowerCase()===hospitalName.toLowerCase();}).sort(function(a,b){var da=a.fields['Visit Date']?new Date(a.fields['Visit Date']):new Date(0);var db=b.fields['Visit Date']?new Date(b.fields['Visit Date']):new Date(0);return db-da;});
@@ -209,8 +210,8 @@ function buildInsights(records){
   var mgmtHtml='';if(mgmtItems.length>0){mgmtItems.forEach(function(item){mgmtHtml+='<div class="memory-card" style="border-left-color:'+item.color+'"><div class="memory-line">'+item.text+'</div></div>';});}else{mgmtHtml='<div class="insight-card"><div class="memory-line" style="color:#555;text-align:center;padding:8px">No attention items identified yet.</div></div>';}
   document.getElementById('managementInsights').innerHTML=mgmtHtml;
   var memoryHtml='';
-  sortedAccounts.forEach(function(acc){var allActions=acc.actionItems.filter(Boolean);var competitors=extractMentions(acc.visits.map(function(v){return v.fields['AI Summary']||'';}).join(' '),['Medtronic','Johnson & Johnson','J&J','Stryker','Zimmer','B. Braun','BBraun','Becton','BD','Abbott','Siemens','Philips','GE Healthcare','Olympus','Karl Storz','Covidien','Boston Scientific','Edwards','Baxter']);
-  memoryHtml+='<div class="memory-card"><div class="memory-hospital">'+acc.name+'</div><div class="memory-label" style="margin:6px 0 3px">Territory</div><div class="memory-line">'+(acc.territory||'Not specified')+'</div><div class="memory-label" style="margin:6px 0 3px">Visit History</div><div class="memory-line">'+acc.visits.length+' visit'+(acc.visits.length!==1?'s':'')+' recorded'+(acc.lastVisit?' · Most recent: '+formatDate(acc.lastVisit):'')+'</div>'+(allActions.length>0?'<div class="memory-label" style="margin:6px 0 3px">Open Action Items</div>'+allActions.slice(-3).map(function(a){return'<div class="memory-line">'+truncate(a,120)+'</div>';}).join(''):'')+  (competitors.length>0?'<div class="memory-label" style="margin:6px 0 3px">Competitors Mentioned</div><div class="memory-line">'+competitors.join(', ')+'</div>':'')+'<div class="account-tags" style="margin-top:8px">'+acc.outcomes.filter(Boolean).slice(-1).map(function(o){var cls=o==='Positive'?'pill-positive':o==='Negative'?'pill-negative':'pill-neutral';return'<span class="sentiment-pill '+cls+'">'+o+'</span>';}).join('')+(acc.priorities.slice(-1)[0]?'<span class="tag tag-blue">'+acc.priorities.slice(-1)[0]+' Priority</span>':'')+Object.keys(acc.reps).map(function(r){return'<span class="tag tag-purple">'+r+'</span>';}).join('')+'</div></div>';});
+  sortedAccounts.forEach(function(acc){var allActions=acc.actionItems.filter(Boolean);
+  memoryHtml+='<div class="memory-card"><div class="memory-hospital">'+acc.name+'</div><div class="memory-label" style="margin:6px 0 3px">Territory</div><div class="memory-line">'+(acc.territory||'Not specified')+'</div><div class="memory-label" style="margin:6px 0 3px">Visit History</div><div class="memory-line">'+acc.visits.length+' visit'+(acc.visits.length!==1?'s':'')+' recorded'+(acc.lastVisit?' · Most recent: '+formatDate(acc.lastVisit):'')+'</div>'+(allActions.length>0?'<div class="memory-label" style="margin:6px 0 3px">Open Action Items</div>'+allActions.slice(-3).map(function(a){return'<div class="memory-line">'+truncate(a,120)+'</div>';}).join(''):'')+'<div class="account-tags" style="margin-top:8px">'+acc.outcomes.filter(Boolean).slice(-1).map(function(o){var cls=o==='Positive'?'pill-positive':o==='Negative'?'pill-negative':'pill-neutral';return'<span class="sentiment-pill '+cls+'">'+o+'</span>';}).join('')+(acc.priorities.slice(-1)[0]?'<span class="tag tag-blue">'+acc.priorities.slice(-1)[0]+' Priority</span>':'')+Object.keys(acc.reps).map(function(r){return'<span class="tag tag-purple">'+r+'</span>';}).join('')+'</div></div>';});
   document.getElementById('institutionalMemory').innerHTML=memoryHtml||'<div class="empty">Account memory builds automatically with every visit logged.</div>';
   document.getElementById('loadingEl').style.display='none';document.getElementById('insightsContent').style.display='block';document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
 }
@@ -221,13 +222,13 @@ function toggleTimeline(btn){
 }
 function attachTimelineListeners(){document.querySelectorAll('.timeline-btn').forEach(function(btn){btn.addEventListener('click',function(){toggleTimeline(btn);});});}
 async function loadInsights(){
-  try{var res=await fetch(WORKER+'/get-visits',{cache:'no-store'});var data=await res.json();if(!res.ok)throw new Error(JSON.stringify(data));buildInsights(data.records||[]);}
+  try{var res=await fetch(WORKER+'/get-visits',{cache:'no-store',headers:{'Authorization':'Bearer '+currentSessionToken}});if(res.status===401||res.status===403){localStorage.removeItem('fieldiq_session_token');window.location.href='./index.html';return;}var data=await res.json();if(!res.ok)throw new Error(JSON.stringify(data));buildInsights(data.records||[]);}
   catch(err){document.getElementById('loadingEl').textContent='Failed to load: '+err.message;}
 }
 loadInsights();
 document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 (function(){
   var btn=document.createElement('button');
