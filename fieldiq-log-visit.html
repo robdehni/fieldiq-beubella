@@ -729,7 +729,7 @@ submitBtn.addEventListener('click',async function(){
       document.getElementById('processingText').textContent = 'Saving visit...';
     }
 
-    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDate,'Territory':territory,'Visit Type':visitType,'Rep Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':result,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':parsed.nextSteps,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount};
+    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDate,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':result,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':parsed.nextSteps,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount};
     if(latitude!==null&&longitude!==null){savePayload['Latitude']=latitude;savePayload['Longitude']=longitude;savePayload['Accuracy']=accuracy;}
     if(!isNewAccount&&selectedAccountId){savePayload['Account']=[selectedAccountId];}
     if(isNewAccount&&newAccountId){savePayload['Account']=[newAccountId];}
