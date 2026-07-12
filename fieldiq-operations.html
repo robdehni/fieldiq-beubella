@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Be U Bella — Operations</title>
+<title>Beu Bella Cosmetics — Operations</title>
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<script src="./brand-config.js" defer></script>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#2f8fff">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -158,8 +159,8 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     <div class="topbar-brand">
       <span class="brand-cloud">☁️</span>
       <div class="brand-text">
-        <h1>Be U Bella<span class="manager-badge">⭐ Manager</span></h1>
-        <p>by FieldIQ</p>
+        <h1 data-brand-name>Beu Bella Cosmetics<span class="manager-badge">⭐ Manager</span></h1>
+        <p data-brand-tagline>by FieldIQ</p>
       </div>
     </div>
     <p class="topbar-sub">Monitor execution, territory activity and workload across your field team.</p>
@@ -286,7 +287,9 @@ function buildIndices() {
     orderedNames.push(trimmed);
   }
   allUsers.forEach(function(u){ var role = u.fields['Role']||''; if (role!=='Manager') addRepName(u.fields['Display Name']||''); });
-  allVisits.forEach(function(v){ addRepName(v.fields['User Name']||''); });
+  // Deliberately no longer supplemented from visit records — /get-users is
+  // now the single authoritative rep source used consistently across
+  // every BeuBella page.
   activeRepNames = orderedNames.sort(function(a,b){return a.localeCompare(b);});
 }
 function getRepActionsById(repName) {
@@ -726,7 +729,7 @@ function buildAttentionRequired(todayDate) {
   });
 })();
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 (function(){
   var btn=document.createElement('button');
