@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FieldIQ — Account Directory</title>
+<title>Beu Bella Cosmetics — Account Directory</title>
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<script src="./brand-config.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:20px 18px 40px}
@@ -218,7 +219,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
-  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
 </head>
 <body>
 <div class="container">
@@ -226,8 +227,8 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
   <div class="topbar-brand">
     <span class="brand-cloud">☁️</span>
     <div class="brand-text">
-      <h1>Field<span>IQ</span><span id="managerBadge" style="display:none" class="manager-badge">⭐ Manager</span></h1>
-      <p>Territory Intelligence Platform</p>
+      <h1 data-brand-name>Beu Bella Cosmetics<span id="managerBadge" style="display:none" class="manager-badge">⭐ Manager</span></h1>
+      <p data-brand-tagline>by FieldIQ</p>
       <p class="page-subtitle">Every account in your territory, at a glance.</p>
     </div>
   </div>
@@ -319,11 +320,11 @@ async function loadDirectory(){
     visitRecords.forEach(function(v){
       var f=v.fields||{};var matched=null;
       if(Array.isArray(f['Account'])&&f['Account'].length>0){matched=byId[f['Account'][0]]||null;}
-      if(!matched&&f['Hospital Name']){matched=byNameLower[String(f['Hospital Name']).trim().toLowerCase()]||null;}
+      if(!matched&&f['Customer Name']){matched=byNameLower[String(f['Customer Name']).trim().toLowerCase()]||null;}
       if(matched){
         matched.visitCount++;var vDate=f['Visit Date']?new Date(f['Visit Date']):null;var vDateValid=vDate&&!isNaN(vDate);
         if(vDateValid&&(!matched.lastVisit||vDate>matched.lastVisit)){matched.lastVisit=vDate;}
-        matched.matchedVisits.push({id:v.id,date:vDateValid?vDate:null,type:f['Visit Type']||'',rep:f['Rep Name']||'Unknown rep',priority:f['Priority']||'',outcome:f['Outcome']||'',aiSummary:f['AI Summary']||'',actionItems:f['Action Items']||'',newAccount:f['New Account']===true,pendingReview:f['Pending Review']===true,reviewed:f['Reviewed']===true});
+        matched.matchedVisits.push({id:v.id,date:vDateValid?vDate:null,type:f['Visit Type']||'',rep:f['User Name']||'Unknown rep',priority:f['Priority']||'',outcome:f['Outcome']||'',aiSummary:f['AI Summary']||'',actionItems:f['Action Items']||'',newAccount:f['New Account']===true,pendingReview:f['Pending Review']===true,reviewed:f['Reviewed']===true});
       }
     });
     ACCOUNTS.sort(function(a,b){return a.name.localeCompare(b.name);});
