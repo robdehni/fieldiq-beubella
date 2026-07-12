@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FieldIQ — Territory Map</title>
+<title>Beu Bella Cosmetics — Territory Map</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<script src="./brand-config.js" defer></script>
 <style>
 [data-lucide]{display:inline-block;vertical-align:middle;stroke-width:2}
 .access-denied-icon [data-lucide]{width:54px;height:54px;stroke:#d98a1c}
@@ -92,13 +93,14 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
-  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
 </head>
 <body>
 <div class="topbar">
   <div class="topbar-left">
     <span class="topbar-cloud">☁️</span>
-    <h1>Field<span>IQ</span> — Territory Map</h1>
+    <h1><span data-brand-name>Beu Bella Cosmetics</span> — Territory Map</h1>
+    <p data-brand-tagline style="font-size:10px;color:#8a9bb3;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-top:2px">by FieldIQ</p>
     <p class="page-subtitle">Visualise field activity, visit locations and territory coverage.</p>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
@@ -318,9 +320,9 @@ function renderMarkers(visits){
     else if(sent==='neutral')n++;
     else if(sent==='negative')neg++;
     var popup=
-      '<div class="ph">'+escapeHtml(f['Hospital Name']||'Unknown Account')+'</div>'+
+      '<div class="ph">'+escapeHtml(f['Customer Name']||'Unknown Account')+'</div>'+
       '<span class="ps" style="'+getBadgeStyle(sent)+'">'+sent.charAt(0).toUpperCase()+sent.slice(1)+'</span>'+
-      '<div class="pr"><span class="pl">Rep</span><span class="pv">'+escapeHtml(f['Rep Name']||'—')+'</span></div>'+
+      '<div class="pr"><span class="pl">Rep</span><span class="pv">'+escapeHtml(f['User Name']||'—')+'</span></div>'+
       '<div class="pr"><span class="pl">Date</span><span class="pv">'+formatDate(f['Visit Date'])+'</span></div>'+
       '<div class="pr"><span class="pl">Time</span><span class="pv">'+formatTime(v.createdTime)+'</span></div>'+
       '<div class="pr"><span class="pl">Territory</span><span class="pv">'+escapeHtml(normalizeTerritoryForMap(f['Territory'])||'—')+'</span></div>'+
@@ -354,23 +356,43 @@ function normalizeTerritoryForMap(raw){
   return t;
 }
 function populateFilters(visits){
-  var t={},r={};
+  var t={};
   visits.forEach(function(v){
     var f=v.fields;
     var normalizedTerritory=normalizeTerritoryForMap(f.Territory);
     if(normalizedTerritory)t[normalizedTerritory]=1;
-    if(f['Rep Name'])r[f['Rep Name']]=1;
   });
   var ts=document.getElementById('fTerr');
   while(ts.options.length>1)ts.remove(1);
   Object.keys(t).sort().forEach(function(x){
     var o=document.createElement('option');o.value=x;o.textContent=x;ts.appendChild(o);
   });
+}
+// Populates the rep filter from the authoritative /get-users roster —
+// active, non-manager users only — not from whichever reps happen to have
+// visits currently loaded on the map. Value is left as plain Display Name,
+// unmodified, to stay exactly compatible with this page's existing direct
+// string-match filter comparison against each visit's own User Name field.
+async function populateRepFilter(){
   var rs=document.getElementById('fRep');
   while(rs.options.length>1)rs.remove(1);
-  Object.keys(r).sort().forEach(function(x){
-    var o=document.createElement('option');o.value=x;o.textContent=x;rs.appendChild(o);
-  });
+  try{
+    var res=await fetch(WORKER+'/get-users');
+    var data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Could not load reps');
+    var names={};
+    (data.records||[])
+      .filter(function(u){return u.fields['Active?']!==false && u.fields['Role']!=='Manager';})
+      .forEach(function(u){
+        var n=u.fields['Display Name']||u.fields['User ID']||'';
+        if(n)names[n]=1;
+      });
+    Object.keys(names).sort().forEach(function(x){
+      var o=document.createElement('option');o.value=x;o.textContent=x;rs.appendChild(o);
+    });
+  }catch(err){
+    console.error('Could not load rep roster:',err);
+  }
 }
 
 function applyFilters(){
@@ -382,7 +404,7 @@ function applyFilters(){
   var filtered=allVisits.filter(function(v){
     var f=v.fields;
     if(t&&normalizeTerritoryForMap(f.Territory)!==t)return false;
-    if(r&&f['Rep Name']!==r)return false;
+    if(r&&f['User Name']!==r)return false;
     if(s&&getSent(f['AI Summary']||'')!==s)return false;
     if(cutoffs.start||cutoffs.end){
       if(!f['Visit Date'])return false;
@@ -426,6 +448,7 @@ async function loadVisits(){
       return;
     }
     populateFilters(allVisits);
+    populateRepFilter();
     var _restoreParams=new URLSearchParams(window.location.search);
     var _mLat=_restoreParams.get('mapLat'),_mLng=_restoreParams.get('mapLng'),_mZoom=_restoreParams.get('mapZoom'),_mVisitId=_restoreParams.get('mapVisitId');
     var _fPeriod=_restoreParams.get('fPeriod'),_fTerr=_restoreParams.get('fTerr'),_fRep=_restoreParams.get('fRep'),_fSent=_restoreParams.get('fSent');
