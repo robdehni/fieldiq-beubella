@@ -293,7 +293,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:5px;font-weight:600;text
 var role = localStorage.getItem('fieldiq_user_role');
 var isManager = (role === 'Manager');
 var WORKER_URL='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
-var currentSessionToken = localStorage.getItem('fieldiq_session_token');
+var currentSessionToken = localStorage.getItem('fieldiq_session_token')||'';
 var allRecordsRawLoaded=false;
 var lastNewAccountsFeed=[];
 var lastPriorityReviewFeed=[];
@@ -533,7 +533,16 @@ async function ensureFullRecordsLoaded(){
   if(allRecordsRawLoaded)return;
   if(_fullRecordsLoadPromise)return _fullRecordsLoadPromise;
   _fullRecordsLoadPromise=(async function(){
-    var res=await fetch(WORKER_URL+'/get-visits');
+    var res=await fetch(WORKER_URL+'/get-visits',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    if(res.status===401||res.status===403){
+      localStorage.removeItem('fieldiq_user_id');
+      localStorage.removeItem('fieldiq_user_name');
+      localStorage.removeItem('fieldiq_user_role');
+      localStorage.removeItem('fieldiq_user_record_id');
+      localStorage.removeItem('fieldiq_session_token');
+      window.location.href='./index.html';
+      return;
+    }
     var data=await res.json();
     if(!res.ok)throw new Error(JSON.stringify(data));
     allRecordsRaw=data.records||[];
