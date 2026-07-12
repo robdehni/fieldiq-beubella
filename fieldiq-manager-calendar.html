@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FieldIQ — Manager Calendar</title>
+<title>Be U Bella Cosmetics — Manager Calendar</title>
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<script src="./brand-config.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:24px 20px 50px}
@@ -105,16 +106,16 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
 .back-to-top.visible{display:flex}
 </style>
   <!-- PWA v1 -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
-  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
 </head>
 <body>
 <div class="container">
   <div class="header">
-    <div class="brand"><span class="brand-cloud">☁️</span><div class="brand-text"><h1>Field<span>IQ</span></h1><p>Territory Intelligence Platform</p></div></div>
+    <div class="brand"><span class="brand-cloud">☁️</span><div class="brand-text"><h1 data-brand-name>Be U Bella Cosmetics</h1><p data-brand-tagline>by FieldIQ</p></div></div>
     <p class="page-subtitle">See upcoming commitments, due dates and scheduled follow-ups.</p>
   </div>
 
@@ -151,6 +152,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
 
 <script>
 var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var currentSessionToken=localStorage.getItem('fieldiq_session_token')||'';
 var currentUserId=localStorage.getItem('fieldiq_user_id');
 var currentUserName=localStorage.getItem('fieldiq_user_name');
 var currentUserRole=localStorage.getItem('fieldiq_user_role')||'';
@@ -158,6 +160,7 @@ var currentUserRole=localStorage.getItem('fieldiq_user_role')||'';
 var allEvents=[];   // every rep's events, unfiltered
 var events=[];      // currently displayed (after rep filter)
 var usersByRecordId={};
+var activeRepRoster=[];
 var selectedRepFilter='';
 var currentPopupActionId=null;
 
@@ -166,6 +169,13 @@ var viewMonth=new Date().getMonth();
 var selectedDayISO=null;
 
 // ── Manager-only access guard ────────────────────────────────────────────────
+function clearActiveSession(){
+  localStorage.removeItem('fieldiq_user_id');
+  localStorage.removeItem('fieldiq_user_name');
+  localStorage.removeItem('fieldiq_user_role');
+  localStorage.removeItem('fieldiq_user_record_id');
+  localStorage.removeItem('fieldiq_session_token');
+}
 if(!currentUserId||!currentUserName){window.location.href='./index.html';throw new Error('No identity locked');}
 if(currentUserRole!=='Manager'){window.location.href='./index.html';throw new Error('Manager calendar — managers only');}
 
@@ -273,7 +283,12 @@ function timeoutPromise(ms,msg){
 }
 function fetchJson(url,ms){
   return Promise.race([
-    fetch(url,{cache:'no-store'}).then(function(res){
+    fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+currentSessionToken}}).then(function(res){
+      if(res.status===401||res.status===403){
+        clearActiveSession();
+        window.location.href='./index.html';
+        throw new Error('Session invalid');
+      }
       return res.text().then(function(text){
         var data={};
         try{data=text?JSON.parse(text):{};}catch(e){throw new Error('Invalid JSON from '+url+': '+text.slice(0,200));}
@@ -286,6 +301,8 @@ function fetchJson(url,ms){
 }
 
 async function loadUsersBestEffort(){
+  usersByRecordId={};
+  activeRepRoster=[];
   try{
     var d=await fetchJson(WORKER+'/get-users',4000);
     (d.records||[]).forEach(function(x){
@@ -294,6 +311,9 @@ async function loadUsersBestEffort(){
         name:f['Display Name']||f['User ID']||x.id,
         userId:f['User ID']||''
       };
+      if(f['Active?']!==false && f['Role']!=='Manager'){
+        activeRepRoster.push({key:f['User ID']||x.id, name:f['Display Name']||f['User ID']||x.id});
+      }
     });
   }catch(e){}
 }
@@ -335,11 +355,7 @@ async function loadCalendar(){
 function buildRepFilterOptions(){
   var sel=document.getElementById('repFilterSel');
   var reps={};
-  allEvents.forEach(function(e){
-    var f=e.fields;
-    var k=f['Rep Key'];
-    if(k)reps[k]=f['Rep Name'];
-  });
+  activeRepRoster.forEach(function(r){reps[r.key]=r.name;});
   var keep=selectedRepFilter;
   sel.innerHTML='<option value="">All reps</option>';
   Object.keys(reps).sort(function(a,b){return reps[a].localeCompare(reps[b]);}).forEach(function(k){
@@ -359,7 +375,7 @@ function applyRepFilterAndRender(){
     return String(getDueDate(a.fields||{})).localeCompare(String(getDueDate(b.fields||{})));
   });
   document.getElementById('repName').textContent=selectedRepFilter
-    ? (events[0]?events[0].fields['Rep Name']:'Selected rep')
+    ? ((activeRepRoster.find(function(r){return r.key===selectedRepFilter;})||{}).name||'Selected rep')
     : 'All reps';
   render();
 }
@@ -554,10 +570,27 @@ document.addEventListener('DOMContentLoaded',function(){
     applyRepFilterAndRender();
   });
 
-  loadCalendar();
+  validateSessionThenLoad();
 });
+
+async function validateSessionThenLoad(){
+  try{
+    var res=await fetch(WORKER+'/validate-session',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    var data=await res.json();
+    if(!res.ok||data.valid!==true||data.role!=='Manager'){
+      clearActiveSession();
+      window.location.href='./index.html';
+      return;
+    }
+  }catch(e){
+    clearActiveSession();
+    window.location.href='./index.html';
+    return;
+  }
+  loadCalendar();
+}
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 (function(){
   var btn=document.createElement('button');
