@@ -241,6 +241,7 @@ territorySelect.addEventListener('change',function(){
   }
   if(this.value){accountBlock.style.opacity='1';accountBlock.style.pointerEvents='auto';hospitalInput.disabled=false;notListedCheck.disabled=false;hospitalInput.placeholder='Search '+this.value+' accounts...';}
   else{accountBlock.style.opacity='0.5';accountBlock.style.pointerEvents='none';hospitalInput.disabled=true;notListedCheck.disabled=true;hospitalInput.placeholder='Select a territory first';}
+  if(accountsLoaded)showList(hospitalInput.value);
   updateMicAvailability();
 });
 
@@ -265,15 +266,37 @@ function loadAccounts(){
       window.location.href='./index.html';
       return Promise.reject(new Error('session-expired'));
     }
+    if(!r.ok){return r.text().then(function(t){return Promise.reject(new Error('HTTP '+r.status+': '+t.slice(0,150)));});}
     return r.json();
   }).then(function(data){
     clearTimeout(timeoutId);var records=data.records||[];
     ACCOUNTS=records.map(function(r){return {id:r.id,name:(r.fields&&r.fields['Account Name'])||'',territory:normalizeTerritoryForDropdown((r.fields&&r.fields['Territory'])||'')};}).filter(function(a){return a.name;});
     applyPrefillFromURL();
-    accountsLoaded=true;if(document.activeElement===hospitalInput){showList(hospitalInput.value);}else{hospitalList.classList.remove('open');}
+    accountsLoaded=true;if(document.activeElement===hospitalInput){showList(hospitalInput.value);}else if(territorySelect.value){showList('');hospitalList.classList.remove('open');}else{hospitalList.classList.remove('open');}
+    // Visible, on-screen proof of exactly what the server returned — no
+    // devtools needed. Shows once per load, directly above the search box.
+    var diag=document.getElementById('acctLoadDiag');
+    if(!diag){diag=document.createElement('div');diag.id='acctLoadDiag';diag.style.cssText='font-size:11px;color:#8a9bb3;margin:4px 0;padding:4px 8px;background:#f4f8fc;border-radius:6px';hospitalInput.parentNode.insertBefore(diag,hospitalInput);}
+    diag.textContent='Loaded '+records.length+' account record(s) from server, '+ACCOUNTS.length+' with a usable name.';
+    // Answers the three specific questions directly: is a given account
+    // present in ACCOUNTS, what is its territory value exactly as parsed,
+    // and does that value match whatever territory is currently selected.
+    // Tap the line above to expand — no console needed.
+    diag.style.cursor='pointer';
+    diag.onclick=function(){
+      var selTerrNow=territorySelect.value.trim().toUpperCase();
+      var rows=ACCOUNTS.map(function(a){
+        var matches=a.territory.trim().toUpperCase()===selTerrNow;
+        return a.name+' | territory="'+a.territory+'" | matches selected ('+territorySelect.value+'): '+(matches?'YES':'no');
+      }).join('\n');
+      alert('Selected territory: "'+territorySelect.value+'"\n\n'+(rows||'ACCOUNTS is empty.'));
+    };
   }).catch(function(err){
     if(err&&err.message==='session-expired')return;
     clearTimeout(timeoutId);accountsLoaded=false;
+    var diag=document.getElementById('acctLoadDiag');
+    if(!diag){diag=document.createElement('div');diag.id='acctLoadDiag';diag.style.cssText='font-size:11px;color:#e0344a;margin:4px 0;padding:4px 8px;background:#ffe5e8;border-radius:6px';hospitalInput.parentNode.insertBefore(diag,hospitalInput);}
+    diag.textContent='Account fetch failed: '+err.message;
     hospitalList.innerHTML='<div class="hospital-option" style="color:#e0445b">Couldn\'t load accounts — tap to retry</div>';
     hospitalList.querySelector('.hospital-option').addEventListener('click',function(){loadAccounts();});
   });
