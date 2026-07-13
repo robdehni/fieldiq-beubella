@@ -8,20 +8,17 @@ var FIELDIQ_BRAND = {
 };
 
 function applyBrand() {
-  // Matches the MedTech reference exactly: company name in dark navy,
-  // "BY" in neutral gray, "FieldIQ" in the existing two-tone wordmark
-  // style (dark navy "Field" + blue "IQ") — all inline-styled so this
-  // renders identically on every page regardless of that page's own CSS,
-  // and touches nothing outside these two existing header elements.
-  var nameHtml =
-    '<span style="color:#0b1f3a">' + FIELDIQ_BRAND.name + '</span>' +
-    '<span style="color:#8a9bb3;font-weight:700"> BY </span>' +
-    '<span style="color:#0b1f3a">Field</span><span style="color:#2f8fff">IQ</span>';
+  // Company name: plain text, exactly as it was — inherits each page's
+  // own existing h1 styling (size, weight, color) untouched.
   document.querySelectorAll('[data-brand-name]').forEach(function(el) {
-    el.innerHTML = nameHtml;
+    el.textContent = FIELDIQ_BRAND.name;
   });
+  // Tagline: back to its original small, gray, letter-spaced style — the
+  // only change from before is "FieldIQ" within it now uses the familiar
+  // two-tone wordmark (dark "Field" + blue "IQ") instead of plain text.
+  // "BY" stays plain, inheriting the tagline element's own gray color.
   document.querySelectorAll('[data-brand-tagline]').forEach(function(el) {
-    el.textContent = 'TERRITORY INTELLIGENCE PLATFORM';
+    el.innerHTML = 'BY <span style="color:#0b1f3a">Field</span><span style="color:#2f8fff">IQ</span>';
   });
   // Browser tab title is left as the static value already baked into each
   // page's <title> tag at build time (already correct, e.g. "Beu Bella
