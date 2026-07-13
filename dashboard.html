@@ -541,7 +541,7 @@ async function ensureFullRecordsLoaded(){
       localStorage.removeItem('fieldiq_user_record_id');
       localStorage.removeItem('fieldiq_session_token');
       window.location.href='./index.html';
-      return;
+      return '__SESSION_REDIRECT__';
     }
     var data=await res.json();
     if(!res.ok)throw new Error(JSON.stringify(data));
@@ -549,7 +549,7 @@ async function ensureFullRecordsLoaded(){
     allRecordsRaw.forEach(function(r){r._vDate=r.fields['Visit Date']?new Date(r.fields['Visit Date']):null;});
     allRecordsRawLoaded=true;
   })();
-  try{await _fullRecordsLoadPromise;}finally{_fullRecordsLoadPromise=null;}
+  try{return await _fullRecordsLoadPromise;}finally{_fullRecordsLoadPromise=null;}
 }
 function getFilteredRecords(){
   var rep=document.getElementById('filterRep').value;var terr=document.getElementById('filterTerritory').value;var period=document.getElementById('filterDate').value;var priority=document.getElementById('filterPriority').value;
@@ -565,7 +565,7 @@ function getFilteredRecords(){
   });
 }
 function csvEscape(val){val=(val===null||val===undefined)?'':String(val);if(val.indexOf('"')>-1||val.indexOf(',')>-1||val.indexOf('\n')>-1){val='"'+val.replace(/"/g,'""')+'"';}return val;}
-async function exportFilteredCSV(){if(!allRecordsRawLoaded){try{await ensureFullRecordsLoaded();}catch(err){alert('Failed to load full visit history: '+err.message);return;}}var records=getFilteredRecords();if(!records.length){alert('No visits match the current filters — nothing to export.');return;}var headers=['Account','Territory','Date','Rep','Priority','Outcome'];var rows=[headers.join(',')];records.forEach(function(r){var f=r.fields;var row=[f['Customer Name']||'',f['Territory']||'',f['Visit Date']||'',f['User Name']||'',f['Priority']||'',f['Outcome']||''].map(csvEscape);rows.push(row.join(','));});var csvContent=rows.join('\n');var blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});var url=URL.createObjectURL(blob);var a=document.createElement('a');var today=new Date().toISOString().slice(0,10);a.href=url;a.download='FieldIQ-Visits-'+today+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
+async function exportFilteredCSV(){if(!allRecordsRawLoaded){try{var _r=await ensureFullRecordsLoaded();if(_r==='__SESSION_REDIRECT__')return;}catch(err){alert('Failed to load full visit history: '+err.message);return;}}var records=getFilteredRecords();if(!records.length){alert('No visits match the current filters — nothing to export.');return;}var headers=['Account','Territory','Date','Rep','Priority','Outcome'];var rows=[headers.join(',')];records.forEach(function(r){var f=r.fields;var row=[f['Customer Name']||'',f['Territory']||'',f['Visit Date']||'',f['User Name']||'',f['Priority']||'',f['Outcome']||''].map(csvEscape);rows.push(row.join(','));});var csvContent=rows.join('\n');var blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});var url=URL.createObjectURL(blob);var a=document.createElement('a');var today=new Date().toISOString().slice(0,10);a.href=url;a.download='FieldIQ-Visits-'+today+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
 // Priority Review's "hide once reviewed" logic previously required
 // r.fields['Reviewed'] to be the exact JS boolean true. If Airtable ever
 // returns this field as a string, number, or differently-cased value, that
@@ -601,7 +601,7 @@ function getReportRecords(days){
   });
 }
 async function buildRepReviewReport(){
-  if(!allRecordsRawLoaded){try{await ensureFullRecordsLoaded();}catch(err){alert('Failed to load full visit history: '+err.message);return;}}
+  if(!allRecordsRawLoaded){try{var _r=await ensureFullRecordsLoaded();if(_r==='__SESSION_REDIRECT__')return;}catch(err){alert('Failed to load full visit history: '+err.message);return;}}
   var days=reportPeriodDays;var endDate=new Date();var startDate=new Date(endDate.getTime()-days*24*60*60*1000);var records=getReportRecords(days);
   var rep=document.getElementById('filterRep').value||'All Reps';var terr=document.getElementById('filterTerritory').value||'All Territories';
   var periodLabel=REPORT_PERIOD_LABELS[days]||(days+' Days');var startLabel=formatDate(startDate);var endLabel=formatDate(endDate);var generated=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
@@ -763,25 +763,14 @@ async function loadDashboard(){
     var agg=await res.json();if(!res.ok)throw new Error(JSON.stringify(agg));
     populateRepFilterFromRoster();
     document.getElementById('filterBar').style.display='block';
-    var _returnParams=new URLSearchParams(window.location.search);
-    var _hasReturnContext=!!(_returnParams.get('rep')||_returnParams.get('territory')||_returnParams.get('priority')||_returnParams.get('period'));
-    if(!_hasReturnContext){
-      // No return context — a fresh, direct visit. Render immediately.
-      renderDashboardSummary(agg);
-    }
-    // With return context, the render above is skipped: restoreDashboardContext()
-    // below performs the only render, using the correctly-restored filter
-    // values from the start. Rendering unfiltered first and correcting it
-    // moments later (once restoreDashboardContext()'s own fetch resolves)
-    // would briefly expose clickable Territory/Rep links built from an
-    // empty filter state.
-    await restoreDashboardContext();
-    await loadWatchlist({
-      rep:document.getElementById('filterRep').value,
-      territory:document.getElementById('filterTerritory').value,
-      priority:document.getElementById('filterPriority').value,
-      period:document.getElementById('filterDate').value
-    });
+    // Always render the complete, unfiltered dashboard on open — no
+    // automatic restoration of a prior drill-down's filter context from
+    // URL parameters. Returning from Visit History, a Management Radar
+    // card, or any other territory/rep-scoped link now shows the full
+    // dashboard, not a permanently narrowed one. A manager can still
+    // apply a filter manually via the filter bar after landing.
+    renderDashboardSummary(agg);
+    await loadWatchlist();
     scrollToRestoredRadarCard();
     scrollToRestoredWatchlistCard();
     scrollToRestoredNewAccountCard();
@@ -804,7 +793,7 @@ async function loadDashboard(){
 // and AI never adds or removes watched accounts.
 async function loadWatchlist(filters){
   var _wlCtrl=new AbortController();
-  var _wlTimer=setTimeout(function(){_wlCtrl.abort();},8000);
+  var _wlTimer=setTimeout(function(){_wlCtrl.abort();},25000);
   try{
     var q=new URLSearchParams();
     if(filters){
@@ -814,8 +803,17 @@ async function loadWatchlist(filters){
       if(filters.period)q.set('period',filters.period);
     }
     var qs=q.toString();
-    var res=await fetch(WORKER_URL+'/get-watchlist'+(qs?('?'+qs):''),{signal:_wlCtrl.signal});
+    var res=await fetch(WORKER_URL+'/get-watchlist'+(qs?('?'+qs):''),{signal:_wlCtrl.signal,headers:{'Authorization':'Bearer '+currentSessionToken}});
     clearTimeout(_wlTimer);
+    if(res.status===401||res.status===403){
+      localStorage.removeItem('fieldiq_user_id');
+      localStorage.removeItem('fieldiq_user_name');
+      localStorage.removeItem('fieldiq_user_role');
+      localStorage.removeItem('fieldiq_user_record_id');
+      localStorage.removeItem('fieldiq_session_token');
+      window.location.href='./index.html';
+      return;
+    }
     var data=await res.json();
     if(!res.ok)throw new Error(data.error||'Could not load watchlist');
     renderWatchlistSection(data.records||[]);
@@ -860,7 +858,7 @@ async function markPendingReviewed(recordId,btnEl){
     if(_countEl){var n=parseInt(_countEl.textContent,10);if(!isNaN(n)&&n>0)_countEl.textContent=n-1;}
   }
   try{
-    var res=await fetch(WORKER_URL+'/update-visit',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:recordId,pendingReview:false})});
+    var res=await fetch(WORKER_URL+'/update-visit',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({recordId:recordId,pendingReview:false})});
     if(!res.ok){
       if(_removedRec){
         lastNewAccountsFeed[_removedIdx].fields['Pending Review']=true;
