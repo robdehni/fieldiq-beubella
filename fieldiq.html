@@ -76,6 +76,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .ask-sources{margin-top:12px;padding-top:12px;border-top:1px solid #d3e6ff}
 .ask-sources-label{font-size:9.5px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
 .ask-sources-row{display:flex;flex-direction:column;gap:6px}
+.ask-sources-toggle{background:none;border:1px dashed #cfe3ff;border-radius:8px;color:#1f6fe0;font-size:12px;font-weight:700;padding:8px 10px;cursor:pointer;text-align:center}
 .ask-source-btn{display:block;font-size:11.5px;font-weight:700;padding:8px 12px;border-radius:8px;text-decoration:none;background:#fff;border:1px solid #cfe4ff;color:#2f6fd8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ask-source-btn:hover{background:#eef6ff;border-color:#2f8fff}
 .ask-source-btn.visit{border-left:3px solid #2f8fff}
@@ -169,6 +170,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     <a href="./dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a href="./fieldiq-operations.html" class="sidebar-link"><i data-lucide="activity"></i> Operations</a>
     <a href="./fieldiq-actions.html" class="sidebar-link"><i data-lucide="check-square"></i> Open Actions</a>
+    <a href="./fieldiq-manager-calendar.html" class="sidebar-link"><i data-lucide="calendar-days"></i> Manager Calendar</a>
     <a href="./fieldiq-accounts.html" class="sidebar-link"><i data-lucide="building-2"></i> Account Directory</a>
 
     <div class="sidebar-group-label">Intelligence</div>
@@ -206,6 +208,21 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
       <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">New</div></div>
     </div>
 
+    <div class="primary-actions">
+      <a class="primary-tile primary" href="./dashboard.html">
+        <div class="primary-tile-icon"><i data-lucide="layout-dashboard"></i></div>
+        <div class="primary-tile-label">Dashboard</div>
+      </a>
+      <a class="primary-tile" href="./fieldiq-operations.html">
+        <div class="primary-tile-icon"><i data-lucide="activity"></i></div>
+        <div class="primary-tile-label">Operations</div>
+      </a>
+      <a class="primary-tile" href="./fieldiq-log-visit.html">
+        <div class="primary-tile-icon"><i data-lucide="mic"></i></div>
+        <div class="primary-tile-label">Log Visit</div>
+      </a>
+    </div>
+
     <div class="attention-panel" id="attentionPanel">
       <div class="attention-panel-head" id="attentionPanelHead">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -231,21 +248,6 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
         <button type="button" class="ask-chip" data-question="Who needs coaching or recognition?">Who needs coaching or recognition?</button>
       </div>
       <div id="askAnswerArea"></div>
-    </div>
-
-    <div class="primary-actions">
-      <a class="primary-tile primary" href="./dashboard.html">
-        <div class="primary-tile-icon"><i data-lucide="layout-dashboard"></i></div>
-        <div class="primary-tile-label">Dashboard</div>
-      </a>
-      <a class="primary-tile" href="./fieldiq-operations.html">
-        <div class="primary-tile-icon"><i data-lucide="activity"></i></div>
-        <div class="primary-tile-label">Operations</div>
-      </a>
-      <a class="primary-tile" href="./fieldiq-log-visit.html">
-        <div class="primary-tile-icon"><i data-lucide="mic"></i></div>
-        <div class="primary-tile-label">Log Visit</div>
-      </a>
     </div>
 
     <button type="button" class="more-toggle" id="moreToggle">
@@ -438,14 +440,21 @@ var MANAGER_BRIEFING_QUESTION = "Give me a short daily briefing: top priorities 
 function renderSourcesHtml(sources){
   if (!sources || !sources.length) return '';
   var typeFallback = { visit: 'Open Visit', action: 'Open Action', account: 'View Account' };
-  var html = '<div class="ask-sources"><div class="ask-sources-label">Sources</div><div class="ask-sources-row">';
-  sources.forEach(function(s){
-    // The visible button text IS the specific label ("MediClinic — High
-    // Priority visit"), not a generic type name — a row of identical
-    // "Open Visit" buttons is meaningless on a phone with no hover.
+  function sourceBtn(s){
     var displayText = s.label || typeFallback[s.type] || 'Open';
-    html += '<a class="ask-source-btn ' + escapeHtmlHome(s.type || '') + '" href="' + escapeHtmlHome(s.url) + '">' + escapeHtmlHome(displayText) + '</a>';
-  });
+    return '<a class="ask-source-btn ' + escapeHtmlHome(s.type || '') + '" href="' + escapeHtmlHome(s.url) + '">' + escapeHtmlHome(displayText) + '</a>';
+  }
+  var visible = sources.slice(0, 5);
+  var rest = sources.slice(5);
+  var html = '<div class="ask-sources"><div class="ask-sources-label">Sources</div><div class="ask-sources-row">';
+  visible.forEach(function(s){ html += sourceBtn(s); });
+  if (rest.length) {
+    var restId = 'srcRest' + Math.random().toString(36).slice(2, 8);
+    html += '<div id="' + restId + '" style="display:none">';
+    rest.forEach(function(s){ html += sourceBtn(s); });
+    html += '</div>';
+    html += '<button type="button" class="ask-sources-toggle" onclick="var r=document.getElementById(\'' + restId + '\');var open=r.style.display!==\'none\';r.style.display=open?\'none\':\'block\';this.textContent=open?\'Show all ' + sources.length + ' sources\':\'Show fewer\';">Show all ' + sources.length + ' sources</button>';
+  }
   html += '</div></div>';
   return html;
 }
