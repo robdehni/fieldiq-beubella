@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FieldIQ — Quick Start Guide</title>
+<title>Beu Bella Cosmetics — Quick Start Guide</title>
+<script src="./brand-config.js" defer></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:16px;padding-bottom:40px}
+body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:16px;padding-bottom:40px}
 
 /* ── Brand block — matches fieldiq.html reference ── */
 .header{margin-bottom:20px;padding-top:8px}
@@ -34,15 +35,15 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .step{font-size:13px;color:#5b6b85;line-height:1.7;padding:6px 0;border-bottom:1px solid #eef3fa}
 .step:last-child{border-bottom:none;padding-bottom:0}
 .step strong{color:#0b1f3a}
-.tip{background:#eafaf0;border:1px solid #b6e8c8;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#1f8a52;line-height:1.6}
-.warning{background:#fdecef;border:1px solid #f6c4cc;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#c43048;line-height:1.6}
+.tip{background:#e3f8ea;border:1px solid #b6e8c8;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#1fa861;line-height:1.6}
+.warning{background:#ffe5e8;border:1px solid #f6c4cc;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#e0344a;line-height:1.6}
 .info{background:#eaf3ff;border:1px solid #cfe3ff;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#1f6fe0;line-height:1.6}
 .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
 .badge-blue{background:#2f8fff22;color:#1f6fe0;border:1px solid #2f8fff33}
-.badge-green{background:#1f8a5222;color:#1f8a52;border:1px solid #1f8a5233}
-.badge-orange{background:#b9711f22;color:#b9711f;border:1px solid #b9711f33}
-.badge-red{background:#c4304822;color:#c43048;border:1px solid #c4304833}
-.badge-manager{background:#d9a02122;color:#a06a00;border:1px solid #d9a02133}
+.badge-green{background:#e3f8ea;color:#1fa861;border:1px solid #1fa86133}
+.badge-orange{background:#fff3e0;color:#d98a1c;border:1px solid #ffe5b3}
+.badge-red{background:#ffe5e8;color:#e0344a;border:1px solid #e0344a33}
+.badge-manager{background:#fff3e0;color:#d98a1c;border:1px solid #ffe5b3}
 .divider-label{font-size:10px;color:#aab8cc;text-transform:uppercase;letter-spacing:1px;font-weight:800;margin:20px 0 8px;padding-left:2px}
 .footer{text-align:center;color:#aab8cc;font-size:11px;margin-top:24px;font-weight:600}
 </style>
@@ -53,8 +54,8 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   <div class="brand">
     <span class="brand-cloud">☁️</span>
     <div class="brand-text">
-      <h1>Field<span>IQ</span></h1>
-      <p>Territory Intelligence Platform</p>
+      <h1 data-brand-name>Beu Bella Cosmetics</h1>
+      <p data-brand-tagline>by FieldIQ</p>
     </div>
   </div>
   <div class="page-subtitle"><i data-lucide="book-open"></i> Quick Start Guide</div>
@@ -185,7 +186,7 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 
 <div class="divider-label">For Managers</div>
 
-<div class="section" style="border-color:#f3e3c4;background:#fdf8ee">
+<div class="section" style="border-color:#ffe5b3;background:#fff3e0">
   <div class="section-title"><span class="badge badge-manager" style="margin-right:8px">MANAGER</span>Operations — Your Morning Check-In</div>
   <div class="step">Operations is the first place to look every day. It has two views:</div>
   <div class="step"><strong>Today</strong> — what's been logged today, who's been active, and anything that needs a closer look.</div>
@@ -199,21 +200,21 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
      cards with status badges (Active / Behind / Needs Attention) — this is the
      clearest way to show a new manager what "healthy" vs "needs a look" looks like. -->
 
-<div class="section" style="border-color:#f3e3c4;background:#fdf8ee">
+<div class="section" style="border-color:#ffe5b3;background:#fff3e0">
   <div class="section-title"><span class="badge badge-manager" style="margin-right:8px">MANAGER</span>Manager Calendar</div>
   <div class="step">See every rep's upcoming follow-ups in one shared calendar.</div>
   <div class="step">Filter to a single rep if you only want to see their schedule.</div>
   <div class="step">This is a view, not an editor — only the rep can reschedule or cancel their own items. You'll always know what's planned without needing to touch anyone's calendar.</div>
 </div>
 
-<div class="section" style="border-color:#f3e3c4;background:#fdf8ee">
+<div class="section" style="border-color:#ffe5b3;background:#fff3e0">
   <div class="section-title"><span class="badge badge-manager" style="margin-right:8px">MANAGER</span>Open Actions</div>
   <div class="step">A live list of everything your team has committed to — quotations to send, samples to deliver, follow-ups due.</div>
   <div class="step">Filter by rep, or by status — open, overdue, due today, completed.</div>
   <div class="step">Send a reminder to a rep directly from here if something's overdue.</div>
 </div>
 
-<div class="section" style="border-color:#f3e3c4;background:#fdf8ee">
+<div class="section" style="border-color:#ffe5b3;background:#fff3e0">
   <div class="section-title"><span class="badge badge-manager" style="margin-right:8px">MANAGER</span>Account Directory</div>
   <div class="step">Every account across the whole team, grouped by territory, with full visit history at a glance.</div>
   <div class="step">Open any account to see who's visited, what was discussed, and what's outstanding — useful if a rep is away or an account changes hands.</div>
