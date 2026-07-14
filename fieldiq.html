@@ -53,7 +53,8 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 
 .ask-card{background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
 .ask-card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.ask-card-icon{font-size:20px;line-height:1}
+.ask-card-icon{font-size:20px;line-height:1;display:inline-flex}
+.ask-card-icon [data-lucide]{width:22px;height:22px;stroke-width:1.9;color:#2f8fff}
 .ask-card-title{font-size:13.5px;font-weight:800;color:#0b1f3a}
 .ask-card-sub{font-size:11px;color:#8a9bb3;font-weight:600;margin-top:1px}
 .ask-suggested-row{display:flex;flex-direction:column;gap:8px}
@@ -152,7 +153,11 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   .command-strip{max-width:640px}
   .attention-panel{max-width:640px}
   .ask-card{max-width:640px}
-  .primary-actions{max-width:640px;grid-template-columns:repeat(3,180px)}
+  .primary-actions{max-width:220px;grid-template-columns:1fr}
+  .desktop-hide{display:none}
+  .lv-hero{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
+  .lv-hero .primary-tile-icon{background:#fff}
+  .lv-hero .primary-tile-label{color:#fff}
   .more-toggle,.more-tools-collapsible{display:none}
 }
 </style>
@@ -178,7 +183,6 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     <a href="./fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map</a>
 
     <div class="sidebar-group-label">Field &amp; Help</div>
-    <a href="./fieldiq-log-visit.html" class="sidebar-link"><i data-lucide="mic"></i> Log Visit</a>
     <a href="./fieldiq-visit-history.html?source=manager-home" class="sidebar-link"><i data-lucide="clock"></i> Visit History</a>
     <a href="./fieldiq-guide.html" class="sidebar-link"><i data-lucide="book-open"></i> Quick Start Guide</a>
   </nav>
@@ -209,15 +213,15 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     </div>
 
     <div class="primary-actions">
-      <a class="primary-tile primary" href="./dashboard.html">
+      <a class="primary-tile primary desktop-hide" href="./dashboard.html">
         <div class="primary-tile-icon"><i data-lucide="layout-dashboard"></i></div>
         <div class="primary-tile-label">Dashboard</div>
       </a>
-      <a class="primary-tile" href="./fieldiq-operations.html">
+      <a class="primary-tile desktop-hide" href="./fieldiq-operations.html">
         <div class="primary-tile-icon"><i data-lucide="activity"></i></div>
         <div class="primary-tile-label">Operations</div>
       </a>
-      <a class="primary-tile" href="./fieldiq-log-visit.html">
+      <a class="primary-tile lv-hero" href="./fieldiq-log-visit.html">
         <div class="primary-tile-icon"><i data-lucide="mic"></i></div>
         <div class="primary-tile-label">Log Visit</div>
       </a>
@@ -233,7 +237,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 
     <div class="ask-card" id="askCard">
       <div class="ask-card-header">
-        <span class="ask-card-icon">🤖</span>
+        <span class="ask-card-icon"><i data-lucide="sparkles"></i></span>
         <div>
           <div class="ask-card-title">Ask FieldIQ</div>
           <div class="ask-card-sub">Your daily briefing, generated automatically</div>
