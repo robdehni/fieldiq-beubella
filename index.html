@@ -146,6 +146,7 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .rep-section:last-of-type{margin-bottom:14px}
 .rep-section-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#0b1f3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
 .rep-section-icon{font-size:13px}
+.rep-section-icon [data-lucide]{width:15px;height:15px;stroke-width:2;color:#2f8fff;vertical-align:-3px}
 .rep-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fbff;border:1px solid #edf2f8;border-radius:10px;padding:9px 12px;margin-bottom:5px;text-decoration:none}
 .rep-item:last-child{margin-bottom:0}
 .rep-item-link{cursor:pointer}
@@ -547,6 +548,15 @@ async function viewAction(notifId,actionId){
 // new /get-rep-briefing endpoint only, never writes anything. Every item
 // links straight to the existing Open Actions page — no new destination
 // page, no duplicated logic for showing/completing/dismissing an action.
+// Maps the emoji characters returned by the Worker's briefing sections to
+// the equivalent lucide line-icon name already used throughout the rest
+// of the app — same mapping as fieldiq.html's manager briefing, since
+// both draw from the same underlying icon set. The Worker's response
+// data itself is untouched; only how sec.icon is rendered here changes.
+function repIconName(emoji){
+  var map = {'\ud83c\udfaf':'target','\ud83d\udcc5':'calendar','\u2705':'check-circle','\u26a0\ufe0f':'alert-triangle','\ud83d\udc65':'users','\ud83d\udccd':'map-pin'};
+  return map[emoji] || 'circle';
+}
 function renderRepBriefingContent(data){
   var html = '<div class="rep-greeting">' + escapeHtml(data.greeting || '') + '</div>';
   if (data.topLine) {
@@ -555,7 +565,7 @@ function renderRepBriefingContent(data){
   var sections = data.sections || [];
   sections.forEach(function(sec){
     html += '<div class="rep-section">';
-    html += '<div class="rep-section-title"><span class="rep-section-icon">' + escapeHtml(sec.icon || '') + '</span>' + escapeHtml(sec.title || '') + '</div>';
+    html += '<div class="rep-section-title"><span class="rep-section-icon"><i data-lucide="' + repIconName(sec.icon) + '"></i></span>' + escapeHtml(sec.title || '') + '</div>';
     (sec.items || []).forEach(function(item){
       var inner = '<div class="rep-item-text">' + escapeHtml(item.text || '') + '</div>' +
         (item.nav ? '<div class="rep-item-nav">' + escapeHtml(item.nav.label) + ' \u203a</div>' : '');
@@ -623,6 +633,7 @@ function loadRepBriefing(){
       if (!body) return;
       if (!result.ok || !result.data || !result.data.sections) { renderRepBriefingError(); return; }
       body.innerHTML = renderRepBriefingContent(result.data);
+      if (window.lucide) lucide.createIcons();
     })
     .catch(function(){ renderRepBriefingError(); });
 }
