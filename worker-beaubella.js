@@ -1,10 +1,9 @@
+
 // ============================================================
 // FIELDIQ — BEUBELLA PRODUCTION INSTANCE
 // Worker name (Cloudflare): fieldiq-beubella-proxy
-// Duplicated from the stable MedTech worker.js. Do NOT deploy
-// this file to fieldiq-proxy (MedTech). Do NOT deploy this file
-// until BASE_ID below has been replaced with the real BeuBella
-// Airtable Base ID and confirmed.
+// Strict parity rebuild from the live MedTech worker.js (fieldiq-proxy)
+// as source of truth. Do NOT deploy this file to fieldiq-proxy (MedTech).
 // ============================================================
 export default {
   async fetch(req, env, ctx) {
@@ -21,7 +20,6 @@ export default {
     const url = new URL(req.url);
     const cache = caches.default;
 
-    // BeuBella Airtable Base ID
     const BASE_ID = "appwHLTGnkS3uiywl";
     const OPEN_ACTIONS_TABLE = "tblH6hTkfUMB8KxXk";
     const NOTIFICATIONS_TABLE = "tblJ8B3jw5RM4zakV";
@@ -110,13 +108,17 @@ export default {
     // every territory-enforcing endpoint below, none of which previously
     // had access to either existing nested copy.
     function normalizeTerritoryShared(raw) {
-      let value = raw;
-      if (Array.isArray(value)) value = value.length ? value[0] : "";
-      const t = String(value || "").trim();
-      if (!t) return "";
-      if (/^rec[a-zA-Z0-9]{14,}$/.test(t)) return "";
+      var value = raw;
 
-      const tu = t.toUpperCase();
+      if (Array.isArray(value)) {
+        value = value.length ? value[0] : "";
+      }
+
+      var t = String(value || "").trim();
+      if (!t) return "";
+
+      var tu = t.toUpperCase();
+
       if (tu === "ABU DHABI") return "Abu Dhabi";
       if (tu === "DUBAI") return "Dubai";
       if (tu === "SHARJAH") return "Sharjah";
@@ -124,6 +126,7 @@ export default {
       if (tu === "UMM AL QUWAIN") return "Umm Al Quwain";
       if (tu === "RAS AL KHAIMAH") return "Ras Al Khaimah";
       if (tu === "FUJAIRAH") return "Fujairah";
+
       return t;
     }
 
@@ -435,7 +438,7 @@ export default {
 
       try {
         const fields = [
-          "Hospital Name","Visit Date","Territory","Visit Type","Rep Name","User ID",
+          "Customer Name","Visit Date","Territory","Visit Type","User Name","User ID",
           "AI Summary","Meeting Notes","Action Items","Outcome","Priority","Latitude",
           "Longitude","Accuracy","New Account","Pending Review","Reviewed","Account","Photo URLs",
           "Visit Thread ID"
@@ -444,7 +447,7 @@ export default {
         const formulaParts = [];
         if (filterByUser) formulaParts.push(`{User ID}="${safeFormula(filterByUser)}"`);
         if (territory)    formulaParts.push(`{Territory}="${safeFormula(territory)}"`);
-        if (rep)          formulaParts.push(`{Rep Name}="${safeFormula(rep)}"`);
+        if (rep)          formulaParts.push(`{User Name}="${safeFormula(rep)}"`);
         const combinedFormula = formulaParts.length === 0 ? null
           : formulaParts.length === 1 ? formulaParts[0]
           : `AND(${formulaParts.join(",")})`;
@@ -567,7 +570,7 @@ export default {
         // ---- end ported logic ----
 
         const fields = [
-          "Hospital Name", "Visit Date", "Territory", "Visit Type", "Rep Name",
+          "Customer Name", "Visit Date", "Territory", "Visit Type", "User Name",
           "AI Summary", "Meeting Notes", "Action Items", "Outcome", "Priority",
           "New Account", "Pending Review", "Reviewed"
         ];
@@ -593,7 +596,7 @@ export default {
         const filtered = allRecords.filter(r => {
           const f = r.fields || {};
           if (repFilter) {
-            let repName = (f["Rep Name"] || "").trim();
+            let repName = (f["User Name"] || "").trim();
             repName = repName.charAt(0).toUpperCase() + repName.slice(1).toLowerCase();
             if (repName !== repFilter) return false;
           }
@@ -637,7 +640,7 @@ export default {
             newAccountsFeed.push(r);
           }
 
-          let rep = f["Rep Name"] || "Unknown";
+          let rep = f["User Name"] || "Unknown";
           rep = rep.trim();
           rep = rep.charAt(0).toUpperCase() + rep.slice(1).toLowerCase();
           if (!reps[rep]) reps[rep] = { count: 0, lastVisit: null, sentiments: [] };
@@ -721,12 +724,12 @@ export default {
         const accounts = {};
         filtered.forEach(r => {
           const f = r.fields || {};
-          const key = String(f["Hospital Name"] || "Unknown").trim();
+          const key = String(f["Customer Name"] || "Unknown").trim();
           if (!accounts[key]) accounts[key] = { name: key, territory: f["Territory"] || "", visits: [], reps: {}, lastVisit: null, lastVisitRecord: null };
           const acc = accounts[key];
           acc.visits.push(r);
           if (!acc.territory && f["Territory"]) acc.territory = f["Territory"];
-          let arep = String(f["Rep Name"] || "Unknown").trim();
+          let arep = String(f["User Name"] || "Unknown").trim();
           arep = arep.charAt(0).toUpperCase() + arep.slice(1).toLowerCase();
           acc.reps[arep] = true;
           const avDate = f["Visit Date"] ? new Date(f["Visit Date"]) : null;
@@ -844,15 +847,13 @@ export default {
       const _authSession = await verifySession(_authToken, env.SESSION_SECRET);
       if (!_authSession) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
 
-      // Cache key includes the effective scope (role + territory), not just
-      // the bare URL — every caller hits the same literal /get-accounts
-      // URL, but a Manager and a rep in Territory A must never receive
-      // each other's cached response now that results are filtered
-      // per-caller. Without this, whichever response was cached first
-      // would silently leak to everyone else until the cache expired.
-      const _scopeKey = _authSession.role === "Manager" ? "manager" : ("rep-" + (_authSession.territory || "none"));
-      const _cacheReq = new Request(new URL("/get-accounts?_scope=" + encodeURIComponent(_scopeKey), req.url).toString());
-      const _hit = await cache.match(_cacheReq);
+      // Every authenticated caller — Manager, Trainer, or Sales Rep —
+      // receives the complete Accounts table. No role-based filtering, no
+      // per-scope cache key. Matches MedTech's proven behavior exactly.
+      // Territory selection is a client-side filter over this same full
+      // list (see fieldiq-log-visit.html), never a different server
+      // response depending on who's asking.
+      const _hit = await cache.match(req);
       if (_hit) return _hit;
       try {
         const fields = ["Account Name","Account ID","Territory","City"];
@@ -869,18 +870,8 @@ export default {
           offset = data.offset || null;
         } while (offset);
 
-        // Managers see every account. A rep sees only accounts whose
-        // Territory field matches their own verified session territory —
-        // enforced here, server-side, not left to the frontend to hide.
-        // An Accounts table with zero records simply produces an empty
-        // array either way; nothing here treats that as an error.
-        if (_authSession.role !== "Manager") {
-          const repTerritory = _authSession.territory || "";
-          allRecords = allRecords.filter(r => (r.fields && r.fields["Territory"]) === repTerritory);
-        }
-
         const _res = jsonCached({ records: allRecords }, 120);
-        ctx.waitUntil(cache.put(_cacheReq, _res.clone()));
+        ctx.waitUntil(cache.put(req, _res.clone()));
         return _res;
       } catch (err) { return json({ error: err.message }, 500); }
     }
@@ -1049,7 +1040,7 @@ export default {
         if (needsInference.length > 0) {
           const vParams = new URLSearchParams();
           vParams.append("pageSize", "100");
-          ["Hospital Name","Visit Date"].forEach(f => vParams.append("fields[]", f));
+          ["Customer Name","Visit Date"].forEach(f => vParams.append("fields[]", f));
           let visitsForInference = [], voffsetInf = null;
           do {
             if (voffsetInf) vParams.set("offset", voffsetInf);
@@ -1062,7 +1053,7 @@ export default {
 
           const visitsByHospital = new Map();
           visitsForInference.forEach(v => {
-            const hn = String((v.fields || {})["Hospital Name"] || "").trim().toLowerCase();
+            const hn = String((v.fields || {})["Customer Name"] || "").trim().toLowerCase();
             const vd = (v.fields || {})["Visit Date"];
             if (!hn || !vd) return;
             if (!visitsByHospital.has(hn)) visitsByHospital.set(hn, []);
@@ -1168,7 +1159,7 @@ export default {
     // manually-curated list, so this stays isolated and never adds weight
     // to the main dashboard aggregate's already-optimized load path.
     // Groups visits by the real Account linked-record field (not the
-    // free-text Hospital Name used elsewhere) since that is the reliable
+    // free-text Customer Name used elsewhere) since that is the reliable
     // key needed to cross-reference against the Accounts table's Watched
     // By field. Open Action counts are matched via Account Name text —
     // the same convention Management Radar already uses, not a new one.
@@ -1215,7 +1206,7 @@ export default {
 
         const visitParams = new URLSearchParams();
         visitParams.append("pageSize", "100");
-        ["Hospital Name","Account","Visit Date","Rep Name","Priority","Territory"].forEach(f => visitParams.append("fields[]", f));
+        ["Customer Name","Account","Visit Date","User Name","Priority","Territory"].forEach(f => visitParams.append("fields[]", f));
         let allVisits = [], voffset = null;
         do {
           if (voffset) visitParams.set("offset", voffset);
@@ -1265,7 +1256,7 @@ export default {
         const latestByAccount = {};
         allVisits.forEach(v => {
           const f = v.fields || {};
-          if (repFilter && String(f["Rep Name"] || "").trim() !== repFilter) return;
+          if (repFilter && String(f["User Name"] || "").trim() !== repFilter) return;
           if (territoryFilter && normalizeTerritoryWL(f["Territory"]) !== territoryFilter) return;
           if (priorityFilter && String(f["Priority"] || "") !== priorityFilter) return;
           if (periodRangeWL) {
@@ -1312,7 +1303,7 @@ export default {
               accountName,
               territory: acc.fields["Territory"] || "",
               lastVisit: latest ? latest.date.toISOString() : null,
-              lastRep: latest ? (latest.visit.fields["Rep Name"] || "") : "",
+              lastRep: latest ? (latest.visit.fields["User Name"] || "") : "",
               priority: latest ? (latest.visit.fields["Priority"] || "") : "",
               visitId: latest ? latest.visit.id : null,
               openActionCount: openCount
@@ -2367,7 +2358,7 @@ Keep the whole answer under 55 words.`;
         // caller — never client-claimed, never delegable to another rep
         // the way action assignment can be. Territory is deliberately NOT
         // overridden here yet; that inheritance is Phase 3.
-        visitData["Rep Name"] = _session.displayName;
+        visitData["User Name"] = _session.displayName;
         visitData["User ID"] = _session.userId;
         visitData["Display Name"] = _session.displayName;
         visitData["User Role"] = _session.role;
@@ -2494,7 +2485,14 @@ Keep the whole answer under 55 words.`;
           }
         }
 
-        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Accounts`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ fields: accountData }) });
+        const fieldsToWrite = Object.assign({}, accountData);
+        // Created By may be a system-managed Airtable field (populated
+        // automatically by Airtable itself); the API rejects direct writes
+        // to those. Never send it — it isn't required for anything
+        // downstream in this app.
+        delete fieldsToWrite["Created By"];
+
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Accounts`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ fields: fieldsToWrite }) });
         const data = await response.json();
         if (response.ok) {
           ctx.waitUntil(cache.delete(new Request(new URL("/get-accounts", req.url).toString())));
@@ -2725,7 +2723,7 @@ Keep the whole answer under 55 words.`;
             // structured field anywhere in this schema — it only ever
             // appears as prose a rep dictated. Same field-list-and-
             // pagination pattern already proven elsewhere in this file.
-            const visitFields = ["Hospital Name","Visit Date","Territory","Visit Type","Rep Name","Outcome","Priority","New Account","Pending Review","Reviewed","AI Summary","Meeting Notes"];
+            const visitFields = ["Customer Name","Visit Date","Territory","Visit Type","User Name","Outcome","Priority","New Account","Pending Review","Reviewed","AI Summary","Meeting Notes"];
             let allVisits = [], vOffset = null;
             do {
               const vParams = new URLSearchParams();
@@ -2796,7 +2794,7 @@ Keep the whole answer under 55 words.`;
               return false;
             }
             const repUserParams = new URLSearchParams();
-            repUserParams.append("filterByFormula", `{Role}="Sales Rep"`);
+            repUserParams.append("filterByFormula", `NOT({Role}="Manager")`);
             ["Display Name","Active?"].forEach(f => repUserParams.append("fields[]", f));
             let allSalesRepUsers = [], ruOffset = null;
             do {
@@ -2820,7 +2818,7 @@ Keep the whole answer under 55 words.`;
           function computeRepActivity(repUserRecord, allVisits, allOpenActions) {
             const repName = normalizeRepNameLens(repUserRecord.fields["Display Name"]);
             const repRecordId = repUserRecord.id;
-            const repVisits = allVisits.filter(v => normalizeRepNameLens(v.fields["Rep Name"]) === repName);
+            const repVisits = allVisits.filter(v => normalizeRepNameLens(v.fields["User Name"]) === repName);
             repVisits.sort((a, b) => {
               const ad = a.fields["Visit Date"] ? new Date(a.fields["Visit Date"]).getTime() : 0;
               const bd = b.fields["Visit Date"] ? new Date(b.fields["Visit Date"]).getTime() : 0;
@@ -2970,13 +2968,13 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
               repActivities.forEach(r => {
                 if (r.latestVisit) {
                   const f = r.latestVisit.fields;
-                  let detail = f["Hospital Name"] || "an account";
+                  let detail = f["Customer Name"] || "an account";
                   if (f["Outcome"]) detail += ", " + String(f["Outcome"]).toLowerCase() + " outcome";
                   if (f["Priority"] && f["Priority"] !== "Low") detail += ", " + f["Priority"] + " priority";
                   const recency = (r.daysSinceLastVisit === 0) ? "today" : (r.daysSinceLastVisit === 1 ? "yesterday" : r.daysSinceLastVisit + " days ago");
                   const actionNote = r.openActionCount > 0 ? " \u2014 " + r.openActionCount + " open action" + (r.openActionCount !== 1 ? "s" : "") : "";
                   lines.push(r.name + " \u2014 last visited " + detail + " (" + recency + ")" + actionNote + ".");
-                  addVisitSourceLens(sources, seen, r.latestVisit.id, r.name + " \u2014 " + (f["Hospital Name"] || "latest visit"));
+                  addVisitSourceLens(sources, seen, r.latestVisit.id, r.name + " \u2014 " + (f["Customer Name"] || "latest visit"));
                 } else {
                   lines.push(r.name + " \u2014 no visit activity recorded in the selected period.");
                 }
@@ -2994,16 +2992,32 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
               // by any lens before this pass.
               const needsSupport = [], visibilityGaps = [];
               const sources = []; const seen = new Set();
-              (dashboard.priorityReview.high || []).forEach(r => {
+              // Capped at the point of consumption — same reasoning and
+              // pattern already used by BLOCK_Q/OPP_Q elsewhere in this
+              // file. True counts (not just the capped slice) are kept
+              // and surfaced below so scale is never silently hidden from
+              // the model or the manager, only the raw list length is
+              // bounded.
+              const allHigh = dashboard.priorityReview.high || [];
+              const allMedium = dashboard.priorityReview.medium || [];
+              const highForDigest = allHigh.slice(0, 8);
+              const mediumForDigest = allMedium.slice(0, 5);
+              highForDigest.forEach(r => {
                 const f = r.fields;
-                needsSupport.push((f["Hospital Name"] || "Unknown account") + " \u2014 High Priority visit awaiting review.");
-                addVisitSourceLens(sources, seen, r.id, (f["Hospital Name"] || "Account") + " \u2014 High Priority visit");
+                needsSupport.push((f["Customer Name"] || "Unknown account") + " \u2014 High Priority visit awaiting review.");
+                addVisitSourceLens(sources, seen, r.id, (f["Customer Name"] || "Account") + " \u2014 High Priority visit");
               });
-              (dashboard.priorityReview.medium || []).forEach(r => {
+              if (allHigh.length > highForDigest.length) {
+                needsSupport.push((allHigh.length - highForDigest.length) + " additional High Priority visit" + ((allHigh.length - highForDigest.length) !== 1 ? "s" : "") + " awaiting review, not itemized here.");
+              }
+              mediumForDigest.forEach(r => {
                 const f = r.fields;
-                needsSupport.push((f["Hospital Name"] || "Unknown account") + " \u2014 Medium Priority visit awaiting review.");
-                addVisitSourceLens(sources, seen, r.id, (f["Hospital Name"] || "Account") + " \u2014 Medium Priority visit");
+                needsSupport.push((f["Customer Name"] || "Unknown account") + " \u2014 Medium Priority visit awaiting review.");
+                addVisitSourceLens(sources, seen, r.id, (f["Customer Name"] || "Account") + " \u2014 Medium Priority visit");
               });
+              if (allMedium.length > mediumForDigest.length) {
+                needsSupport.push((allMedium.length - mediumForDigest.length) + " additional Medium Priority visit" + ((allMedium.length - mediumForDigest.length) !== 1 ? "s" : "") + " awaiting review, not itemized here.");
+              }
               unacknowledgedNotes.slice(0, 3).forEach(n => {
                 const linkedAction = actionsById[n.fields["Action ID"]];
                 const acct = linkedAction ? (linkedAction.fields["Account Name"] || "Unknown account") : "Unknown account";
@@ -3026,8 +3040,8 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
                 if (gapCount >= 3) return;
                 const hasAction = allOpenActions.some(a => (a.fields["Source Visit"] || []).includes(v.id));
                 if (!hasAction) {
-                  visibilityGaps.push((v.fields["Hospital Name"] || "Unknown account") + " \u2014 needs review, but the system does not record whether pricing, procurement, or customer approval is the cause.");
-                  addVisitSourceLens(sources, seen, v.id, (v.fields["Hospital Name"] || "Account") + " \u2014 needs follow-up check");
+                  visibilityGaps.push((v.fields["Customer Name"] || "Unknown account") + " \u2014 needs review, but the system does not record whether pricing, procurement, or customer approval is the cause.");
+                  addVisitSourceLens(sources, seen, v.id, (v.fields["Customer Name"] || "Account") + " \u2014 needs follow-up check");
                   gapCount++;
                 }
               });
@@ -3054,7 +3068,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
               const overdueActions = allOpenActions.filter(a => a.fields["Due Date"] && String(a.fields["Due Date"]).slice(0, 10) < todayStr);
               const itemsToClassify = [];
               overdueActions.slice(0, 4).forEach(a => itemsToClassify.push({ id: a.id, type: "action", account: a.fields["Account Name"] || "Unknown account", text: a.fields["Action Text"] || "" }));
-              (dashboard.priorityReview.high || []).slice(0, 3).forEach(v => itemsToClassify.push({ id: v.id, type: "visit", account: v.fields["Hospital Name"] || "Unknown account", text: v.fields["AI Summary"] || v.fields["Meeting Notes"] || "" }));
+              (dashboard.priorityReview.high || []).slice(0, 3).forEach(v => itemsToClassify.push({ id: v.id, type: "visit", account: v.fields["Customer Name"] || "Unknown account", text: v.fields["AI Summary"] || v.fields["Meeting Notes"] || "" }));
               unacknowledgedNotes.slice(0, 3).forEach(n => {
                 const linkedAction = actionsById[n.fields["Action ID"]];
                 itemsToClassify.push({ id: n.fields["Action ID"], type: "note", account: linkedAction ? (linkedAction.fields["Account Name"] || "Unknown account") : "Unknown account", text: n.fields["Notes"] || "" });
@@ -3083,8 +3097,8 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
                 if (noActionCount >= 3) return;
                 const hasAction = allOpenActions.some(a => (a.fields["Source Visit"] || []).includes(v.id));
                 if (!hasAction) {
-                  executionGaps.push((v.fields["Hospital Name"] || "Unknown account") + " \u2014 no next action recorded after this visit.");
-                  addVisitSourceLens(sources, seen, v.id, (v.fields["Hospital Name"] || "Account") + " \u2014 no next action");
+                  executionGaps.push((v.fields["Customer Name"] || "Unknown account") + " \u2014 no next action recorded after this visit.");
+                  addVisitSourceLens(sources, seen, v.id, (v.fields["Customer Name"] || "Account") + " \u2014 no next action");
                   noActionCount++;
                 }
               });
@@ -3117,14 +3131,14 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
                 if (count >= 4) return;
                 const hasAction = allOpenActions.some(a => (a.fields["Source Visit"] || []).includes(v.id));
                 if (!hasAction) {
-                  opportunities.push((v.fields["Hospital Name"] || "Unknown account") + " \u2014 positive visit, but the next action is missing.");
-                  addVisitSourceLens(sources, seen, v.id, (v.fields["Hospital Name"] || "Account") + " \u2014 positive, no next step");
+                  opportunities.push((v.fields["Customer Name"] || "Unknown account") + " \u2014 positive visit, but the next action is missing.");
+                  addVisitSourceLens(sources, seen, v.id, (v.fields["Customer Name"] || "Account") + " \u2014 positive, no next step");
                   count++;
                 }
               });
               const accountStats = {};
               allVisits.forEach(v => {
-                const name = v.fields["Hospital Name"];
+                const name = v.fields["Customer Name"];
                 if (!name) return;
                 if (!accountStats[name]) accountStats[name] = { count: 0, positive: 0 };
                 accountStats[name].count++;
@@ -3134,7 +3148,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
                 opportunities.push(name + " \u2014 high engagement, " + accountStats[name].count + " visits with positive outcomes recorded.");
               });
               (dashboard.newAccountsFeed || []).slice(0, 2).forEach(r => {
-                opportunities.push((r.fields["Hospital Name"] || "Unknown account") + " \u2014 new account pending review.");
+                opportunities.push((r.fields["Customer Name"] || "Unknown account") + " \u2014 new account pending review.");
               });
               const deterministicAnswer = opportunities.length
                 ? "Opportunities to push\n" + opportunities.slice(0, 6).map(l => "\u2022 " + l).join("\n")
@@ -3198,7 +3212,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
 
         const newAccountsTop = (dashboard.newAccountsFeed || []).slice(0, 5);
         if (newAccountsTop.length) {
-          lines.push("NEW ACCOUNTS PENDING REVIEW: " + newAccountsTop.map(r => (r.fields && r.fields["Hospital Name"]) || "Unknown").join(", "));
+          lines.push("NEW ACCOUNTS PENDING REVIEW: " + newAccountsTop.map(r => (r.fields && r.fields["Customer Name"]) || "Unknown").join(", "));
         }
 
         const territoriesTop = (dashboard.territories || []).slice(0, 6);
@@ -3257,11 +3271,11 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
           if (acc.followUpOverdueActionId) addActionSource(acc.followUpOverdueActionId, acc.name + " — overdue follow-up");
           if (acc.followUpDueTodayActionId) addActionSource(acc.followUpDueTodayActionId, acc.name + " — follow-up due today");
         });
-        ((dashboard.priorityReview && dashboard.priorityReview.high) || []).forEach(r => {
-          if (r.id) addVisitSource(r.id, (r.fields && r.fields["Hospital Name"] || "Unknown account") + " — unreviewed High Priority visit");
+        ((dashboard.priorityReview && dashboard.priorityReview.high) || []).slice(0, 8).forEach(r => {
+          if (r.id) addVisitSource(r.id, (r.fields && r.fields["Customer Name"] || "Unknown account") + " — unreviewed High Priority visit");
         });
-        ((dashboard.priorityReview && dashboard.priorityReview.medium) || []).forEach(r => {
-          if (r.id) addVisitSource(r.id, (r.fields && r.fields["Hospital Name"] || "Unknown account") + " — unreviewed Medium Priority visit");
+        ((dashboard.priorityReview && dashboard.priorityReview.medium) || []).slice(0, 5).forEach(r => {
+          if (r.id) addVisitSource(r.id, (r.fields && r.fields["Customer Name"] || "Unknown account") + " — unreviewed Medium Priority visit");
         });
 
         function buildDeterministicManagerFallback() {
@@ -3347,7 +3361,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
             // claim "all reps active" — precisely the false-positive
             // this section exists to prevent.
             const repUserParams = new URLSearchParams();
-            repUserParams.append("filterByFormula", `{Role}="Sales Rep"`);
+            repUserParams.append("filterByFormula", `NOT({Role}="Manager")`);
             ["Display Name","Active?"].forEach(f => repUserParams.append("fields[]", f));
             let allRepUsersRaw = [], repUserOffset = null;
             do {
@@ -3361,7 +3375,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
             const allRepUsers = allRepUsersRaw.filter(u => !isExplicitlyInactiveRC(u.fields["Active?"]));
 
             // Same title-case normalization dashboard.reps already
-            // applies to Rep Name, so "REP 5" in Users and "Rep 5" as a
+            // applies to User Name, so "REP 5" in Users and "Rep 5" as a
             // dashboard.reps key are recognized as the same rep rather
             // than falsely mismatching on casing alone.
             function normalizeRepName(raw) {
