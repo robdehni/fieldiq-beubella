@@ -690,14 +690,6 @@ function renderModules(){
         '<div class="module-desc">Record a field visit — voice to intelligence</div>'+
       '</div>'+
       '<div class="module-arrow">›</div>'+
-    '</a>'+
-    '<a class="module" href="./fieldiq-visit-history.html">'+
-      '<div class="module-icon-wrap"><i data-lucide="clock"></i></div>'+
-      '<div class="module-text">'+
-        '<div class="module-title">Visit History</div>'+
-        '<div class="module-desc">Your logged visits — dates, accounts, summaries</div>'+
-      '</div>'+
-      '<div class="module-arrow">›</div>'+
     '</a>';
 
   if(!isManager){
@@ -720,6 +712,16 @@ function renderModules(){
         '<div class="module-arrow">›</div>'+
       '</a>';
   }
+
+  html+=
+    '<a class="module" href="./fieldiq-visit-history.html">'+
+      '<div class="module-icon-wrap"><i data-lucide="clock"></i></div>'+
+      '<div class="module-text">'+
+        '<div class="module-title">Visit History</div>'+
+        '<div class="module-desc">Your logged visits — dates, accounts, summaries</div>'+
+      '</div>'+
+      '<div class="module-arrow">›</div>'+
+    '</a>';
 
   html+='<div class="section-label">Help</div>'+
     '<a class="module" href="./fieldiq-guide.html">'+
