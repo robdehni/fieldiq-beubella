@@ -27,6 +27,12 @@ textarea:focus{border-color:#2f8fff}
 .exclude-row input[type=checkbox]{width:18px;height:18px;accent-color:#2f8fff;cursor:pointer}
 .exclude-row label{font-size:13.5px;font-weight:700;color:#263b59;cursor:pointer}
 .exclude-hint{font-size:11.5px;color:#8a9bb3;font-weight:600;margin-top:8px}
+.mic-btn-compact{width:34px;height:34px;border-radius:50%;border:1.5px solid #2f8fff;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mic-btn-compact [data-lucide]{width:16px;height:16px;color:#2f8fff}
+.mic-btn-compact.recording{border-color:#e0445b;background:#fdecef}
+.mic-btn-compact.recording [data-lucide]{color:#e0445b}
+.mic-btn-compact:disabled{opacity:.45;cursor:not-allowed}
+.mic-status{font-size:11.5px;color:#8a9bb3;font-weight:600;margin-bottom:8px;min-height:14px}
 .expiry-row{margin-top:14px}
 .expiry-row label{display:block;font-size:11px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
 .expiry-row input[type=datetime-local]{width:100%;padding:11px;border:1.5px solid #dde8f5;border-radius:10px;background:#f8fbff;color:#0b1f3a;font-size:13px;font-family:inherit;outline:none}
@@ -56,12 +62,16 @@ textarea:focus{border-color:#2f8fff}
     </div>
     <p class="page-subtitle">Company Broadcast — one-way, to your whole team.</p>
   </div>
-  <a href="./fieldiq.html" class="home-btn">← Home</a>
+  <a href="./fieldiq.html" class="home-btn">← Manager Home</a>
 
   <div id="statusMsg"></div>
 
   <div class="panel">
-    <div class="panel-label">Message</div>
+    <div class="panel-label" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Message</span>
+      <button type="button" class="mic-btn-compact" id="broadcastMicBtn" aria-label="Record message"><i data-lucide="mic"></i></button>
+    </div>
+    <div id="micStatus" class="mic-status"></div>
     <textarea id="broadcastMessage" placeholder="What does the team need to know?"></textarea>
   </div>
 
@@ -141,6 +151,77 @@ function extractErrorMessage(data){
 function showStatus(msg,isError){
   var el=document.getElementById('statusMsg');
   el.innerHTML='<div class="status-msg '+(isError?'status-error':'status-success')+'">'+escapeHtml(msg)+'</div>';
+}
+
+// ── Optional voice input for the broadcast message ──────────────────────────
+// Same /transcribe endpoint and multipart shape already proven by
+// fieldiq-log-visit.html — no Worker change, no new endpoint. Populates
+// the existing textarea only; sending still requires the explicit Send
+// Broadcast tap, exactly as with typed text.
+var broadcastMicBtn=document.getElementById('broadcastMicBtn');
+var micStatusEl=document.getElementById('micStatus');
+var isRecordingBroadcast=false;
+var broadcastMediaRecorder=null;
+var broadcastStreamRef=null;
+var broadcastChunks=[];
+
+broadcastMicBtn.addEventListener('click',function(){
+  if(!isRecordingBroadcast)startBroadcastRecording();else stopBroadcastRecording();
+});
+
+async function startBroadcastRecording(){
+  try{
+    isRecordingBroadcast=true;
+    broadcastChunks=[];
+    micStatusEl.textContent='Recording… tap the mic to stop';
+    broadcastStreamRef=await navigator.mediaDevices.getUserMedia({audio:true});
+    broadcastMediaRecorder=new MediaRecorder(broadcastStreamRef);
+    broadcastMediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)broadcastChunks.push(e.data);};
+    broadcastMediaRecorder.onstop=function(){
+      isRecordingBroadcast=false;
+      broadcastMicBtn.className='mic-btn-compact';
+      broadcastMicBtn.innerHTML='<i data-lucide="mic"></i>';
+      if(window.lucide)lucide.createIcons({el:broadcastMicBtn});
+      if(broadcastStreamRef)broadcastStreamRef.getTracks().forEach(function(t){t.stop();});
+      var blob=new Blob(broadcastChunks,{type:'audio/webm'});
+      proceedToTranscribeBroadcast(blob);
+    };
+    broadcastMediaRecorder.start();
+    broadcastMicBtn.className='mic-btn-compact recording';
+    broadcastMicBtn.innerHTML='<i data-lucide="square"></i>';
+    if(window.lucide)lucide.createIcons({el:broadcastMicBtn});
+  }catch(e){
+    isRecordingBroadcast=false;
+    micStatusEl.textContent='Mic error: '+e.message;
+  }
+}
+
+function stopBroadcastRecording(){
+  broadcastMicBtn.disabled=true;
+  if(broadcastMediaRecorder&&broadcastMediaRecorder.state!=='inactive')broadcastMediaRecorder.stop();
+}
+
+function proceedToTranscribeBroadcast(blob){
+  micStatusEl.textContent='Transcribing…';
+  var fd=new FormData();
+  fd.append('file',blob,'broadcast.webm');
+  fd.append('model','whisper-1');
+  fetch(WORKER+'/transcribe',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var t=d.text||d.transcript||'';
+      broadcastMicBtn.disabled=false;
+      if(t){
+        document.getElementById('broadcastMessage').value=t;
+        micStatusEl.textContent='Transcript ready — review or edit before sending.';
+      }else{
+        micStatusEl.textContent='Transcription failed. Type your message instead.';
+      }
+    })
+    .catch(function(){
+      broadcastMicBtn.disabled=false;
+      micStatusEl.textContent='Transcription error. Type your message instead.';
+    });
 }
 
 document.getElementById('sendBtn').addEventListener('click',async function(){
