@@ -426,7 +426,7 @@ function markVisitReviewed(recordId,btnEl){
   btnEl.textContent='Saving…';
   fetch(WORKER+'/update-visit',{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
     body:JSON.stringify({recordId:recordId,reviewed:true})
   }).then(function(res){
     if(!res.ok)throw new Error('Request failed');
@@ -503,7 +503,7 @@ function renderAvfNoteItems(records){
 function loadNotesForAvfAction(actionId){
   var box=document.getElementById('avf-notes-'+actionId);
   if(!box)return;
-  fetch(WORKER+'/get-notes?actionId='+encodeURIComponent(actionId))
+  fetch(WORKER+'/get-notes?actionId='+encodeURIComponent(actionId),{headers:{'Authorization':'Bearer '+currentSessionToken}})
     .then(function(res){return res.json();})
     .then(function(data){
       box.innerHTML=renderAvfNoteItems(data.records||[]);
@@ -540,10 +540,22 @@ function loadActionsForVisit(detailEl,visitRecordId){
   container.className='report-section';
   container.innerHTML='<h4>Actions from this Visit</h4><p style="color:#8a9bb3;font-size:12px;margin:0">Loading actions...</p>';
   detailEl.appendChild(container);
-  fetch(WORKER+'/get-actions?visitId='+encodeURIComponent(visitRecordId))
-    .then(function(res){return res.json();})
-    .then(function(data){
+  var _traceUrl=WORKER+'/get-actions?visitId='+encodeURIComponent(visitRecordId);
+  console.log('[trace][AVF] visitRecordId received:',visitRecordId);
+  console.log('[trace][AVF] request URL:',_traceUrl);
+  fetch(_traceUrl,{headers:{'Authorization':'Bearer '+currentSessionToken}})
+    .then(function(res){
+      console.log('[trace][AVF] response status:',res.status,res.ok);
+      return res.json().then(function(data){return {res:res,data:data};});
+    })
+    .then(function(wrapped){
+      var res=wrapped.res,data=wrapped.data;
       var records=data.records||[];
+      console.log('[trace][AVF] response body:',JSON.stringify(data).slice(0,2000));
+      console.log('[trace][AVF] record count reaching renderer:',records.length);
+      records.forEach(function(r){
+        console.log('[trace][AVF] record:',r.id,'Source Visit=',JSON.stringify((r.fields||{})['Source Visit']),'Status=',(r.fields||{})['Status']);
+      });
       container.innerHTML='<h4>Actions from this Visit</h4>'+renderActionsFromVisitList(records);
       records.forEach(function(r){
         var status=String((r.fields||{})['Status']||'Open').toLowerCase();
@@ -551,6 +563,7 @@ function loadActionsForVisit(detailEl,visitRecordId){
       });
     })
     .catch(function(err){
+      console.error('[trace][AVF] fetch itself threw:',err);
       console.error('Could not load actions for this visit:',err);
       container.innerHTML='<h4>Actions from this Visit</h4><p style="color:#8a9bb3;font-size:12px;margin:0">Could not load actions for this visit.</p>';
     });
@@ -594,7 +607,7 @@ function loadThreadForVisit(detailEl,record){
   fallback.className='report-section visit-thread-section';
   fallback.innerHTML='<div class="thread-card thread-card-current"><div class="thread-card-label">'+(threadId===record.id?'Original Visit':'This Visit')+'</div><div class="thread-card-action"><span class="thread-card-status">Currently viewing</span></div></div>';
   detailEl.appendChild(fallback);
-  fetch(WORKER+'/get-visit-thread?threadId='+encodeURIComponent(threadId))
+  fetch(WORKER+'/get-visit-thread?threadId='+encodeURIComponent(threadId),{headers:{'Authorization':'Bearer '+currentSessionToken}})
     .then(function(res){return res.json();})
     .then(function(data){
       var members=data.records||[];
