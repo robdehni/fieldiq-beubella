@@ -67,8 +67,11 @@ textarea:focus{border-color:#2f8fff}
 
   <div class="panel">
     <div class="panel-label">Audience</div>
-    <div class="exclude-hint" style="margin-top:0;margin-bottom:10px">Default: All Staff. Check any role to exclude it from this broadcast.</div>
-    <div id="roleExclusions" class="loading-roles">Loading roles...</div>
+    <div class="exclude-hint" style="margin-top:0;margin-bottom:10px">Default: All Staff. Optionally exclude managers from this broadcast.</div>
+    <div class="exclude-row">
+      <input type="checkbox" id="excludeManagers">
+      <label for="excludeManagers">Exclude Managers</label>
+    </div>
     <div class="expiry-row">
       <label>Expires (optional — leave blank to keep visible until manually removed)</label>
       <input type="datetime-local" id="expiresAtInput">
@@ -127,35 +130,12 @@ function escapeHtml(str){
   });
 }
 
-// Roles are read from whatever is actually present in the live Users
-// table right now, not a hardcoded list — if a role like Trainer or
-// Operations doesn't exist yet in the data, it correctly won't appear
-// here rather than showing a checkbox that would silently do nothing.
-async function loadRoles(){
-  var box=document.getElementById('roleExclusions');
-  try{
-    var res=await fetch(WORKER+'/get-users',{headers:{'Authorization':'Bearer '+currentSessionToken}});
-    var data=await res.json();
-    if(!res.ok)throw new Error('Could not load roles');
-    var roles=[];
-    (data.records||[]).forEach(function(r){
-      var role=(r.fields||{})['Role'];
-      if(role&&roles.indexOf(role)===-1)roles.push(role);
-    });
-    roles.sort();
-    if(!roles.length){box.innerHTML='<div class="exclude-hint" style="margin-top:0">No roles found.</div>';return;}
-    var html='';
-    roles.forEach(function(role){
-      var id='excl-'+role.replace(/[^a-zA-Z0-9]/g,'');
-      html+='<div class="exclude-row">'+
-        '<input type="checkbox" id="'+id+'" value="'+escapeHtml(role)+'">'+
-        '<label for="'+id+'">Exclude '+escapeHtml(role)+'</label>'+
-      '</div>';
-    });
-    box.innerHTML=html;
-  }catch(e){
-    box.innerHTML='<div class="exclude-hint" style="margin-top:0">Could not load roles. Default audience will be All Staff with no exclusions available.</div>';
-  }
+
+function extractErrorMessage(data){
+  if(!data)return 'Unknown error';
+  if(typeof data.error==='string')return data.error;
+  if(data.error&&typeof data.error==='object'&&data.error.message)return data.error.message;
+  return JSON.stringify(data);
 }
 
 function showStatus(msg,isError){
@@ -167,10 +147,7 @@ document.getElementById('sendBtn').addEventListener('click',async function(){
   var btn=this;
   var message=document.getElementById('broadcastMessage').value.trim();
   if(!message){showStatus('Please enter a message before sending.',true);return;}
-  var excludedRoles=[];
-  document.querySelectorAll('#roleExclusions input[type=checkbox]:checked').forEach(function(cb){
-    excludedRoles.push(cb.value);
-  });
+  var excludedRoles=document.getElementById('excludeManagers').checked?['Manager']:[];
   var expiresAtRaw=document.getElementById('expiresAtInput').value;
   var expiresAt=expiresAtRaw?new Date(expiresAtRaw).toISOString():null;
   btn.disabled=true;
@@ -184,11 +161,11 @@ document.getElementById('sendBtn').addEventListener('click',async function(){
       body:JSON.stringify(payload)
     });
     var data=await res.json();
-    if(!res.ok)throw new Error(data.error||'Could not send broadcast');
+    if(!res.ok)throw new Error(extractErrorMessage(data));
     showStatus('Broadcast sent.',false);
     document.getElementById('broadcastMessage').value='';
     document.getElementById('expiresAtInput').value='';
-    document.querySelectorAll('#roleExclusions input[type=checkbox]:checked').forEach(function(cb){cb.checked=false;});
+    document.getElementById('excludeManagers').checked=false;
     loadActiveBroadcasts();
   }catch(e){
     showStatus('Could not send broadcast: '+e.message,true);
@@ -210,7 +187,7 @@ async function loadActiveBroadcasts(){
   try{
     var res=await fetch(WORKER+'/get-active-broadcasts-admin',{headers:{'Authorization':'Bearer '+currentSessionToken}});
     var data=await res.json();
-    if(!res.ok)throw new Error('Could not load active broadcasts');
+    if(!res.ok)throw new Error(extractErrorMessage(data));
     var records=data.records||[];
     if(!records.length){box.innerHTML='<div class="exclude-hint" style="margin-top:0">No active broadcasts right now.</div>';return;}
     var html='';
@@ -228,7 +205,7 @@ async function loadActiveBroadcasts(){
     });
     box.innerHTML=html;
   }catch(e){
-    box.innerHTML='<div class="exclude-hint" style="margin-top:0">Could not load active broadcasts.</div>';
+    box.innerHTML='<div class="exclude-hint" style="margin-top:0">Could not load active broadcasts: '+escapeHtml(e.message)+'</div>';
   }
 }
 
@@ -252,7 +229,6 @@ document.addEventListener('click',function(e){
 
 function initBroadcastPage(){
   if(window.lucide)lucide.createIcons();
-  loadRoles();
   loadActiveBroadcasts();
 }
 document.addEventListener('DOMContentLoaded', validateAndInit);
