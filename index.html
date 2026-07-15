@@ -508,7 +508,7 @@ async function loadBroadcasts(){
   try{
     var res=await fetch(WORKER+'/get-broadcasts',{headers:{'Authorization':'Bearer '+sessionToken}});
     var data=await res.json();
-    if(!res.ok)return;
+    if(!res.ok){console.error('Could not load broadcasts, status',res.status,data);return;}
     var records=data.records||[];
     if(!records.length){section.innerHTML='';return;}
     var html='';
@@ -525,7 +525,10 @@ async function loadBroadcasts(){
     section.innerHTML=html;
     if(window.lucide)lucide.createIcons({el:section});
   }catch(e){
-    // Non-fatal — Home must still load if this fails.
+    // Non-fatal — Home must still load if this fails. Logged so a real
+    // failure is still diagnosable from the console instead of vanishing
+    // entirely.
+    console.error('Could not load broadcasts:',e);
   }
 }
 
