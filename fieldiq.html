@@ -450,22 +450,14 @@ var MANAGER_BRIEFING_QUESTION = "Give me a short daily briefing: top priorities 
 function renderSourcesHtml(sources){
   if (!sources || !sources.length) return '';
   var typeFallback = { visit: 'Open Visit', action: 'Open Action', account: 'View Account' };
-  function sourceBtn(s){
+  var rowId = 'srcRow' + Math.random().toString(36).slice(2, 8);
+  var html = '<div class="ask-sources"><button type="button" class="ask-sources-toggle" onclick="var r=document.getElementById(\'' + rowId + '\');var open=r.style.display!==\'none\';r.style.display=open?\'none\':\'block\';this.textContent=open?\'View sources (' + sources.length + ')\':\'Hide sources\';">View sources (' + sources.length + ')</button>';
+  html += '<div id="' + rowId + '" style="display:none;max-height:320px;overflow-y:auto;margin-top:8px"><div class="ask-sources-row">';
+  sources.forEach(function(s){
     var displayText = s.label || typeFallback[s.type] || 'Open';
-    return '<a class="ask-source-btn ' + escapeHtmlHome(s.type || '') + '" href="' + escapeHtmlHome(s.url) + '">' + escapeHtmlHome(displayText) + '</a>';
-  }
-  var visible = sources.slice(0, 5);
-  var rest = sources.slice(5);
-  var html = '<div class="ask-sources"><div class="ask-sources-label">Sources</div><div class="ask-sources-row">';
-  visible.forEach(function(s){ html += sourceBtn(s); });
-  if (rest.length) {
-    var restId = 'srcRest' + Math.random().toString(36).slice(2, 8);
-    html += '<div id="' + restId + '" style="display:none">';
-    rest.forEach(function(s){ html += sourceBtn(s); });
-    html += '</div>';
-    html += '<button type="button" class="ask-sources-toggle" onclick="var r=document.getElementById(\'' + restId + '\');var open=r.style.display!==\'none\';r.style.display=open?\'none\':\'block\';this.textContent=open?\'Show all ' + sources.length + ' sources\':\'Show fewer\';">Show all ' + sources.length + ' sources</button>';
-  }
-  html += '</div></div>';
+    html += '<a class="ask-source-btn ' + escapeHtmlHome(s.type || '') + '" href="' + escapeHtmlHome(s.url) + '">' + escapeHtmlHome(displayText) + '</a>';
+  });
+  html += '</div></div></div>';
   return html;
 }
 // Renders the structured {greeting, topLine, sections, sources} shape —
