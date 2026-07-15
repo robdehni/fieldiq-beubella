@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beu Bella Cosmetics — Account Directory</title>
+<title>FieldIQ — Account Directory</title>
 <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
-<script src="./brand-config.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:20px 18px 40px}
@@ -216,11 +215,11 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
 .add-note-btn:hover{background:#d5eaff}
 </style>
   <!-- PWA v1 -->
-  <link rel="manifest" href="./manifest.json">
+  <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#2f8fff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
-  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="apple-touch-icon" href="/icon-180.png">
 </head>
 <body>
 <div class="container">
@@ -228,8 +227,8 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
   <div class="topbar-brand">
     <span class="brand-cloud">☁️</span>
     <div class="brand-text">
-      <h1 data-brand-name>Beu Bella Cosmetics<span id="managerBadge" style="display:none" class="manager-badge">⭐ Manager</span></h1>
-      <p data-brand-tagline>by FieldIQ</p>
+      <h1>Field<span>IQ</span><span id="managerBadge" style="display:none" class="manager-badge">⭐ Manager</span></h1>
+      <p>Territory Intelligence Platform</p>
       <p class="page-subtitle">Every account in your territory, at a glance.</p>
     </div>
   </div>
@@ -266,13 +265,11 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:4px;font-weight:600;text
   </div>
 </div>
 <script>
-var WORKER_URL='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var WORKER_URL='https://fieldiq-proxy.rdehni1979.workers.dev';
 var role=localStorage.getItem('fieldiq_user_role');
 var currentUserName=localStorage.getItem('fieldiq_user_name')||'';
 var currentUserId=localStorage.getItem('fieldiq_user_id')||'';
-// Required by /get-accounts and /get-visits, which now reject any request
-// without a verified session token.
-var currentSessionToken=localStorage.getItem('fieldiq_session_token');
+var currentSessionToken=localStorage.getItem('fieldiq_session_token')||'';
 var ACCOUNTS=[];
 var currentDetailAccountId=null;
 var currentDetailFilter='30';
@@ -292,44 +289,42 @@ var currentAccountUpdates=[];
 function formatDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function truncate(text,len){var t=String(text||'');if(t.length<=len)return t;return t.slice(0,len).trim()+'…';}
-var TERRITORY_ORDER=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah','Unassigned'];
+var TERRITORY_ORDER=['UAE','Saudi Arabia','Qatar','Kuwait','Bahrain','Oman','Unassigned'];
 function getCanonicalTerritory(raw){
-  var value=raw;
-  if(Array.isArray(value))value=value.length?value[0]:'';
-  var t=String(value||'').trim();if(!t)return'Unassigned';
-  if(/^rec[a-zA-Z0-9]{14,}$/.test(t))return'Unassigned';
-  var tu=t.toUpperCase();
-  if(tu==='ABU DHABI')return'Abu Dhabi';if(tu==='DUBAI')return'Dubai';if(tu==='SHARJAH')return'Sharjah';if(tu==='AJMAN')return'Ajman';if(tu==='UMM AL QUWAIN')return'Umm Al Quwain';if(tu==='RAS AL KHAIMAH')return'Ras Al Khaimah';if(tu==='FUJAIRAH')return'Fujairah';return'Unassigned';
+  var t=(raw||'').trim();if(!t)return'Unassigned';var tu=t.toUpperCase();
+  if(tu.indexOf('SAUDI ARABIA')===0)return'Saudi Arabia';if(tu==='UAE')return'UAE';if(tu==='QATAR')return'Qatar';if(tu==='KUWAIT')return'Kuwait';if(tu==='BAHRAIN')return'Bahrain';if(tu==='OMAN')return'Oman';return'Unassigned';
 }
 async function loadDirectory(){
   try{
-    var _authHeaders={headers:{'Authorization':'Bearer '+currentSessionToken},cache:'no-store'};
-    var [accRes,visRes]=await Promise.all([fetch(WORKER_URL+'/get-accounts',_authHeaders),fetch(WORKER_URL+'/get-visits',_authHeaders)]);
-    if(accRes.status===401||accRes.status===403||visRes.status===401||visRes.status===403){
-      localStorage.removeItem('fieldiq_user_id');localStorage.removeItem('fieldiq_user_name');localStorage.removeItem('fieldiq_user_role');localStorage.removeItem('fieldiq_user_record_id');localStorage.removeItem('fieldiq_session_token');
-      window.location.href='./index.html';
-      return;
-    }
+    var [accRes,visRes]=await Promise.all([fetch(WORKER_URL+'/get-accounts',{cache:'no-store',headers:{'Authorization':'Bearer '+currentSessionToken}}),fetch(WORKER_URL+'/get-visits',{cache:'no-store',headers:{'Authorization':'Bearer '+currentSessionToken}})]);
     var accData=await accRes.json();var visData=await visRes.json();
     if(!accRes.ok)throw new Error(JSON.stringify(accData));if(!visRes.ok)throw new Error(JSON.stringify(visData));
     var accountRecords=accData.records||[];var visitRecords=visData.records||[];
     var byId={};var byNameLower={};
     ACCOUNTS=accountRecords.map(function(r){
-      var f=r.fields||{};var acc={id:r.id,name:f['Account Name']||'Unknown',territory:getCanonicalTerritory(f['Territory']),canonicalTerritory:getCanonicalTerritory(f['Territory']),city:f['City']||'',visitCount:0,lastVisit:null,matchedVisits:[]};
+      var f=r.fields||{};var acc={id:r.id,name:f['Account Name']||'Unknown',territory:f['Territory']||'',canonicalTerritory:getCanonicalTerritory(f['Territory']),city:f['City']||'',visitCount:0,lastVisit:null,matchedVisits:[]};
       byId[r.id]=acc;byNameLower[acc.name.trim().toLowerCase()]=acc;return acc;
     });
     visitRecords.forEach(function(v){
       var f=v.fields||{};var matched=null;
       if(Array.isArray(f['Account'])&&f['Account'].length>0){matched=byId[f['Account'][0]]||null;}
-      if(!matched&&f['Customer Name']){matched=byNameLower[String(f['Customer Name']).trim().toLowerCase()]||null;}
+      if(!matched&&f['Hospital Name']){matched=byNameLower[String(f['Hospital Name']).trim().toLowerCase()]||null;}
       if(matched){
         matched.visitCount++;var vDate=f['Visit Date']?new Date(f['Visit Date']):null;var vDateValid=vDate&&!isNaN(vDate);
         if(vDateValid&&(!matched.lastVisit||vDate>matched.lastVisit)){matched.lastVisit=vDate;}
-        matched.matchedVisits.push({id:v.id,date:vDateValid?vDate:null,type:f['Visit Type']||'',rep:f['User Name']||'Unknown rep',priority:f['Priority']||'',outcome:f['Outcome']||'',aiSummary:f['AI Summary']||'',actionItems:f['Action Items']||'',newAccount:f['New Account']===true,pendingReview:f['Pending Review']===true,reviewed:f['Reviewed']===true});
+        matched.matchedVisits.push({id:v.id,date:vDateValid?vDate:null,type:f['Visit Type']||'',rep:f['Rep Name']||'Unknown rep',priority:f['Priority']||'',outcome:f['Outcome']||'',aiSummary:f['AI Summary']||'',actionItems:f['Action Items']||'',newAccount:f['New Account']===true,pendingReview:f['Pending Review']===true,reviewed:f['Reviewed']===true});
       }
     });
     ACCOUNTS.sort(function(a,b){return a.name.localeCompare(b.name);});
     document.getElementById('loadingEl').style.display='none';document.getElementById('directoryContent').style.display='block';renderDirectory();
+
+    var _dlParams=new URLSearchParams(window.location.search);
+    var _dlAccountId=_dlParams.get('accountId');
+    var _dlAccountName=_dlParams.get('accountName');
+    var _dlTarget=null;
+    if(_dlAccountId&&byId[_dlAccountId]){_dlTarget=byId[_dlAccountId];}
+    else if(_dlAccountName){_dlTarget=byNameLower[_dlAccountName.trim().toLowerCase()]||null;}
+    if(_dlTarget){openAccountDetail(_dlTarget.id);}
   }catch(err){console.error('Account Directory failed to load:',err);document.getElementById('loadingEl').innerHTML='<div class="empty">Could not load accounts. Please try again.</div>';}
 }
 // Account status thresholds — days since last visit. Adjust these two
@@ -573,7 +568,7 @@ function openAccountDetail(id){currentDetailAccountId=id;currentDetailFilter='30
 function loadAccountUpdates(){
   var acc=ACCOUNTS.find(function(a){return a.id===currentDetailAccountId;});if(!acc)return;
   currentAccountUpdates=[];
-  fetch(WORKER_URL+'/get-account-updates?accountName='+encodeURIComponent(acc.name),{cache:'no-store'})
+  fetch(WORKER_URL+'/get-account-updates?accountName='+encodeURIComponent(acc.name),{cache:'no-store',headers:{'Authorization':'Bearer '+currentSessionToken}})
     .then(function(r){return r.json();})
     .then(function(data){currentAccountUpdates=data.records||[];renderAccountUpdatesList();})
     .catch(function(){renderAccountUpdatesList();});
@@ -601,8 +596,8 @@ function saveAccountUpdate(){
   if(!text)return;
   fetch(WORKER_URL+'/save-account-update',{
     method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
-    body:JSON.stringify({accountId:acc.id,accountName:acc.name,updateText:text})
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({accountId:acc.id,accountName:acc.name,updateText:text,createdBy:currentUserName,createdByUserId:currentUserId})
   })
     .then(function(r){return r.json();})
     .then(function(data){
@@ -744,7 +739,7 @@ if(role!=='Manager'){
 }
 document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
 </script>
-<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
 // Back-to-top floating button — purely cosmetic, self-contained. Created
 // entirely via JS so no existing HTML/IDs/layout are touched. Appears only
