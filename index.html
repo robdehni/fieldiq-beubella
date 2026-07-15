@@ -473,10 +473,11 @@ async function updateOpenActionsBadge(){
 
   var userId=localStorage.getItem('fieldiq_user_id');
   var role=localStorage.getItem('fieldiq_user_role')||'Sales Rep';
+  var sessionToken=localStorage.getItem('fieldiq_session_token');
   if(!userId)return;
 
   try{
-    var res=await fetch(WORKER+'/get-actions?userId='+encodeURIComponent(userId)+'&role='+encodeURIComponent(role)+'&status=Open');
+    var res=await fetch(WORKER+'/get-actions?userId='+encodeURIComponent(userId)+'&role='+encodeURIComponent(role)+'&status=Open',{headers:{'Authorization':'Bearer '+sessionToken}});
     var data=await res.json();
     if(!res.ok)throw new Error('Failed');
     var count=(data.records||[]).length;
@@ -499,10 +500,11 @@ async function loadNotifications(){
   section.innerHTML='';
 
   var userId=localStorage.getItem('fieldiq_user_id');
+  var sessionToken=localStorage.getItem('fieldiq_session_token');
   if(!userId)return;
 
   try{
-    var res=await fetch(WORKER+'/get-notifications?userId='+encodeURIComponent(userId));
+    var res=await fetch(WORKER+'/get-notifications?userId='+encodeURIComponent(userId),{headers:{'Authorization':'Bearer '+sessionToken}});
     var data=await res.json();
     var records=(data.records||[]).filter(function(r){return !r.fields['Is Read'];});
     if(!records.length)return;
@@ -802,6 +804,17 @@ function startUp(){
 startUp();
 </script>
 <script>document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});</script>
+<script>
+window.addEventListener('pageshow',function(e){
+  if(e.persisted&&typeof updateOpenActionsBadge==='function'){
+    var role=localStorage.getItem('fieldiq_user_role');
+    if(role!=='Manager'){
+      updateOpenActionsBadge();
+      if(typeof loadNotifications==='function')loadNotifications();
+    }
+  }
+});
+</script>
 <script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 </body>
 </html>
