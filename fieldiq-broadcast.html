@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beu Bella Cosmetics — Company Broadcast</title>
+<script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js" defer></script>
+<script src="./brand-config.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:24px 20px 50px}
+.container{max-width:620px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.brand-cloud{font-size:26px;line-height:1}
+.brand-text h1{font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#0b1f3a}
+.brand-text h1 span{color:#2f8fff}
+.brand-text p{font-size:10px;color:#8a9bb3;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-top:2px}
+.header{margin-bottom:18px}
+p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600}
+.home-btn{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#2f8fff;font-size:13px;font-weight:700;text-decoration:none;padding:9px 16px;border-radius:30px;margin-bottom:16px;border:1px solid #e3ebf5;box-shadow:0 2px 8px rgba(11,31,58,0.05)}
+.panel{background:#fff;border:1px solid #e3ebf5;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 4px 14px rgba(11,31,58,0.05)}
+.panel-label{font-size:11px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px}
+textarea{width:100%;min-height:140px;padding:14px;border:1.5px solid #dde8f5;border-radius:12px;background:#f8fbff;color:#0b1f3a;font-size:14px;font-family:inherit;line-height:1.5;outline:none;resize:vertical}
+textarea:focus{border-color:#2f8fff}
+.exclude-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f4f9}
+.exclude-row:last-child{border-bottom:none}
+.exclude-row input[type=checkbox]{width:18px;height:18px;accent-color:#2f8fff;cursor:pointer}
+.exclude-row label{font-size:13.5px;font-weight:700;color:#263b59;cursor:pointer}
+.exclude-hint{font-size:11.5px;color:#8a9bb3;font-weight:600;margin-top:8px}
+.expiry-row{margin-top:14px}
+.expiry-row label{display:block;font-size:11px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.expiry-row input[type=datetime-local]{width:100%;padding:11px;border:1.5px solid #dde8f5;border-radius:10px;background:#f8fbff;color:#0b1f3a;font-size:13px;font-family:inherit;outline:none}
+.active-broadcast-card{background:#f8fbff;border:1px solid #e3ebf5;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.active-broadcast-msg{font-size:13px;color:#263b59;line-height:1.5;font-weight:500;white-space:pre-wrap;margin-bottom:8px}
+.active-broadcast-meta{font-size:10.5px;color:#8a9bb3;font-weight:700;margin-bottom:10px}
+.remove-btn{border:1.5px solid #f5c2c8;border-radius:8px;background:#fff;color:#c43048;padding:7px 12px;font-size:11.5px;font-weight:800;cursor:pointer}
+.remove-btn:disabled{opacity:.55;cursor:not-allowed}
+.send-btn{width:100%;border:none;border-radius:12px;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;padding:15px;font-size:14.5px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(47,143,255,0.25);display:flex;align-items:center;justify-content:center;gap:8px}
+.send-btn:disabled{opacity:.55;cursor:not-allowed}
+.send-btn [data-lucide]{width:18px;height:18px}
+.status-msg{text-align:center;font-size:13px;font-weight:700;padding:12px;border-radius:12px;margin-bottom:14px}
+.status-success{background:#e6f7ed;color:#1a9c53;border:1px solid #cdeedb}
+.status-error{background:#fff3e0;color:#7a6000;border:1px solid #ffe5b3}
+.loading-roles{font-size:12.5px;color:#8a9bb3;font-weight:600}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="brand">
+      <span class="brand-cloud">☁️</span>
+      <div class="brand-text">
+        <h1 data-brand-name>Beu Bella Cosmetics</h1>
+        <p data-brand-tagline>by FieldIQ</p>
+      </div>
+    </div>
+    <p class="page-subtitle">Company Broadcast — one-way, to your whole team.</p>
+  </div>
+  <a href="./fieldiq.html" class="home-btn">← Home</a>
+
+  <div id="statusMsg"></div>
+
+  <div class="panel">
+    <div class="panel-label">Message</div>
+    <textarea id="broadcastMessage" placeholder="What does the team need to know?"></textarea>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Audience</div>
+    <div class="exclude-hint" style="margin-top:0;margin-bottom:10px">Default: All Staff. Check any role to exclude it from this broadcast.</div>
+    <div id="roleExclusions" class="loading-roles">Loading roles...</div>
+    <div class="expiry-row">
+      <label>Expires (optional — leave blank to keep visible until manually removed)</label>
+      <input type="datetime-local" id="expiresAtInput">
+    </div>
+  </div>
+
+  <button type="button" class="send-btn" id="sendBtn"><i data-lucide="megaphone"></i> Send Broadcast</button>
+
+  <div class="panel" style="margin-top:22px">
+    <div class="panel-label">Currently Active</div>
+    <div id="activeBroadcastsList" class="loading-roles">Loading...</div>
+  </div>
+</div>
+<script>
+var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+var currentUserId=localStorage.getItem('fieldiq_user_id');
+var currentUserName=localStorage.getItem('fieldiq_user_name');
+var currentSessionToken=localStorage.getItem('fieldiq_session_token');
+
+function clearActiveSession(){
+  localStorage.removeItem('fieldiq_user_id');
+  localStorage.removeItem('fieldiq_user_name');
+  localStorage.removeItem('fieldiq_user_role');
+  localStorage.removeItem('fieldiq_user_record_id');
+  localStorage.removeItem('fieldiq_session_token');
+}
+
+if(!currentUserId||!currentUserName||!currentSessionToken){
+  window.location.href='./index.html';
+  throw new Error('No identity locked');
+}
+
+function validateAndInit(){
+  fetch(WORKER+'/validate-session',{headers:{'Authorization':'Bearer '+currentSessionToken}})
+    .then(function(res){return res.json().then(function(data){return {ok:res.ok,data:data};});})
+    .then(function(result){
+      if(!result.ok||!result.data||!result.data.valid||result.data.role!=='Manager'){
+        clearActiveSession();
+        window.location.href='./index.html';
+        return;
+      }
+      localStorage.setItem('fieldiq_user_id',result.data.userId);
+      localStorage.setItem('fieldiq_user_name',result.data.name);
+      localStorage.setItem('fieldiq_user_role',result.data.role);
+      localStorage.setItem('fieldiq_user_record_id',result.data.recordId);
+      initBroadcastPage();
+    })
+    .catch(function(){
+      window.location.href='./index.html';
+    });
+}
+
+function escapeHtml(str){
+  return String(str||'').replace(/[&<>"']/g,function(m){
+    return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
+  });
+}
+
+// Roles are read from whatever is actually present in the live Users
+// table right now, not a hardcoded list — if a role like Trainer or
+// Operations doesn't exist yet in the data, it correctly won't appear
+// here rather than showing a checkbox that would silently do nothing.
+async function loadRoles(){
+  var box=document.getElementById('roleExclusions');
+  try{
+    var res=await fetch(WORKER+'/get-users',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    var data=await res.json();
+    if(!res.ok)throw new Error('Could not load roles');
+    var roles=[];
+    (data.records||[]).forEach(function(r){
+      var role=(r.fields||{})['Role'];
+      if(role&&roles.indexOf(role)===-1)roles.push(role);
+    });
+    roles.sort();
+    if(!roles.length){box.innerHTML='<div class="exclude-hint" style="margin-top:0">No roles found.</div>';return;}
+    var html='';
+    roles.forEach(function(role){
+      var id='excl-'+role.replace(/[^a-zA-Z0-9]/g,'');
+      html+='<div class="exclude-row">'+
+        '<input type="checkbox" id="'+id+'" value="'+escapeHtml(role)+'">'+
+        '<label for="'+id+'">Exclude '+escapeHtml(role)+'</label>'+
+      '</div>';
+    });
+    box.innerHTML=html;
+  }catch(e){
+    box.innerHTML='<div class="exclude-hint" style="margin-top:0">Could not load roles. Default audience will be All Staff with no exclusions available.</div>';
+  }
+}
+
+function showStatus(msg,isError){
+  var el=document.getElementById('statusMsg');
+  el.innerHTML='<div class="status-msg '+(isError?'status-error':'status-success')+'">'+escapeHtml(msg)+'</div>';
+}
+
+document.getElementById('sendBtn').addEventListener('click',async function(){
+  var btn=this;
+  var message=document.getElementById('broadcastMessage').value.trim();
+  if(!message){showStatus('Please enter a message before sending.',true);return;}
+  var excludedRoles=[];
+  document.querySelectorAll('#roleExclusions input[type=checkbox]:checked').forEach(function(cb){
+    excludedRoles.push(cb.value);
+  });
+  var expiresAtRaw=document.getElementById('expiresAtInput').value;
+  var expiresAt=expiresAtRaw?new Date(expiresAtRaw).toISOString():null;
+  btn.disabled=true;
+  btn.innerHTML='Sending…';
+  try{
+    var payload={message:message,excludedRoles:excludedRoles};
+    if(expiresAt)payload.expiresAt=expiresAt;
+    var res=await fetch(WORKER+'/send-broadcast',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+      body:JSON.stringify(payload)
+    });
+    var data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Could not send broadcast');
+    showStatus('Broadcast sent.',false);
+    document.getElementById('broadcastMessage').value='';
+    document.getElementById('expiresAtInput').value='';
+    document.querySelectorAll('#roleExclusions input[type=checkbox]:checked').forEach(function(cb){cb.checked=false;});
+    loadActiveBroadcasts();
+  }catch(e){
+    showStatus('Could not send broadcast: '+e.message,true);
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML='<i data-lucide="megaphone"></i> Send Broadcast';
+    if(window.lucide)lucide.createIcons({el:btn});
+  }
+});
+
+function formatDateTime(v){
+  if(!v)return '';
+  try{return new Date(v).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
+  catch(e){return v;}
+}
+
+async function loadActiveBroadcasts(){
+  var box=document.getElementById('activeBroadcastsList');
+  try{
+    var res=await fetch(WORKER+'/get-active-broadcasts-admin',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    var data=await res.json();
+    if(!res.ok)throw new Error('Could not load active broadcasts');
+    var records=data.records||[];
+    if(!records.length){box.innerHTML='<div class="exclude-hint" style="margin-top:0">No active broadcasts right now.</div>';return;}
+    var html='';
+    records.forEach(function(r){
+      var f=r.fields||{};
+      var excluded=String(f['Excluded Roles']||'').trim();
+      var meta='Sent '+escapeHtml(formatDateTime(f['Sent At']||''));
+      if(excluded)meta+=' · Excludes: '+escapeHtml(excluded);
+      if(f['Expires At'])meta+=' · Expires '+escapeHtml(formatDateTime(f['Expires At']));
+      html+='<div class="active-broadcast-card" id="active-'+escapeHtml(r.id)+'">'+
+        '<div class="active-broadcast-msg">'+escapeHtml(f['Message']||'')+'</div>'+
+        '<div class="active-broadcast-meta">'+meta+'</div>'+
+        '<button type="button" class="remove-btn" data-remove-id="'+escapeHtml(r.id)+'">Remove</button>'+
+      '</div>';
+    });
+    box.innerHTML=html;
+  }catch(e){
+    box.innerHTML='<div class="exclude-hint" style="margin-top:0">Could not load active broadcasts.</div>';
+  }
+}
+
+document.addEventListener('click',function(e){
+  var btn=e.target.closest('[data-remove-id]');
+  if(!btn)return;
+  var broadcastId=btn.getAttribute('data-remove-id');
+  btn.disabled=true;btn.textContent='Removing…';
+  fetch(WORKER+'/remove-broadcast',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+    body:JSON.stringify({broadcastId:broadcastId})
+  }).then(function(res){return res.json().then(function(data){return {ok:res.ok,data:data};});})
+    .then(function(result){
+      if(!result.ok){btn.disabled=false;btn.textContent='Remove';return;}
+      var card=document.getElementById('active-'+broadcastId);
+      if(card)card.remove();
+    })
+    .catch(function(){btn.disabled=false;btn.textContent='Remove';});
+});
+
+function initBroadcastPage(){
+  if(window.lucide)lucide.createIcons();
+  loadRoles();
+  loadActiveBroadcasts();
+}
+document.addEventListener('DOMContentLoaded', validateAndInit);
+</script>
+<script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
+</body>
+</html>
