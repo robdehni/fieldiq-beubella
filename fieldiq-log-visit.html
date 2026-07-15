@@ -771,7 +771,7 @@ submitBtn.addEventListener('click',async function(){
       try{
         fetch(WORKER+'/update-action',{
           method:'POST',
-          headers:{'Content-Type':'application/json'},
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
           body:JSON.stringify({
             actionId:prefillSourceRef,
             lastUpdatedBy:repName,
