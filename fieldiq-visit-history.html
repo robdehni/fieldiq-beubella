@@ -963,7 +963,7 @@ async function loadHistory(){
       }catch(e){accountIdByName={};}
     }
     if(currentUser.role==='Manager'){  
-      populateRepFilter();document.getElementById('filterBar').style.display='block';  
+      await populateRepFilter();document.getElementById('filterBar').style.display='block';  
       document.getElementById('repSearchBox').style.display='block';document.getElementById('repSearch').setAttribute('placeholder','Search accounts…');
       applyUrlParams();applyFilters();  
       if(targetVisitId){expandAndScrollToVisit(targetVisitId);}else{restoreReturnStateIfAny();}  
