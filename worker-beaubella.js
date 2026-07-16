@@ -1,4 +1,3 @@
-
 // ============================================================
 // FIELDIQ — BEUBELLA PRODUCTION INSTANCE
 // Worker name (Cloudflare): fieldiq-beubella-proxy
@@ -23,6 +22,10 @@ export default {
     const BASE_ID = "appwHLTGnkS3uiywl";
     const OPEN_ACTIONS_TABLE = "tblH6hTkfUMB8KxXk";
     const NOTIFICATIONS_TABLE = "tblJ8B3jw5RM4zakV";
+    // Fields: Message, Sender (linked User), Sent At, Excluded Roles
+    // (single line text, comma-separated role names), Active (checkbox,
+    // default true), Expires At (date/time, optional).
+    const BROADCASTS_TABLE = "tblLGiFaJsF6UHptC";
 
     function json(data, status = 200) {
       return new Response(JSON.stringify(data), {
@@ -73,6 +76,17 @@ export default {
     // normal work, low enough to catch a runaway retry loop or repeated abuse.
     // Returns true if the request is allowed to proceed, false if the caller
     // should return 429.
+    // Builds the exact scoped cache keys /get-actions itself reads from and
+    // writes to (see _scopeKey/_cacheReq inside that handler) — used by every
+    // endpoint that needs to invalidate a now-stale actions list after a
+    // write. Returns one Request per status value for the given identity.
+    function actionsCacheRequestsFor(req, role, userId) {
+      const scopeKey = role === "Manager" ? "manager" : (role + "-" + userId);
+      return ["Open", "Completed", "Dismissed"].map(status =>
+        new Request(new URL("/get-actions?_scope=" + encodeURIComponent(scopeKey) + "&status=" + encodeURIComponent(status), req.url).toString())
+      );
+    }
+
     async function checkRateLimit(endpointName, req) {
       const ip = req.headers.get("cf-connecting-ip") || "unknown";
       const rlKey = new Request("https://ratelimit.internal/" + endpointName + "/" + ip);
@@ -968,10 +982,24 @@ export default {
 
     if (req.method === "GET" && url.pathname === "/get-actions") {
       try {
-        const userId = url.searchParams.get("userId") || "";
-        const role = url.searchParams.get("role") || "";
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        const userId = _session.userId || "";
+        const role = _session.role || "";
         const visitId = url.searchParams.get("visitId") || "";
         const status = url.searchParams.get("status") || "Open";
+
+        // Cache key includes the verified identity, not just the bare
+        // request URL — two different users can otherwise construct an
+        // identical query string (e.g. both simply "?status=Open") and
+        // silently share one cache entry, exactly the same class of
+        // issue already fixed for /get-accounts. Confirmed directly with
+        // a real test before adding this: a Manager and a Trainer
+        // calling this endpoint with the same status filter received
+        // each other's cached response without it.
+        const _scopeKey = role === "Manager" ? "manager" : (role + "-" + userId);
+        const _cacheReq = new Request(new URL("/get-actions?_scope=" + encodeURIComponent(_scopeKey) + "&status=" + encodeURIComponent(status), req.url).toString());
 
         // Short cache for the read-only load path only — never for a
         // visitId-specific request, since that would create an unbounded
@@ -986,7 +1014,7 @@ export default {
         // sequential fetch of the entire Field Visits table (the
         // inference fallback below) when any action lacks a real link.
         if (!visitId) {
-          const _hit = await cache.match(req);
+          const _hit = await cache.match(_cacheReq);
           if (_hit) return _hit;
         }
 
@@ -1014,17 +1042,6 @@ export default {
           offset = data.offset || null;
         } while (offset);
 
-        if (visitId) {
-          // Source Visit is a linked-record field — same ARRAYJOIN/FIND
-          // limitation documented above for Assigned Rep, so this is
-          // filtered client-side rather than via filterByFormula. Not
-          // cached: each visit has a unique ID, so caching per-visit would
-          // create an unbounded set of cache keys, the same concern already
-          // avoided elsewhere in this Worker for filtered/scoped queries.
-          allRecords = allRecords.filter(r => (r.fields["Source Visit"] || []).includes(visitId));
-          return json({ records: allRecords });
-        }
-
         // Infer a visit link for actions genuinely missing a real Source
         // Visit, so View Visit works identically for reps and managers —
         // this was a real product gap, not just old data to wait out.
@@ -1032,6 +1049,13 @@ export default {
         // the real stored data stays honest about what's a genuine link
         // versus an inferred one. Only runs the extra fetch when at least
         // one action in this batch actually needs it.
+        //
+        // Runs before the visitId-specific branch below, not just for the
+        // general list — an action whose Source Visit is genuinely empty
+        // would otherwise never surface under "Actions From This Visit"
+        // at all, since that branch used to filter and return before this
+        // inference ever ran. Same inference logic, same fields, just
+        // moved earlier so both paths see its result.
         const linkFieldNames = ["Visit","Field Visit","Visit Record","Visit ID","Visit Record ID","Source Visit","Source Visit ID"];
         function hasLinkedVisit(f) {
           return linkFieldNames.some(n => { const v = f[n]; return Array.isArray(v) ? v.length > 0 : !!v; });
@@ -1075,6 +1099,31 @@ export default {
           });
         }
 
+        if (visitId) {
+          // Matches the same field-name candidates and priority order
+          // already used by "View Visit" in fieldiq-open-actions.html
+          // (getVisitId/getField) — that link can resolve a visit via any
+          // of these fields, not just "Source Visit" specifically. Filtering
+          // on "Source Visit" alone meant an action whose actual link lived
+          // in a different field in this list would open the correct visit
+          // via View Visit, yet never appear under "Actions From This
+          // Visit", since this filter never looked at the field the link
+          // actually came from. Not cached: each visit has a unique ID, so
+          // caching per-visit would create an unbounded set of cache keys,
+          // the same concern already avoided elsewhere in this Worker.
+          const _visitLinkFieldNames = ["Visit","Field Visit","Visit Record","Visit ID","Visit Record ID","Source Visit","Source Visit ID"];
+          function _firstLinkedVisitId(f) {
+            for (const n of _visitLinkFieldNames) {
+              const v = f[n];
+              if (Array.isArray(v) && v.length) return v[0];
+              if (typeof v === "string" && v) return v;
+            }
+            return "";
+          }
+          allRecords = allRecords.filter(r => _firstLinkedVisitId(r.fields || {}) === visitId);
+          return json({ records: allRecords });
+        }
+
 
         if (role !== "Manager") {
           if (!userId) return json({ error: "userId required" }, 400);
@@ -1084,7 +1133,7 @@ export default {
         }
         if (!visitId) {
           const _res = jsonCached({ records: allRecords }, 20);
-          ctx.waitUntil(cache.put(req, _res.clone()));
+          ctx.waitUntil(cache.put(_cacheReq, _res.clone()));
           return _res;
         }
         return json({ records: allRecords });
@@ -1095,8 +1144,11 @@ export default {
     // Same parallel optimization as /get-actions.
     if (req.method === "GET" && url.pathname === "/get-calendar") {
       try {
-        const userId = url.searchParams.get("userId") || "";
-        const role = url.searchParams.get("role") || "Sales Rep";
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        const userId = _session.userId || "";
+        const role = _session.role || "Sales Rep";
         const params = new URLSearchParams();
         params.append("pageSize", "100");
         params.append("filterByFormula", `{Status}="Open"`);
@@ -1137,7 +1189,10 @@ export default {
       const _hit = await cache.match(req);
       if (_hit) return _hit;
       try {
-        const userId = url.searchParams.get("userId");
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        const userId = _session.userId || "";
         if (!userId) return json({ error: "userId required" }, 400);
         const params = new URLSearchParams();
         params.append("pageSize", "100");
@@ -1329,6 +1384,9 @@ export default {
     // used for visitId-specific /get-actions requests.
     if (req.method === "GET" && url.pathname === "/get-account-updates") {
       try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
         const accountName = url.searchParams.get("accountName") || "";
         if (!accountName) return json({ error: "accountName required" }, 400);
         const params = new URLSearchParams();
@@ -1356,6 +1414,9 @@ export default {
     // /save-visit has no way to invalidate a specific thread's entry.
     if (req.method === "GET" && url.pathname === "/get-visit-thread") {
       try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
         const threadId = url.searchParams.get("threadId") || "";
         if (!threadId) return json({ error: "threadId required" }, 400);
         const params = new URLSearchParams();
@@ -1775,6 +1836,9 @@ Keep the whole answer under 55 words.`;
     // cache keys /save-note could never fully invalidate.
     if (req.method === "GET" && url.pathname === "/get-notes") {
       try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
         const actionId = url.searchParams.get("actionId") || "";
         if (!actionId) return json({ error: "actionId required" }, 400);
         const params = new URLSearchParams();
@@ -1792,6 +1856,59 @@ Keep the whole answer under 55 words.`;
           offset = data.offset || null;
         } while (offset);
         return json({ records: allRecords });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // GET /get-broadcasts
+    // One-way, no acknowledgement, no per-recipient tracking. A broadcast
+    // is visible to a given viewer if: it's marked Active, it hasn't
+    // expired, and the viewer's own verified role isn't in its Excluded
+    // Roles list. All three checks happen here, server-side, against the
+    // caller's actual session — never against anything the client claims.
+    if (req.method === "GET" && url.pathname === "/get-broadcasts") {
+      if (!(await checkRateLimit("get-broadcasts", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+
+        const params = new URLSearchParams();
+        params.append("filterByFormula", `{Active}`);
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${BROADCASTS_TABLE}?${params.toString()}`, { headers: airtableHeaders() });
+        const data = await response.json();
+        if (!response.ok) return json(data, response.status);
+        const now = new Date();
+        const visible = (data.records || []).filter(r => {
+          const f = r.fields || {};
+          const excludedRoles = String(f["Excluded Roles"] || "").split(",").map(s => s.trim()).filter(Boolean);
+          if (excludedRoles.includes(_session.role)) return false;
+          const expiresAt = f["Expires At"];
+          if (expiresAt && new Date(expiresAt) <= now) return false;
+          return true;
+        });
+        return json({ records: visible });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // GET /get-active-broadcasts-admin
+    // Manager-only — every currently Active broadcast, unfiltered by
+    // audience, so the compose page can list and offer removal of any
+    // broadcast, not just ones the viewing manager happens to be able to
+    // see themselves.
+    if (req.method === "GET" && url.pathname === "/get-active-broadcasts-admin") {
+      if (!(await checkRateLimit("get-active-broadcasts-admin", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
+
+        const params = new URLSearchParams();
+        params.append("filterByFormula", `{Active}`);
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${BROADCASTS_TABLE}?${params.toString()}`, { headers: airtableHeaders() });
+        const data = await response.json();
+        if (!response.ok) return json(data, response.status);
+        return json({ records: data.records || [] });
       } catch (err) { return json({ error: err.message }, 500); }
     }
 
@@ -1889,13 +2006,79 @@ Keep the whole answer under 55 words.`;
           if (!response.ok) return json(data, response.status);
           created = created.concat(data.records || []);
         }
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Open", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Completed", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Dismissed", req.url).toString())));
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
         if (userRecordId === _session.recordId) {
-          ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?userId="+encodeURIComponent(_session.userId)+"&role=Sales%20Rep&status=Open", req.url).toString())));
+          actionsCacheRequestsFor(req, _session.role, _session.userId).forEach(r => ctx.waitUntil(cache.delete(r)));
         }
         return json({ success: true, created: created.length, records: created });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // POST /send-broadcast
+    if (url.pathname === "/send-broadcast") {
+      if (!(await checkRateLimit("send-broadcast", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
+
+        const body = await req.json();
+        const { message, excludedRoles, expiresAt } = body;
+        if (!message || !String(message).trim()) return json({ error: "message required" }, 400);
+        const excluded = Array.isArray(excludedRoles) ? excludedRoles : [];
+
+        // Still validated against whatever roles genuinely exist in live
+        // Users data, even without a fan-out — an exclusion list with a
+        // role that doesn't exist is a real, catchable mistake worth
+        // rejecting up front rather than silently doing nothing.
+        const usersRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Users`, { headers: airtableHeaders() });
+        const usersData = await usersRes.json();
+        if (!usersRes.ok) return json(usersData, usersRes.status);
+        const knownRoles = Array.from(new Set((usersData.records || []).map(u => (u.fields || {})["Role"]).filter(Boolean)));
+        const unknownExclusions = excluded.filter(r => !knownRoles.includes(r));
+        if (unknownExclusions.length) return json({ error: "Unknown role(s) in exclusion list: " + unknownExclusions.join(", ") }, 400);
+        const remainingAudience = knownRoles.filter(r => !excluded.includes(r));
+        if (remainingAudience.length === 0) return json({ error: "Every role has been excluded — no one would see this broadcast." }, 400);
+
+        const fields = {
+          "Message": String(message).trim(),
+          "Sender": [_session.recordId],
+          "Excluded Roles": excluded.join(", "),
+          "Active": true
+        };
+        if (expiresAt) fields["Expires At"] = expiresAt;
+
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${BROADCASTS_TABLE}`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ records: [{ fields }] }) });
+        const data = await response.json();
+        if (!response.ok) return json(data, response.status);
+        return json({ success: true, id: (data.records && data.records[0] && data.records[0].id) || null });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+
+
+    // POST /remove-broadcast
+    // Manager-only. Any manager may remove any broadcast — there's no
+    // per-sender ownership restriction here, matching how the rest of
+    // this feature already treats the manager group as jointly
+    // responsible for company-wide communication, not individually
+    // siloed. Soft-remove (Active=false) rather than deletion, so the
+    // record and its send history aren't destroyed.
+    if (url.pathname === "/remove-broadcast") {
+      if (!(await checkRateLimit("remove-broadcast", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
+
+        const body = await req.json();
+        const { broadcastId } = body;
+        if (!broadcastId) return json({ error: "broadcastId required" }, 400);
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${BROADCASTS_TABLE}/${broadcastId}`, { method: "PATCH", headers: airtableHeaders(), body: JSON.stringify({ fields: { "Active": false } }) });
+        const data = await response.json();
+        return json(data, response.status);
       } catch (err) { return json({ error: err.message }, 500); }
     }
 
@@ -1932,10 +2115,8 @@ Keep the whole answer under 55 words.`;
         const completeData = await completeRes.json();
         if (!completeRes.ok) return json(completeData, completeRes.status);
 
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Open", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Completed", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Dismissed", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?userId="+encodeURIComponent(userId)+"&role=Sales%20Rep&status=Open", req.url).toString())));
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        actionsCacheRequestsFor(req, session.role, userId).forEach(r => ctx.waitUntil(cache.delete(r)));
 
         try {
           const notifParams = new URLSearchParams();
@@ -2028,10 +2209,8 @@ Keep the whole answer under 55 words.`;
           return json({ error: airtableMsg, airtableDetail: dismissData }, dismissRes.status);
         }
 
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Open", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Completed", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Dismissed", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?userId="+encodeURIComponent(userId)+"&role=Sales%20Rep&status=Open", req.url).toString())));
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        actionsCacheRequestsFor(req, session.role, userId).forEach(r => ctx.waitUntil(cache.delete(r)));
 
         try {
           const notifParams = new URLSearchParams();
@@ -2168,6 +2347,10 @@ Keep the whole answer under 55 words.`;
     // POST /update-action — v3.5: reschedule or cancel an Open Action
     if (url.pathname === "/update-action") {
       try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+
         const body = await req.json();
         const { actionId, dueDate, status, rescheduleReason,
                 lastUpdatedBy, lastUpdatedDate, lastVisitRecordId,
@@ -2269,10 +2452,8 @@ Keep the whole answer under 55 words.`;
         );
         const updateData = await updateRes.json();
         if (!updateRes.ok) return json(updateData, updateRes.status);
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Open", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Completed", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?role=Manager&status=Dismissed", req.url).toString())));
-        ctx.waitUntil(cache.delete(new Request(new URL("/get-actions?userId="+encodeURIComponent(recipientUserId)+"&role=Sales%20Rep&status=Open", req.url).toString())));
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        actionsCacheRequestsFor(req, "Sales Rep", recipientUserId).forEach(r => ctx.waitUntil(cache.delete(r)));
         ctx.waitUntil(cache.delete(new Request(new URL("/get-notifications?userId="+encodeURIComponent(recipientUserId), req.url).toString())));
         return json({ success: true, notification: notifData, action: updateData });
       } catch (err) { return json({ error: err.message }, 500); }
@@ -2605,6 +2786,9 @@ Keep the whole answer under 55 words.`;
     // PATCH /update-visit
     if (url.pathname === "/update-visit") {
       if (!(await checkRateLimit("update-visit", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      const _token = getBearerToken(req);
+      const _session = await verifySession(_token, env.SESSION_SECRET);
+      if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
       try {
         const body = await req.json();
         const { recordId, priority, reviewed, pendingReview } = body;
@@ -2838,7 +3022,7 @@ Keep the whole answer under 55 words.`;
           function addVisitSourceLens(sources, seen, id, label) {
             if (!id || seen.has(id)) return;
             seen.add(id);
-            sources.push({ type: "visit", id, label, url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(id) });
+            sources.push({ type: "visit", id, label, url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(id) + "&source=manager-home" });
           }
           function addActionSourceLens(sources, seen, id, label) {
             if (!id || seen.has(id)) return;
@@ -3245,7 +3429,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
         function addVisitSource(id, label) {
           if (!id || seenVisitIds.has(id)) return;
           seenVisitIds.add(id);
-          sources.push({ type: "visit", id: id, label: label, url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(id) });
+          sources.push({ type: "visit", id: id, label: label, url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(id) + "&source=manager-home" });
         }
         function addActionSource(id, label) {
           if (!id || seenActionIds.has(id)) return;
@@ -3255,13 +3439,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
         function addAccountSource(name) {
           if (!name || seenAccountNames.has(name)) return;
           seenAccountNames.add(name);
-          // fieldiq-accounts.html does not currently accept a search/
-          // filter query parameter — confirmed by inspection, not
-          // assumed. Linking to a fabricated ?search= param would silently
-          // do nothing once clicked. This links to the real directory
-          // page instead; the account name stays in the label so the
-          // manager knows what to look for.
-          sources.push({ type: "account", id: name, label: name, url: "./fieldiq-accounts.html" });
+          sources.push({ type: "account", id: name, label: name, url: "./fieldiq-accounts.html?accountName=" + encodeURIComponent(name) });
         }
         radarTop.forEach(acc => {
           addAccountSource(acc.name);
@@ -3313,10 +3491,10 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
           // generic button.
           const needsReviewItems = radarTop.slice(0, 4).map(acc => {
             let nav = null;
-            if (acc.highPriorityVisitId) nav = { label: "Open Visit", url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(acc.highPriorityVisitId) };
-            else if (acc.negativeVisitId) nav = { label: "Open Visit", url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(acc.negativeVisitId) };
+            if (acc.highPriorityVisitId) nav = { label: "Open Visit", url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(acc.highPriorityVisitId) + "&source=manager-home" };
+            else if (acc.negativeVisitId) nav = { label: "Open Visit", url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(acc.negativeVisitId) + "&source=manager-home" };
             else if (acc.followUpOverdueActionId) nav = { label: "Open Action", url: "./fieldiq-actions.html?actionId=" + encodeURIComponent(acc.followUpOverdueActionId) };
-            else if (acc.visitId) nav = { label: "Open Visit", url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(acc.visitId) };
+            else if (acc.visitId) nav = { label: "Open Visit", url: "./fieldiq-visit-history.html?visitId=" + encodeURIComponent(acc.visitId) + "&source=manager-home" };
             return { text: acc.name + " — " + withPeriodMgr((acc.evidence || []).join("; ")).replace(/\.$/, ""), nav: nav };
           });
           if (highCount || medCount) {
