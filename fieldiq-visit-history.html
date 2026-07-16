@@ -764,7 +764,7 @@ async function populateRepFilter(){
     if(!res.ok)throw new Error(data.error||'Could not load reps');
     var names={};
     (data.records||[])
-      .filter(function(u){return u.fields['Active?']!==false && u.fields['Role']!=='Manager';})
+      .filter(function(u){return u.fields['Active?']!==false;})
       .forEach(function(u){
         var n=(u.fields['Display Name']||u.fields['User ID']||'').trim();
         if(n){n=n.charAt(0).toUpperCase()+n.slice(1).toLowerCase();names[n]=1;}
