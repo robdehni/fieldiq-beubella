@@ -238,7 +238,7 @@ async function loadData() {
   var sessionToken = localStorage.getItem('fieldiq_session_token')||'';
   var [visRes, actRes, usrRes] = await Promise.all([
     fetch(WORKER+'/get-visits',{headers:{'Authorization':'Bearer '+sessionToken}}).catch(function(){return {ok:false};}),
-    fetch(WORKER+'/get-actions?role=Manager&status=Open&userId='+encodeURIComponent(managerId)).catch(function(){return {ok:false};}),
+    fetch(WORKER+'/get-actions?role=Manager&status=Open&userId='+encodeURIComponent(managerId),{headers:{'Authorization':'Bearer '+sessionToken}}).catch(function(){return {ok:false};}),
     fetch(WORKER+'/get-users').catch(function(){return {ok:false};})
   ]);
   if (visRes.status===401||visRes.status===403) {
@@ -297,6 +297,25 @@ function buildIndices() {
     orderedNames.push(trimmed);
   }
   allUsers.forEach(function(u){ var role = u.fields['Role']||''; if (role!=='Manager') addRepName(u.fields['Display Name']||''); });
+  // Managers are excluded from the general sweep above by design, but a
+  // manager who has personally logged field visits should still appear
+  // on the board — otherwise Dashboard/Planned Visits count their
+  // activity while Operations silently omits it. Included only when
+  // genuine visit activity exists, using the same normalizeRepName
+  // comparison every rep's own activity already relies on; a manager
+  // with zero logged visits is correctly left out, same as before.
+  allUsers.forEach(function(u){
+    var role = u.fields['Role']||'';
+    if (role!=='Manager') return;
+    var mgrName = normalizeRepName(u.fields['Display Name']||'');
+    if (!mgrName) return;
+    var hasActivity = allVisits.some(function(v){ return normalizeRepName(v.fields['User Name'])===mgrName; });
+    if (!hasActivity) return;
+    var lower = mgrName.toLowerCase();
+    if (seenLower[lower]) return;
+    seenLower[lower] = true;
+    orderedNames.push(mgrName);
+  });
   // Deliberately no longer supplemented from visit records — /get-users is
   // now the single authoritative rep source used consistently across
   // every BeuBella page.
@@ -654,7 +673,7 @@ function buildRepActivity(){
   return html;
 }
 function openRepActivityItem(actionId){
-  fetch(WORKER+'/update-action',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({actionId:actionId,managerNotificationViewed:true}) }).catch(function(e){console.warn('Could not mark notification viewed:',e);});
+  fetch(WORKER+'/update-action',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken}, body:JSON.stringify({actionId:actionId,managerNotificationViewed:true}) }).catch(function(e){console.warn('Could not mark notification viewed:',e);});
   window.location.href='./fieldiq-actions.html?actionId='+encodeURIComponent(actionId)+'&from=operations';
 }
 function renderTerritoryBoard() {
