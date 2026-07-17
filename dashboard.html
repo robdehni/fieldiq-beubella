@@ -334,6 +334,15 @@ function _recordPendingPriorityOverride(recordId,override){
     sessionStorage.setItem('fieldiq_dashboard_pendingOverrides',JSON.stringify(map));
   }catch(e){}
 }
+function _clearPendingPriorityOverride(recordId){
+  try{
+    var raw=sessionStorage.getItem('fieldiq_dashboard_pendingOverrides');
+    if(!raw)return;
+    var map=JSON.parse(raw);
+    delete map[recordId];
+    sessionStorage.setItem('fieldiq_dashboard_pendingOverrides',JSON.stringify(map));
+  }catch(e){}
+}
 function _applyPendingPriorityOverrides(records){
   var raw;
   try{raw=sessionStorage.getItem('fieldiq_dashboard_pendingOverrides');}catch(e){return records;}
@@ -369,10 +378,12 @@ async function updatePriority(recordId,newPriority,cardEl){
     if(res.status===401||res.status===403){localStorage.removeItem('fieldiq_session_token');window.location.href='./index.html';return;}
     if(!res.ok){
       if(rec){rec.fields['Priority']=_oldPriority;renderPrioritySection(lastPriorityReviewFeed);}
+      _clearPendingPriorityOverride(recordId);
       alert('Could not update priority. Please try again.');
     }
   }catch(err){
     if(rec){rec.fields['Priority']=_oldPriority;renderPrioritySection(lastPriorityReviewFeed);}
+    _clearPendingPriorityOverride(recordId);
     alert('Error: '+err.message);
   }
 }
@@ -390,10 +401,12 @@ async function markReviewed(recordId,btnEl){
     if(res.status===401||res.status===403){localStorage.removeItem('fieldiq_session_token');window.location.href='./index.html';return;}
     if(!res.ok){
       if(_removedRec){lastPriorityReviewFeed.push(_removedRec);renderPrioritySection(lastPriorityReviewFeed);}
+      _clearPendingPriorityOverride(recordId);
       btnEl.disabled=false;btnEl.textContent='✓ Mark Reviewed';alert('Could not mark as reviewed. Please try again.');
     }
   }catch(err){
     if(_removedRec){lastPriorityReviewFeed.push(_removedRec);renderPrioritySection(lastPriorityReviewFeed);}
+    _clearPendingPriorityOverride(recordId);
     btnEl.disabled=false;btnEl.textContent='✓ Mark Reviewed';alert('Error: '+err.message);
   }
 }
