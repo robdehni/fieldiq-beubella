@@ -572,7 +572,23 @@ function renderManagementRadar(radarItems){
 }
 function dismissRadarItem(accountName,btnEl,cardEl){
   btnEl.disabled=true;
-  btnEl.textContent='Dismissing…';
+  // Optimistic removal — the card disappears immediately on click, not
+  // after the network round-trip completes. Its exact original position
+  // is captured so it can be precisely restored if the write fails.
+  var cardParent=cardEl?cardEl.parentNode:null;
+  var cardNextSibling=cardEl?cardEl.nextSibling:null;
+  if(cardEl&&cardParent)cardParent.removeChild(cardEl);
+  function restoreCard(){
+    if(cardEl&&cardParent){
+      if(cardNextSibling&&cardNextSibling.parentNode===cardParent){
+        cardParent.insertBefore(cardEl,cardNextSibling);
+      }else{
+        cardParent.appendChild(cardEl);
+      }
+    }
+    btnEl.disabled=false;
+    btnEl.textContent='Dismiss';
+  }
   fetch(WORKER_URL+'/dismiss-radar-item',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
@@ -590,33 +606,30 @@ function dismissRadarItem(accountName,btnEl,cardEl){
     if(!res.ok){
       var resForFallback=res.clone();
       res.json().then(function(errBody){
-        btnEl.disabled=false;
-        btnEl.textContent='Dismiss';
         var detail=(errBody&&(errBody.airtableError||errBody.error))||('HTTP '+res.status);
+        restoreCard();
         alert('Could not dismiss: '+detail);
       }).catch(function(){
         // res.json() failed — the response body isn't valid JSON. The
         // clone taken above still has its body intact, since it was
         // never itself read.
         resForFallback.text().then(function(rawText){
-          btnEl.disabled=false;
-          btnEl.textContent='Dismiss';
+          restoreCard();
           alert('Could not dismiss (HTTP '+res.status+'): '+(rawText||'(empty response body)'));
         }).catch(function(){
-          btnEl.disabled=false;
-          btnEl.textContent='Dismiss';
+          restoreCard();
           alert('Could not dismiss right now. Please try again. (HTTP '+res.status+')');
         });
       });
       return;
     }
-    // Confirmed successful POST — remove the card immediately. Nothing
-    // after this point can turn a genuine success back into a failure.
-    if(cardEl&&cardEl.parentNode)cardEl.parentNode.removeChild(cardEl);
+    // Confirmed successful POST — the card is already gone from the
+    // optimistic removal above. Nothing after this point can turn a
+    // genuine success back into a failure.
     // Separate, independent step: refresh to promote the next-ranked
     // account into view. If this specific step fails, the dismissal
     // itself already succeeded and the card is already gone — no error,
-    // no button to restore, nothing to undo.
+    // no card restoration, nothing to undo.
     fetchDashboardAggregate().then(function(agg){
       renderManagementRadar(agg.managementRadar);
     }).catch(function(refreshErr){
@@ -624,8 +637,7 @@ function dismissRadarItem(accountName,btnEl,cardEl){
     });
   }).catch(function(err){
     console.error('Could not dismiss radar item:',err);
-    btnEl.disabled=false;
-    btnEl.textContent='Dismiss';
+    restoreCard();
     alert('Could not dismiss right now. Please try again.');
   });
 }
