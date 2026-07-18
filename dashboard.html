@@ -588,9 +588,26 @@ function dismissRadarItem(accountName,btnEl,cardEl){
       return;
     }
     if(!res.ok){
-      btnEl.disabled=false;
-      btnEl.textContent='Dismiss';
-      alert('Could not dismiss right now. Please try again.');
+      var resForFallback=res.clone();
+      res.json().then(function(errBody){
+        btnEl.disabled=false;
+        btnEl.textContent='Dismiss';
+        var detail=(errBody&&(errBody.airtableError||errBody.error))||('HTTP '+res.status);
+        alert('Could not dismiss: '+detail);
+      }).catch(function(){
+        // res.json() failed — the response body isn't valid JSON. The
+        // clone taken above still has its body intact, since it was
+        // never itself read.
+        resForFallback.text().then(function(rawText){
+          btnEl.disabled=false;
+          btnEl.textContent='Dismiss';
+          alert('Could not dismiss (HTTP '+res.status+'): '+(rawText||'(empty response body)'));
+        }).catch(function(){
+          btnEl.disabled=false;
+          btnEl.textContent='Dismiss';
+          alert('Could not dismiss right now. Please try again. (HTTP '+res.status+')');
+        });
+      });
       return;
     }
     // Confirmed successful POST — remove the card immediately. Nothing
