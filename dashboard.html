@@ -271,14 +271,9 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:5px;font-weight:600;text
   <div id="territoryBars"></div>
   <div class="group-header">⭐ My Watchlist</div>
   <div id="myWatchlist"></div>
-  <div class="group-header">🧠 Strategic Intelligence</div>
+  <div class="group-header"><i data-lucide="brain-circuit"></i> Strategic Intelligence</div>
   <div class="section-title">Management Radar</div>
   <div id="managementRadar"></div>
-  <div style="margin-top:16px;padding:14px;border:2px dashed #e2a33d;border-radius:10px;background:#fffaf0">
-    <div style="font-weight:800;color:#8a5a10;font-size:13px;margin-bottom:8px">⚠️ TEMPORARY — Dismiss Diagnostic (remove after use)</div>
-    <button type="button" id="diagRadarDismissBtn" onclick="runRadarDismissDiagnostic()" style="border:1px solid #e2a33d;background:#fff;color:#8a5a10;font-weight:700;font-size:13px;padding:8px 14px;border-radius:8px;cursor:pointer">Run Dismiss Diagnostic</button>
-    <div id="diagRadarDismissResult" style="margin-top:10px;font-size:13px;white-space:pre-wrap;font-family:monospace;color:#333"></div>
-  </div>
   </div>
 </div>
 <div class="loading" id="loadingEl"><div class="spinner"></div>Loading dashboard...</div>
@@ -573,37 +568,6 @@ function renderManagementRadar(radarItems){
         dismissRadarItem(acc.name,dismissBtn,cardEl);
       });
     }
-  });
-}
-function runRadarDismissDiagnostic(){
-  var btn=document.getElementById('diagRadarDismissBtn');
-  var out=document.getElementById('diagRadarDismissResult');
-  btn.disabled=true;
-  btn.textContent='Running…';
-  out.textContent='';
-  fetch(WORKER_URL+'/diagnose-radar-dismiss',{
-    method:'POST',
-    headers:{'Authorization':'Bearer '+currentSessionToken}
-  }).then(function(res){
-    return res.json().then(function(data){ return {status:res.status,data:data}; });
-  }).then(function(result){
-    btn.disabled=false;
-    btn.textContent='Run Dismiss Diagnostic';
-    var d=result.data;
-    var lines=[];
-    lines.push('RESULT: '+(d.plainEnglishResult||'(no result text)'));
-    lines.push('');
-    lines.push('HTTP status: '+result.status);
-    if(d.airtableRawResponse){
-      lines.push('Airtable status: '+d.airtableRawResponse.httpStatus);
-      lines.push('Airtable response: '+JSON.stringify(d.airtableRawResponse.body,null,2));
-    }
-    if(d.error)lines.push('Error: '+JSON.stringify(d.error));
-    out.textContent=lines.join('\n');
-  }).catch(function(err){
-    btn.disabled=false;
-    btn.textContent='Run Dismiss Diagnostic';
-    out.textContent='Could not run diagnostic: '+err.message;
   });
 }
 function dismissRadarItem(accountName,btnEl,cardEl){
