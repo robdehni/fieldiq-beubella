@@ -206,7 +206,7 @@ function proceedToTranscribeBroadcast(blob){
   var fd=new FormData();
   fd.append('file',blob,'broadcast.webm');
   fd.append('model','whisper-1');
-  fetch(WORKER+'/transcribe',{method:'POST',body:fd})
+  fetch(WORKER+'/transcribe',{method:'POST',headers:{'Authorization':'Bearer '+currentSessionToken},body:fd})
     .then(function(r){return r.json();})
     .then(function(d){
       var t=d.text||d.transcript||'';
