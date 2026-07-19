@@ -217,8 +217,9 @@ var _restoredActionId=null;
 document.getElementById('repName').textContent='All reps';
 
 function escapeHtml(str){return String(str||'').replace(/[&<>"']/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);});}
-function todayISO(){var d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate()).toISOString().slice(0,10);}
-function addDaysISO(n){var d=new Date();d.setDate(d.getDate()+n);return new Date(d.getFullYear(),d.getMonth(),d.getDate()).toISOString().slice(0,10);}
+function pad2(n){return n<10?'0'+n:''+n;}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function addDaysISO(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
 function inferTime(text){
   var m=String(text||'').match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|AM|PM)\b/);
   return m ? m[0].toUpperCase() : '';
