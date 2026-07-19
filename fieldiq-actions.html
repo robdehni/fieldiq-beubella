@@ -444,7 +444,7 @@ async function submitNote(){
   try{
     var res=await fetch(WORKER+'/save-note',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
       body:JSON.stringify({actionId:noteModalActionId,commentText:text,createdBy:currentUserName})
     });
     var data=await res.json();
