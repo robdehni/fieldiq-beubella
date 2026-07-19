@@ -303,7 +303,7 @@ function showList(query){
 hospitalInput.addEventListener('input',function(){selectedAccountId=null;showList(this.value);updateMicAvailability();});
 hospitalInput.addEventListener('focus',function(){showList(this.value);});
 document.addEventListener('click',function(e){if(!e.target.closest('.hospital-wrapper'))hospitalList.classList.remove('open');});
-document.getElementById('visitDate').value=new Date().toISOString().split('T')[0];
+document.getElementById('visitDate').value=(function(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();})();
 document.getElementById('visitDate').addEventListener('change',function(){updateMicAvailability();});
 document.getElementById('visitType').addEventListener('change',function(){updateMicAvailability();});
 var mediaRecorder=null,chunks=[],seconds=0,timerInterval=null,streamRef=null,isRecording=false,autoStopTimeout=null,wasAutoStopped=false,pendingAutoStopBlob=null;
@@ -339,7 +339,7 @@ micBtn.addEventListener('click',function(){if(!isRecording)startRecording();else
 function proceedToTranscribe(blob){
   statusEl.className='status transcribing';statusEl.textContent='Transcribing visit...';
   var fd=new FormData();fd.append('file',blob,'visit.webm');fd.append('model','whisper-1');
-  fetch(WORKER+'/transcribe',{method:'POST',body:fd}).then(function(r){return r.json();}).then(function(d){var t=d.text||d.transcript||'';if(t){transcriptText.value=t;statusEl.className='status done';statusEl.textContent='Transcript ready. Edit if needed then process.';document.getElementById('editNotice').className='edit-notice visible';micBtn.disabled=true;}else{statusEl.className='status';statusEl.textContent='Transcription failed. Type notes manually.';updateMicAvailability();}}).catch(function(){statusEl.className='status';statusEl.textContent='Transcription error — type notes manually.';updateMicAvailability();});
+  fetch(WORKER+'/transcribe',{method:'POST',headers:{'Authorization':'Bearer '+currentSessionToken},body:fd}).then(function(r){return r.json();}).then(function(d){var t=d.text||d.transcript||'';if(t){transcriptText.value=t;statusEl.className='status done';statusEl.textContent='Transcript ready. Edit if needed then process.';document.getElementById('editNotice').className='edit-notice visible';micBtn.disabled=true;}else{statusEl.className='status';statusEl.textContent='Transcription failed. Type notes manually.';updateMicAvailability();}}).catch(function(){statusEl.className='status';statusEl.textContent='Transcription error — type notes manually.';updateMicAvailability();});
 }
 async function startRecording(){
   try{isRecording=true;chunks=[];seconds=0;wasAutoStopped=false;document.getElementById('recordingTimer').textContent='0:00';transcriptText.value='';audioPlayer.style.display='none';successCard.style.display='none';statusEl.className='status active';
@@ -472,7 +472,7 @@ async function uploadPendingPhotos(tempId) {
       var fd = new FormData();
       fd.append('photo', blob, 'photo.jpg');
       fd.append('visitId', String(tempId));
-      var res = await fetch(WORKER + '/upload-photo', { method: 'POST', body: fd });
+      var res = await fetch(WORKER + '/upload-photo', { method: 'POST', headers: { 'Authorization': 'Bearer ' + currentSessionToken }, body: fd });
       var data = await res.json();
       if (res.ok && data.url) {
         urls.push(data.url);
