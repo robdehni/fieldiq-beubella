@@ -498,7 +498,7 @@ async function doRescheduleAction(){
     });
     var data=await res.json();
     if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
-    updateEventDueDate(currentPopupActionId,newDate);
+    await updateEventDueDate(currentPopupActionId,newDate);
     closeActionPopup();
   }catch(e){
     setPopupBusy(false);
@@ -518,20 +518,12 @@ function removeEventById(id){
   render();
 }
 
-function updateEventDueDate(id,newDate){
-  events=events.map(function(e){
-    if(e.id!==id)return e;
-    var updated=Object.assign({},e,{fields:Object.assign({},e.fields,{'Due Date':newDate})});
-    return updated;
-  });
-  events.sort(function(a,b){
-    return String(getDueDate(a.fields||{})).localeCompare(String(getDueDate(b.fields||{})));
-  });
+async function updateEventDueDate(id,newDate){
   var parts=newDate.split('-');
   viewYear=parseInt(parts[0],10);
   viewMonth=parseInt(parts[1],10)-1;
   selectedDayISO=newDate;
-  render();
+  await loadCalendar();
 }
 
 document.addEventListener('DOMContentLoaded',function(){
