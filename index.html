@@ -550,7 +550,8 @@ async function loadNotifications(){
     var count=records.length;
     var urgency=records.some(function(r){
       var due=(r.fields||{})['Due Date']||'';
-      return due && due<=new Date().toISOString().slice(0,10);
+      var _d=new Date();var _today=_d.getFullYear()+'-'+(_d.getMonth()+1<10?'0':'')+(_d.getMonth()+1)+'-'+(_d.getDate()<10?'0':'')+_d.getDate();
+      return due && due<=_today;
     });
     var bodyText='You have '+count+' reminder'+(count>1?'s':'')+' from your manager.'+(urgency?' Some require immediate attention.':'');
     section.innerHTML=
