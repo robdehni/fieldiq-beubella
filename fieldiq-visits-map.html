@@ -161,9 +161,10 @@ var isManager = (role === 'Manager');
 // verified session token.
 var currentSessionToken = localStorage.getItem('fieldiq_session_token');
 
+var cameFromDashboard = new URLSearchParams(window.location.search).get('from') === 'dashboard';
 document.getElementById('topHomeBtn').href = isManager ? './fieldiq.html' : './index.html';
 document.getElementById('topHomeBtn').textContent = isManager ? '← Manager Home' : '← Home';
-if (new URLSearchParams(window.location.search).get('from') === 'dashboard') {
+if (cameFromDashboard) {
   document.getElementById('backToDashboardBtn').style.display = '';
 }
 document.getElementById('accessDeniedHomeBtn').href = isManager ? './dashboard.html' : './index.html';
@@ -307,7 +308,7 @@ function goToVisit(visitId){
   var fSent=document.getElementById('fSent').value;
   var mapVisitIds=currentFilteredVisits.filter(function(v){return hasValidMapCoordinates(v.fields);}).map(function(v){return v.id;});
   try{sessionStorage.setItem('fieldiq_map_visit_list',JSON.stringify(mapVisitIds));}catch(e){}
-  var returnUrl='./fieldiq-visits-map.html?mapLat='+encodeURIComponent(c.lat)+'&mapLng='+encodeURIComponent(c.lng)+'&mapZoom='+encodeURIComponent(z)+'&mapVisitId='+encodeURIComponent(visitId)+'&fPeriod='+encodeURIComponent(fPeriod)+'&fTerr='+encodeURIComponent(fTerr)+'&fRep='+encodeURIComponent(fRep)+'&fSent='+encodeURIComponent(fSent);
+  var returnUrl='./fieldiq-visits-map.html?mapLat='+encodeURIComponent(c.lat)+'&mapLng='+encodeURIComponent(c.lng)+'&mapZoom='+encodeURIComponent(z)+'&mapVisitId='+encodeURIComponent(visitId)+'&fPeriod='+encodeURIComponent(fPeriod)+'&fTerr='+encodeURIComponent(fTerr)+'&fRep='+encodeURIComponent(fRep)+'&fSent='+encodeURIComponent(fSent)+(cameFromDashboard?'&from=dashboard':'');
   var navUrl='./fieldiq-visit-history.html?visitId='+encodeURIComponent(visitId)+'&source=map&rep='+encodeURIComponent(fRep)+'&territory='+encodeURIComponent(fTerr)+'&returnTo='+encodeURIComponent(returnUrl);
   window.location.href=navUrl;
 }
@@ -452,7 +453,7 @@ async function loadVisits(){
       return;
     }
     populateFilters(allVisits);
-    populateRepFilter();
+    await populateRepFilter();
     var _restoreParams=new URLSearchParams(window.location.search);
     var _mLat=_restoreParams.get('mapLat'),_mLng=_restoreParams.get('mapLng'),_mZoom=_restoreParams.get('mapZoom'),_mVisitId=_restoreParams.get('mapVisitId');
     var _fPeriod=_restoreParams.get('fPeriod'),_fTerr=_restoreParams.get('fTerr'),_fRep=_restoreParams.get('fRep'),_fSent=_restoreParams.get('fSent');
