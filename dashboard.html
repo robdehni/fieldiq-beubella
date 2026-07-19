@@ -761,7 +761,7 @@ async function buildRepReviewReport(){
   var followUpRows=followUps.length?followUps.map(function(r){var f=r.fields;return'<tr><td>'+escapeHtml(f['Customer Name']||'—')+'</td><td>'+escapeHtml(f['User Name']||'—')+'</td><td>'+formatDate(f['Visit Date'])+'</td><td>'+escapeHtml(f['Action Items'])+'</td></tr>';}).join(''):'<tr><td colspan="4" class="rr-empty">No open follow-ups logged this period.</td></tr>';
   var reportPayload=JSON.stringify({meta:{rep:rep,terr:terr,periodLabel:periodLabel,startLabel:startLabel,endLabel:endLabel,generated:generated},summary:{totalVisits:totalVisits,accountsVisited:accountsVisited,newAccountsCount:newAccounts.length,highPriorityCount:highPriority.length,visitTypeHtml:countsToRows(visitTypeCounts),outcomeHtml:countsToRows(outcomeCounts),priorityHtml:countsToRows(priorityCounts)},prompts:prompts,html:{visitRows:visitRows,newAccountRows:newAccountRows,highPriorityBlocks:highPriorityBlocks,followUpRows:followUpRows}});
   try{localStorage.setItem('fieldiq_report',reportPayload);}catch(e){alert('Report data is too large for this device. Please filter by Rep or use a shorter reporting period.');return;}
-  var rLink=document.createElement('a');rLink.href='fieldiq-report.html';rLink.target='_blank';rLink.rel='noopener noreferrer';document.body.appendChild(rLink);rLink.click();document.body.removeChild(rLink);
+  window.open('fieldiq-report.html','_blank','noopener,noreferrer');
 }
 function renderFilterBanner(parts,totalVisits){
   var el=document.getElementById('filterStatus');
