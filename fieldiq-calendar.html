@@ -138,15 +138,6 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
       <div style="margin-top:16px">
         <label class="ap-label" for="apNewDate">New Date</label>
         <input type="date" class="ap-input" id="apNewDate">
-        <label class="ap-label" for="apReason">Reason (optional)</label>
-        <select class="ap-input" id="apReason">
-          <option value="">Select a reason...</option>
-          <option>Customer postponed</option>
-          <option>Customer cancelled</option>
-          <option>Internal scheduling conflict</option>
-          <option>Waiting for customer</option>
-          <option>Other</option>
-        </select>
         <button class="ap-btn ap-btn-save" id="apBtnSave">Save New Date</button>
       </div>
     </div>
@@ -400,7 +391,8 @@ function renderDayPanel(isoDate,dayActions){
     html+='<div class="cal-action-account">'+escapeHtml(account)+(time?'<span class="time-pill">'+escapeHtml(time)+'</span>':'')+'</div>';
     html+='<div class="cal-action-text">'+escapeHtml(action||'Open action')+'</div>';
     html+='<a class="cal-action-link" href="./fieldiq-open-actions.html?actionId='+escapeHtml(r.id)+'&returnTo=calendar&calYear='+viewYear+'&calMonth='+viewMonth+'&calDay='+escapeHtml(isoDate)+'" onclick="event.stopPropagation()">→ Open in My Actions</a>';
-    var linkedVisitArr=f['Source Visit']||f['Visit']||f['Field Visit']||f['Visit Record']||[];
+    var rawFields=(r.raw&&r.raw.fields)||{};
+    var linkedVisitArr=rawFields['Source Visit']||rawFields['Visit']||rawFields['Field Visit']||rawFields['Visit Record']||[];
     var linkedVisitId=Array.isArray(linkedVisitArr)&&linkedVisitArr.length?linkedVisitArr[0]:(typeof linkedVisitArr==='string'?linkedVisitArr:'');
     html+=' &nbsp;&middot;&nbsp; <a class="cal-action-link" href="./fieldiq-log-visit.html?account='+encodeURIComponent(account)+'&sourceRef='+encodeURIComponent(r.id)+(linkedVisitId?'&visitId='+encodeURIComponent(linkedVisitId):'')+'&calYear='+viewYear+'&calMonth='+viewMonth+'&calDay='+encodeURIComponent(isoDate)+'" onclick="event.stopPropagation()">\ud83c\udf99\ufe0f Log Update</a>';
     html+='</div>';
@@ -434,7 +426,6 @@ function openActionPopupById(actionId){
   var newDateInput=document.getElementById('apNewDate');
   newDateInput.min=todayISO();
   newDateInput.value=getDueDate(f);
-  document.getElementById('apReason').value='';
 
   document.getElementById('apViewDefault').classList.remove('hidden');
   document.getElementById('apViewReschedule').classList.add('hidden');
@@ -495,13 +486,11 @@ async function doCancelAction(){
 
 async function doRescheduleAction(){
   var newDate=document.getElementById('apNewDate').value;
-  var reason=document.getElementById('apReason').value;
   if(!newDate){alert('Please select a new date.');return;}
   if(!currentPopupActionId)return;
   setPopupBusy(true);
   try{
     var body={actionId:currentPopupActionId,dueDate:newDate};
-    if(reason)body.rescheduleReason=reason;
     var res=await fetch(WORKER+'/update-action',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
@@ -530,13 +519,14 @@ function removeEventById(id){
 }
 
 function updateEventDueDate(id,newDate){
-  var r=events.find(function(e){return e.id===id;});
-  if(r){
-    r.fields['Due Date']=newDate;
-    events.sort(function(a,b){
-      return String(getDueDate(a.fields||{})).localeCompare(String(getDueDate(b.fields||{})));
-    });
-  }
+  events=events.map(function(e){
+    if(e.id!==id)return e;
+    var updated=Object.assign({},e,{fields:Object.assign({},e.fields,{'Due Date':newDate})});
+    return updated;
+  });
+  events.sort(function(a,b){
+    return String(getDueDate(a.fields||{})).localeCompare(String(getDueDate(b.fields||{})));
+  });
   var parts=newDate.split('-');
   viewYear=parseInt(parts[0],10);
   viewMonth=parseInt(parts[1],10)-1;
