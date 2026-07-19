@@ -251,7 +251,7 @@ function reminderStrip(f){
   var count=Number(f['Reminder Count']||0);
   if(count===0)return '';
   var due=f['Due Date']||'';
-  var today=new Date().toISOString().slice(0,10);
+  var _d=new Date();var today=_d.getFullYear()+'-'+(_d.getMonth()+1<10?'0':'')+(_d.getMonth()+1)+'-'+(_d.getDate()<10?'0':'')+_d.getDate();
   var cls='reminder-strip-blue';
   var label='Manager reminder sent ('+count+')';
   if(due&&due<today){cls='reminder-strip-red';label='Overdue · Manager reminder sent ('+count+')';}
