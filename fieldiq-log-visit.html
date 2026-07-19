@@ -728,17 +728,17 @@ submitBtn.addEventListener('click',async function(){
       document.getElementById('processingText').textContent='Saving visit...';
     }
 
+    var tempId = 'visit-' + Date.now();
     var photoUrls = [];
     if (pendingPhotos.length > 0) {
       document.getElementById('processingText').textContent = 'Uploading photos...';
       document.getElementById('photoUploading').style.display = 'block';
-      var tempId = 'visit-' + Date.now();
       photoUrls = await uploadPendingPhotos(tempId);
       document.getElementById('photoUploading').style.display = 'none';
       document.getElementById('processingText').textContent = 'Saving visit...';
     }
 
-    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDate,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':result,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':parsed.nextSteps,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount};
+    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDate,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':result,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':parsed.nextSteps,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId};
     if(latitude!==null&&longitude!==null){savePayload['Latitude']=latitude;savePayload['Longitude']=longitude;savePayload['Accuracy']=accuracy;}
     if(!isNewAccount&&selectedAccountId){savePayload['Account']=[selectedAccountId];}
     if(isNewAccount&&newAccountId){savePayload['Account']=[newAccountId];}
@@ -751,6 +751,7 @@ submitBtn.addEventListener('click',async function(){
     var saveRes=await fetch(WORKER+'/save-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify(savePayload)});
     var saveData=await saveRes.json();
     if(!saveRes.ok){processingOverlay.style.display='none';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';transcriptText.disabled=false;if(isNewAccount){alert('The account'+(newContactName?' and contact were':' was')+' created successfully, but the visit itself failed to save.\n\nSubmit again — this time search for "'+hospitalName+'" instead of using "Account not listed," since it already exists now.\n\nSave error '+saveRes.status+'.');}else{alert('Save error '+saveRes.status+'. Please try again.');}return;}
+    if(!saveData._isDuplicateSubmission){
     try{
       await fetch(WORKER+'/save-actions',{
         method:'POST',
@@ -765,6 +766,7 @@ submitBtn.addEventListener('click',async function(){
       });
     }catch(e){
       console.warn('Open Actions save failed:',e);
+    }
     }
 
     if(prefillSourceRef){
