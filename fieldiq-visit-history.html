@@ -541,10 +541,11 @@ function renderActionsFromVisitList(records){
     var text=f['Action Text']||'';
     var status=String(f['Status']||'Open').toLowerCase();
     var isDismissed=status==='dismissed';
+    var isCancelled=status==='cancelled';
     var isCompleted=status==='completed';
-    var isEndState=isDismissed||isCompleted;
-    var badgeClass=isDismissed?'avf-badge-dismissed':(isCompleted?'avf-badge-completed':'avf-badge-pending');
-    var badgeText=isDismissed?'Dismissed':(isCompleted?'Completed':'Pending');
+    var isEndState=isDismissed||isCancelled||isCompleted;
+    var badgeClass=isCompleted?'avf-badge-completed':((isDismissed||isCancelled)?'avf-badge-dismissed':'avf-badge-pending');
+    var badgeText=isCompleted?'Completed':(isDismissed?'Dismissed':(isCancelled?'Cancelled':'Pending'));
     return '<div class="avf-item-wrap">'+
         '<div class="avf-item"><span class="avf-text">'+escapeHtmlLocal(text)+'</span><span class="avf-badge '+badgeClass+'">'+badgeText+'</span></div>'+
         (isEndState?'<div class="avf-notes" id="avf-notes-'+r.id+'"></div>':'')+
@@ -568,7 +569,7 @@ function loadActionsForVisit(detailEl,visitRecordId){
       container.innerHTML='<h4>Actions from this Visit</h4>'+renderActionsFromVisitList(records);
       records.forEach(function(r){
         var status=String((r.fields||{})['Status']||'Open').toLowerCase();
-        if(status==='completed'||status==='dismissed')loadNotesForAvfAction(r.id);
+        if(status==='completed'||status==='dismissed'||status==='cancelled')loadNotesForAvfAction(r.id);
       });
     })
     .catch(function(err){
