@@ -532,6 +532,13 @@ var prefillSourceRef='';
 var fwActionId='';
 var fwWorkflowId='';
 var fwSourceVisitId='';
+(function(){
+  var _fwEarlyParams=new URLSearchParams(window.location.search);
+  if(_fwEarlyParams.get('fwActionId')){
+    var _fwClearBtn=document.getElementById('clearBtn');
+    if(_fwClearBtn)_fwClearBtn.style.display='none';
+  }
+})();
 var prefillAccountTerritory='';
 var prefillVisitThreadId=''; // holds the raw source visit id when arriving from a Log Update — sent as sourceVisitId; the Worker resolves the actual thread id at save time
 // Matches the dropdown's exact option values (Abu Dhabi/Dubai/Sharjah/
@@ -832,7 +839,7 @@ submitBtn.addEventListener('click',async function(){
     }
 
     processingOverlay.style.display='none';successCard.style.display='block';submitBtn.textContent='Success';document.getElementById('reportContent').innerHTML=renderReport(result);
-    if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled&&!fwActionId)(function(){
+    if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled&&!_fwActionIdForCompletion)(function(){
       var fwBtn=document.createElement('button');
       fwBtn.type='button';
       fwBtn.className='btn btn-primary';
