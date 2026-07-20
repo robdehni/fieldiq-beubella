@@ -598,7 +598,7 @@ function renderThreadCards(members,threadId,currentId){
     var snippet=truncateSummary(mf['AI Summary']||mf['Meeting Notes']||'',70).replace(/^[:\s]+/,'');
     var actionHtml=isCurrent
       ? '<span class="thread-card-status">Currently viewing</span>'
-      : '<button type="button" class="thread-action-btn thread-action-btn-small thread-open-btn" data-visit-id="'+escapeHtml(m.id)+'">Open</button>';
+      : '<button type="button" class="thread-action-btn thread-action-btn-small thread-open-btn" data-visit-id="'+escapeHtmlLocal(m.id)+'">Open</button>';
     html+='<div class="thread-card'+(isCurrent?' thread-card-current':'')+'">'+
       '<div class="thread-card-label">'+label+'</div>'+
       '<div class="thread-card-meta">'+(dateStr?escapeHtmlLocal(dateStr):'')+(dateStr&&snippet?' · ':'')+escapeHtmlLocal(snippet)+'</div>'+
