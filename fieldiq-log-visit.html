@@ -839,7 +839,7 @@ submitBtn.addEventListener('click',async function(){
     }
 
     processingOverlay.style.display='none';successCard.style.display='block';submitBtn.textContent='Success';document.getElementById('reportContent').innerHTML=renderReport(result);
-    if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled&&!_fwActionIdForCompletion)(function(){
+    if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled&&!_fwActionIdForCompletion&&!prefillSourceRef)(function(){
       var fwBtn=document.createElement('button');
       fwBtn.type='button';
       fwBtn.className='btn btn-primary';
