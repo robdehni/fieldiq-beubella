@@ -547,22 +547,44 @@ async function loadNotifications(){
     var records=(data.records||[]).filter(function(r){return !r.fields['Is Read'];});
     if(!records.length)return;
 
-    var count=records.length;
-    var urgency=records.some(function(r){
+    var fwRecords=records.filter(function(r){return (r.fields||{})['Type']==='Field Workflow';});
+    var reminderRecords=records.filter(function(r){return (r.fields||{})['Type']!=='Field Workflow';});
+    var urgency=reminderRecords.some(function(r){
       var due=(r.fields||{})['Due Date']||'';
       var _d=new Date();var _today=_d.getFullYear()+'-'+(_d.getMonth()+1<10?'0':'')+(_d.getMonth()+1)+'-'+(_d.getDate()<10?'0':'')+_d.getDate();
       return due && due<=_today;
     });
-    var bodyText='You have '+count+' reminder'+(count>1?'s':'')+' from your manager.'+(urgency?' Some require immediate attention.':'');
-    section.innerHTML=
-      '<div class="notif-panel">'+
-        '<div class="notif-panel-header">'+
-          '<span class="notif-bell">🔔</span>'+
-          '<span class="notif-title">Manager Reminder'+(count>1?'s':'')+' ('+count+')</span>'+
-        '</div>'+
-        '<div class="notif-body">'+escapeHtml(bodyText)+'</div>'+
-        '<a class="notif-action-btn" href="./fieldiq-open-actions.html">View Reminders →</a>'+
-      '</div>';
+    var panelsHtml='';
+    if(fwRecords.length){
+      var fwCount=fwRecords.length;
+      var fwLatest=fwRecords[0].fields||{};
+      var fwBodyText=fwCount===1
+        ?('Your specialist has completed the requested visit'+(fwLatest['Message']?(': '+escapeHtml(fwLatest['Message'])):'.')+' Tap below to review it.')
+        :('Your specialists have completed '+fwCount+' requested visits. Tap below to review them.');
+      panelsHtml+=
+        '<div class="notif-panel">'+
+          '<div class="notif-panel-header">'+
+            '<span class="notif-bell">✅</span>'+
+            '<span class="notif-title">Specialist Visit'+(fwCount>1?'s':'')+' Completed ('+fwCount+')</span>'+
+          '</div>'+
+          '<div class="notif-body">'+fwBodyText+'</div>'+
+          '<a class="notif-action-btn" href="./fieldiq-open-actions.html">View Completed Visit'+(fwCount>1?'s':'')+' →</a>'+
+        '</div>';
+    }
+    if(reminderRecords.length){
+      var rCount=reminderRecords.length;
+      var bodyText='You have '+rCount+' reminder'+(rCount>1?'s':'')+' from your manager.'+(urgency?' Some require immediate attention.':'');
+      panelsHtml+=
+        '<div class="notif-panel">'+
+          '<div class="notif-panel-header">'+
+            '<span class="notif-bell">🔔</span>'+
+            '<span class="notif-title">Manager Reminder'+(rCount>1?'s':'')+' ('+rCount+')</span>'+
+          '</div>'+
+          '<div class="notif-body">'+escapeHtml(bodyText)+'</div>'+
+          '<a class="notif-action-btn" href="./fieldiq-open-actions.html">View Reminders →</a>'+
+        '</div>';
+    }
+    section.innerHTML=panelsHtml;
   }catch(e){
     // Silent fail — notifications are non-critical
   }
