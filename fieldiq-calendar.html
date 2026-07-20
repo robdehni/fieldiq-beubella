@@ -126,6 +126,7 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
       <div class="ap-title" id="apTitle"></div>
       <div class="ap-date" id="apDate"></div>
       <button class="ap-btn ap-btn-complete" id="apBtnComplete">✅&nbsp; Mark Complete</button>
+      <a class="ap-btn ap-btn-complete hidden" id="apLinkLogSpecialistVisit" style="display:none;text-decoration:none;text-align:center">🎙️&nbsp; Log Specialist Visit</a>
       <button class="ap-btn ap-btn-reschedule" id="apBtnReschedule">📅&nbsp; Reschedule</button>
       <button class="ap-btn ap-btn-cancel" id="apBtnCancel">❌&nbsp; Cancel Action</button>
       <button class="ap-btn ap-btn-close" id="apBtnClose">Close</button>
@@ -394,7 +395,13 @@ function renderDayPanel(isoDate,dayActions){
     var rawFields=(r.raw&&r.raw.fields)||{};
     var linkedVisitArr=rawFields['Source Visit']||rawFields['Visit']||rawFields['Field Visit']||rawFields['Visit Record']||[];
     var linkedVisitId=Array.isArray(linkedVisitArr)&&linkedVisitArr.length?linkedVisitArr[0]:(typeof linkedVisitArr==='string'?linkedVisitArr:'');
-    html+=' &nbsp;&middot;&nbsp; <a class="cal-action-link" href="./fieldiq-log-visit.html?account='+encodeURIComponent(account)+'&sourceRef='+encodeURIComponent(r.id)+(linkedVisitId?'&visitId='+encodeURIComponent(linkedVisitId):'')+'&calYear='+viewYear+'&calMonth='+viewMonth+'&calDay='+encodeURIComponent(isoDate)+'" onclick="event.stopPropagation()">\ud83c\udf99\ufe0f Log Update</a>';
+    var _cfwWorkflowId=f['Field Workflow ID']||'';
+    if(_cfwWorkflowId){
+      var _cfwQ=['fwActionId='+encodeURIComponent(r.id),'fwWorkflowId='+encodeURIComponent(_cfwWorkflowId),'fwSourceVisitId='+encodeURIComponent(linkedVisitId),'account='+encodeURIComponent(account)];
+      html+=' &nbsp;&middot;&nbsp; <a class="cal-action-link" href="./fieldiq-log-visit.html?'+_cfwQ.join('&')+'" onclick="event.stopPropagation()">\ud83c\udf99\ufe0f Log Specialist Visit</a>';
+    }else{
+      html+=' &nbsp;&middot;&nbsp; <a class="cal-action-link" href="./fieldiq-log-visit.html?account='+encodeURIComponent(account)+'&sourceRef='+encodeURIComponent(r.id)+(linkedVisitId?'&visitId='+encodeURIComponent(linkedVisitId):'')+'&calYear='+viewYear+'&calMonth='+viewMonth+'&calDay='+encodeURIComponent(isoDate)+'" onclick="event.stopPropagation()">\ud83c\udf99\ufe0f Log Update</a>';
+    }
     html+='</div>';
   });
 
@@ -426,6 +433,25 @@ function openActionPopupById(actionId){
   var newDateInput=document.getElementById('apNewDate');
   newDateInput.min=todayISO();
   newDateInput.value=getDueDate(f);
+
+  var _popupFwWorkflowId=f['Field Workflow ID']||'';
+  var _apBtnComplete=document.getElementById('apBtnComplete');
+  var _apBtnCancel=document.getElementById('apBtnCancel');
+  var _apLinkLogSpecialistVisit=document.getElementById('apLinkLogSpecialistVisit');
+  if(_popupFwWorkflowId){
+    var _rawFields=(r.raw&&r.raw.fields)||{};
+    var _linkedVisitArr=_rawFields['Source Visit']||_rawFields['Visit']||_rawFields['Field Visit']||_rawFields['Visit Record']||[];
+    var _linkedVisitId=Array.isArray(_linkedVisitArr)&&_linkedVisitArr.length?_linkedVisitArr[0]:(typeof _linkedVisitArr==='string'?_linkedVisitArr:'');
+    var _popupFwQ=['fwActionId='+encodeURIComponent(actionId),'fwWorkflowId='+encodeURIComponent(_popupFwWorkflowId),'fwSourceVisitId='+encodeURIComponent(_linkedVisitId),'account='+encodeURIComponent(getAccountName(f))];
+    _apLinkLogSpecialistVisit.href='./fieldiq-log-visit.html?'+_popupFwQ.join('&');
+    _apLinkLogSpecialistVisit.style.display='block';
+    _apBtnComplete.style.display='none';
+    _apBtnCancel.style.display='none';
+  }else{
+    _apLinkLogSpecialistVisit.style.display='none';
+    _apBtnComplete.style.display='';
+    _apBtnCancel.style.display='';
+  }
 
   document.getElementById('apViewDefault').classList.remove('hidden');
   document.getElementById('apViewReschedule').classList.add('hidden');
