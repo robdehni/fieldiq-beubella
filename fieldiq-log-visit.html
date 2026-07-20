@@ -529,6 +529,9 @@ document.getElementById('discardRecordingLink').addEventListener('click',functio
 });
 
 var prefillSourceRef='';
+var fwActionId='';
+var fwWorkflowId='';
+var fwSourceVisitId='';
 var prefillAccountTerritory='';
 var prefillVisitThreadId=''; // holds the raw source visit id when arriving from a Log Update — sent as sourceVisitId; the Worker resolves the actual thread id at save time
 // Matches the dropdown's exact option values (Abu Dhabi/Dubai/Sharjah/
@@ -581,6 +584,9 @@ async function applyPrefillFromURL(){
     var visitIdParam=params.get('visitId')||'';
     prefillSourceRef=params.get('sourceRef')||'';
     prefillVisitThreadId=visitIdParam;
+    fwActionId=params.get('fwActionId')||'';
+    fwWorkflowId=params.get('fwWorkflowId')||'';
+    fwSourceVisitId=params.get('fwSourceVisitId')||'';
     if(accountParam&&ACCOUNTS.length){
       var match=ACCOUNTS.find(function(a){return a.name.trim().toLowerCase()===accountParam.trim().toLowerCase();});
       if(match){
@@ -633,6 +639,9 @@ async function applyPrefillFromURL(){
           document.getElementById('clearBtn').style.display='none';
         }
       }
+    }
+    if(fwActionId){
+      document.getElementById('clearBtn').style.display='none';
     }
     updateMicAvailability();
   }catch(e){}
@@ -739,6 +748,11 @@ submitBtn.addEventListener('click',async function(){
     }
 
     var savePayload={'Customer Name':hospitalName,'Visit Date':visitDate,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':result,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':parsed.nextSteps,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId};
+    var _fwUrlParamsForSave=new URLSearchParams(window.location.search);
+    var _fwSourceVisitIdForSave=fwSourceVisitId||_fwUrlParamsForSave.get('fwSourceVisitId')||'';
+    var _fwWorkflowIdForSave=fwWorkflowId||_fwUrlParamsForSave.get('fwWorkflowId')||'';
+    if(_fwSourceVisitIdForSave)savePayload.fieldWorkflowSourceVisitId=_fwSourceVisitIdForSave;
+    if(_fwWorkflowIdForSave)savePayload.fieldWorkflowId=_fwWorkflowIdForSave;
     if(latitude!==null&&longitude!==null){savePayload['Latitude']=latitude;savePayload['Longitude']=longitude;savePayload['Accuracy']=accuracy;}
     if(!isNewAccount&&selectedAccountId){savePayload['Account']=[selectedAccountId];}
     if(isNewAccount&&newAccountId){savePayload['Account']=[newAccountId];}
@@ -786,8 +800,39 @@ submitBtn.addEventListener('click',async function(){
       }catch(e){console.warn('Rep Activity notification failed:',e);}
     }
 
+    var _fwUrlParams=new URLSearchParams(window.location.search);
+    var _fwActionIdForCompletion=fwActionId||_fwUrlParams.get('fwActionId')||'';
+    if(_fwActionIdForCompletion){
+      var _fwAttemptHandback=async function(){
+        try{
+          var _fwCompleteRes=await fetch(WORKER+'/complete-action',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+            body:JSON.stringify({actionId:_fwActionIdForCompletion,specialistVisitId:saveData.id,completionNote:parsed.summary||''})
+          });
+          if(_fwCompleteRes.ok)return true;
+          var _fwErrData=await _fwCompleteRes.json().catch(function(){return {};});
+          return _fwErrData.error||false;
+        }catch(e){
+          return false;
+        }
+      };
+      var _fwResult=await _fwAttemptHandback();
+      if(_fwResult!==true){
+        var _fwRetry=confirm('Your visit was saved, but the hand-back to the original Sales Rep did not complete'+(typeof _fwResult==='string'?(': '+_fwResult):'')+'.\n\nTry the hand-back again now? (Your visit is already saved — this will not create a duplicate.)');
+        if(_fwRetry){
+          var _fwRetryResult=await _fwAttemptHandback();
+          if(_fwRetryResult!==true){
+            alert('The hand-back still did not complete. Your visit was saved. Please return to Open Actions and retry the hand-back from there.');
+          }
+        }else{
+          alert('Your visit was saved. When ready, return to Open Actions and retry the hand-back.');
+        }
+      }
+    }
+
     processingOverlay.style.display='none';successCard.style.display='block';submitBtn.textContent='Success';document.getElementById('reportContent').innerHTML=renderReport(result);
-    if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled)(function(){
+    if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled&&!fwActionId)(function(){
       var fwBtn=document.createElement('button');
       fwBtn.type='button';
       fwBtn.className='btn btn-primary';
@@ -797,11 +842,12 @@ submitBtn.addEventListener('click',async function(){
         var targetRole=prompt('Which specialist role is needed? (e.g. Trainer)','Trainer');
         if(!targetRole||!targetRole.trim())return;
         var notes=prompt('Any notes for the specialist? (optional)','')||'';
+        var requiredDateInput=prompt('Required date? (optional, format YYYY-MM-DD, e.g. 2026-07-23)','')||'';
         fwBtn.disabled=true;fwBtn.textContent='Sending request…';
         fetch(WORKER+'/start-field-workflow',{
           method:'POST',
           headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
-          body:JSON.stringify({accountName:hospitalName,accountId:isNewAccount?newAccountId:selectedAccountId,targetRole:targetRole.trim(),notes:notes.trim(),visitRecordId:saveData.id})
+          body:JSON.stringify({accountName:hospitalName,accountId:isNewAccount?newAccountId:selectedAccountId,targetRole:targetRole.trim(),notes:notes.trim(),requiredDate:requiredDateInput.trim(),visitRecordId:saveData.id})
         }).then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});}).then(function(res){
           if(!res.ok){alert('Could not send request: '+(res.data.error||'please try again.'));fwBtn.disabled=false;fwBtn.textContent='Request Specialist for this Account';return;}
           fwBtn.textContent='Specialist Requested ✓';
