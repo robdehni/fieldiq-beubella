@@ -355,12 +355,6 @@ function renderActionCard(r, account){
 
   var vHref=visitHref(r);
   var _isFieldWorkflow=!!f['Field Workflow ID'];
-  var _fwLogVisitHref='';
-  if(_isFieldWorkflow){
-    var _fwSourceVisitId=(f['Source Visit']||[])[0]||'';
-    var _fwQ=['fwActionId='+encodeURIComponent(r.id),'fwWorkflowId='+encodeURIComponent(f['Field Workflow ID']),'fwSourceVisitId='+encodeURIComponent(_fwSourceVisitId),'account='+encodeURIComponent(account||'')];
-    _fwLogVisitHref='./fieldiq-log-visit.html?'+_fwQ.join('&');
-  }
 
   return (
     '<div class="action-card" id="card-'+r.id+'">'+
@@ -373,11 +367,10 @@ function renderActionCard(r, account){
       '<div class="meta-row">'+meta+'</div>'+
       '<div class="manager-notes-section" id="notes-'+r.id+'"></div>'+
       (vHref?'<a class="view-visit-link" href="'+escapeHtml(vHref)+'"><i data-lucide="file-text"></i> View Visit</a>':'')+
-      (_isFieldWorkflow
-        ?'<a class="complete-btn" href="'+escapeHtml(_fwLogVisitHref)+'" style="display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none"><i data-lucide="mic"></i> Log Specialist Visit</a>'
-        :'<button class="complete-btn" onclick="completeAction(\''+r.id+'\')" id="btn-'+r.id+'">'+
-          '<i data-lucide="check"></i> Complete'+
-        '</button>')+
+      (_isFieldWorkflow?'<div class="fw-complete-gate-msg" id="fwgate-'+r.id+'" style="display:none;font-size:11.5px;color:#8a9bb3;text-align:center;margin-bottom:6px">Please log your visit from Calendar before completing this action.</div>':'')+
+      '<button class="complete-btn" onclick="completeAction(\''+r.id+'\')" id="btn-'+r.id+'"'+(_isFieldWorkflow?' disabled data-fw-gated="1"':'')+'>'+
+        '<i data-lucide="check"></i> Complete'+
+      '</button>'+
       '<button class="dismiss-btn" onclick="dismissAction(\''+r.id+'\')" id="dbtn-'+r.id+'">'+
         '<i data-lucide="x"></i> Dismiss'+
       '</button>'+
@@ -462,6 +455,24 @@ function render(){
 
   content.innerHTML=html;
   lucide.createIcons();
+
+  document.querySelectorAll('[data-fw-gated="1"]').forEach(function(btn){
+    var actionId=btn.id.replace('btn-','');
+    fetch(WORKER+'/get-field-workflow-visit-check?actionId='+encodeURIComponent(actionId),{headers:{'Authorization':'Bearer '+currentSessionToken}})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&d.hasValidUpdate){
+          btn.disabled=false;
+        }else{
+          var msgEl=document.getElementById('fwgate-'+actionId);
+          if(msgEl)msgEl.style.display='block';
+        }
+      })
+      .catch(function(){
+        var msgEl=document.getElementById('fwgate-'+actionId);
+        if(msgEl)msgEl.style.display='block';
+      });
+  });
 
   // Fire off note lookups for every rendered action, independently — one
   // failing or slow request never blocks or delays another card's actions.
