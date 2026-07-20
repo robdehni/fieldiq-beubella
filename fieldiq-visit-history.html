@@ -967,6 +967,18 @@ async function loadHistory(){
     var data=await res.json();  
     if(!res.ok)throw new Error(JSON.stringify(data));  
     allRecordsRaw=data.records||[];  
+    try{
+      var _fwParams=new URLSearchParams(window.location.search);
+      var _fwVisitId=_fwParams.get('visitId');
+      var _fwActionId=_fwParams.get('actionId');
+      if(_fwVisitId&&_fwActionId&&!allRecordsRaw.some(function(r){return r.id===_fwVisitId;})){
+        var _linkedRes=await fetch(WORKER+'/get-linked-visit?actionId='+encodeURIComponent(_fwActionId)+'&visitId='+encodeURIComponent(_fwVisitId),{headers:{'Authorization':'Bearer '+currentSessionToken}});
+        if(_linkedRes.ok){
+          var _linkedData=await _linkedRes.json();
+          if(_linkedData.record&&_linkedData.record.id){allRecordsRaw=[_linkedData.record].concat(allRecordsRaw);}
+        }
+      }
+    }catch(e){console.warn('Could not load linked Field Workflow visit:',e);}
     if(currentUser.role==='Manager'){
       try{
         var wlRes=await fetch(WORKER+'/get-watchlist',{headers:{'Authorization':'Bearer '+currentSessionToken}});
