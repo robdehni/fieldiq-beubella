@@ -261,6 +261,13 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
       <div id="askAnswerArea"></div>
     </div>
 
+    <div id="fieldWorkflowQueueSection" style="display:none">
+      <button type="button" class="more-toggle" style="margin-top:0">
+        Field Workflow — Pending Requests (<span id="fwQueueCount">0</span>)
+      </button>
+      <div id="fieldWorkflowQueueBody" style="margin-top:10px"></div>
+    </div>
+
     <button type="button" class="more-toggle" id="moreToggle">
       More Manager Tools
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -620,6 +627,88 @@ function askFieldIQ(question){
 // call entirely (nothing to validate, straight back to sign-in); a token
 // that fails verification is cleared before redirecting, exactly like any
 // other expired or invalid session elsewhere in this app.
+// ── Field Workflow — Manager pending queue ──────────────────────────────────
+// New, additive feature. Loads and renders only if there's something
+// pending; otherwise the panel stays hidden and nothing about today's
+// Manager Home changes at all.
+async function loadFieldWorkflowQueue(){
+  try{
+    var res = await fetch(WORKER_URL_HOME + '/get-field-workflow-queue', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } });
+    if(!res.ok) return;
+    var data = await res.json();
+    var records = data.records || [];
+    var section = document.getElementById('fieldWorkflowQueueSection');
+    var countEl = document.getElementById('fwQueueCount');
+    var body = document.getElementById('fieldWorkflowQueueBody');
+    if(!records.length){ section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    countEl.textContent = records.length;
+    var html = '';
+    records.forEach(function(r){
+      var f = r.fields || {};
+      html += '<div class="ask-card" style="margin-bottom:8px">'
+        + '<div style="font-weight:800;font-size:13.5px;color:#0b1f3a">' + escapeHtmlHome(f['Account Name'] || 'Unknown Account') + '</div>'
+        + '<div style="font-size:11.5px;color:#8a9bb3;margin:3px 0 8px">Needs: ' + escapeHtmlHome(f['Assigned Role'] || '') + '</div>'
+        + '<div style="font-size:12px;color:#3d4f6b;margin-bottom:10px">' + escapeHtmlHome(f['Action Text'] || '') + '</div>'
+        + '<select class="fw-specialist-select" data-action-id="' + r.id + '" data-role="' + escapeHtmlHome(f['Assigned Role'] || '') + '" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px"><option value="">Select a specialist…</option></select>'
+        + '<button type="button" class="fw-assign-btn" data-action-id="' + r.id + '" style="width:100%;padding:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer">Assign</button>'
+        + '</div>';
+    });
+    body.innerHTML = html;
+
+    // Populate each request's specialist dropdown, filtered to the role
+    // that specific request actually needs. Same fetch pattern already
+    // proven in dashboard.html's rep roster.
+    var usersRes = await fetch(WORKER_URL_HOME + '/get-users');
+    var usersData = usersRes.ok ? await usersRes.json() : { records: [] };
+    var allUsers = usersData.records || [];
+    body.querySelectorAll('.fw-specialist-select').forEach(function(sel){
+      var neededRole = sel.getAttribute('data-role');
+      allUsers.filter(function(u){ return u.fields['Role'] === neededRole && u.fields['Active?'] !== false; })
+        .forEach(function(u){
+          var opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.fields['Display Name'] || u.fields['User ID'] || 'Unknown';
+          sel.appendChild(opt);
+        });
+    });
+
+    body.querySelectorAll('.fw-assign-btn').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        var actionId = btn.getAttribute('data-action-id');
+        var sel = body.querySelector('.fw-specialist-select[data-action-id="' + actionId + '"]');
+        var specialistRecordId = sel ? sel.value : '';
+        if(!specialistRecordId){ alert('Please select a specialist first.'); return; }
+        btn.disabled = true; btn.textContent = 'Assigning…';
+        try{
+          var assignRes = await fetch(WORKER_URL_HOME + '/assign-field-workflow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentSessionToken },
+            body: JSON.stringify({ actionId: actionId, specialistRecordId: specialistRecordId })
+          });
+          if(!assignRes.ok){
+            var errData = await assignRes.json().catch(function(){ return {}; });
+            alert('Could not assign: ' + (errData.error || 'please try again.'));
+            btn.disabled = false; btn.textContent = 'Assign';
+            return;
+          }
+          loadFieldWorkflowQueue();
+        }catch(e){
+          alert('Error: ' + e.message);
+          btn.disabled = false; btn.textContent = 'Assign';
+        }
+      });
+    });
+  }catch(e){
+    console.error('Could not load Field Workflow queue:', e);
+  }
+}
+document.addEventListener('DOMContentLoaded', function(){
+  if (typeof FIELDIQ_BRAND !== 'undefined' && FIELDIQ_BRAND.fieldWorkflowEnabled) {
+    loadFieldWorkflowQueue();
+  }
+});
+
 // ── Company Broadcast (Manager side) ────────────────────────────────────────
 // Managers can both send and receive broadcasts — a broadcast sent by one
 // manager is still visible to every other manager unless explicitly
