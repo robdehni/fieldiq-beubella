@@ -787,6 +787,28 @@ submitBtn.addEventListener('click',async function(){
     }
 
     processingOverlay.style.display='none';successCard.style.display='block';submitBtn.textContent='Success';document.getElementById('reportContent').innerHTML=renderReport(result);
+    if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled)(function(){
+      var fwBtn=document.createElement('button');
+      fwBtn.type='button';
+      fwBtn.className='btn btn-primary';
+      fwBtn.style.cssText='margin-top:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0)';
+      fwBtn.textContent='Request Specialist for this Account';
+      fwBtn.addEventListener('click',function(){
+        var targetRole=prompt('Which specialist role is needed? (e.g. Trainer)','Trainer');
+        if(!targetRole||!targetRole.trim())return;
+        var notes=prompt('Any notes for the specialist? (optional)','')||'';
+        fwBtn.disabled=true;fwBtn.textContent='Sending request…';
+        fetch(WORKER+'/start-field-workflow',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+          body:JSON.stringify({accountName:hospitalName,accountId:isNewAccount?newAccountId:selectedAccountId,targetRole:targetRole.trim(),notes:notes.trim(),visitRecordId:saveData.id})
+        }).then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});}).then(function(res){
+          if(!res.ok){alert('Could not send request: '+(res.data.error||'please try again.'));fwBtn.disabled=false;fwBtn.textContent='Request Specialist for this Account';return;}
+          fwBtn.textContent='Specialist Requested ✓';
+        }).catch(function(e){alert('Error: '+e.message);fwBtn.disabled=false;fwBtn.textContent='Request Specialist for this Account';});
+      });
+      document.getElementById('reportContent').insertAdjacentElement('afterend',fwBtn);
+    })();
     var suggestedDateText=(parsed.suggestedDate||'').trim();
     if(suggestedDateText&&suggestedDateText.toLowerCase()!=='none'){
       var dateNoticeEl=document.createElement('div');
