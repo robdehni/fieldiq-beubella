@@ -26,6 +26,16 @@ export default {
     // (single line text, comma-separated role names), Active (checkbox,
     // default true), Expires At (date/time, optional).
     const BROADCASTS_TABLE = "tblLGiFaJsF6UHptC";
+    // Fields: Account Name (single line text — the exact "Customer Name"
+    // string used for the Management Radar grouping key), Dismissed At
+    // (date/time), Dismissed By (single line text). One row per
+    // dismissal; a fresh dismissal simply adds a new row rather than
+    // updating an old one, so history isn't lost. Table name, not table
+    // ID — the record ID form was consistently returning
+    // INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND despite a fresh, correctly
+    // scoped token. encodeURIComponent() is applied at each URL
+    // construction site below, not baked in here.
+    const RADAR_DISMISSALS_TABLE = "Radar Dismissals";
 
     function json(data, status = 200) {
       return new Response(JSON.stringify(data), {
@@ -60,13 +70,19 @@ export default {
     // On stall, the connection is aborted cleanly and the caller's catch block
     // returns an error to the browser immediately.
     function airtableFetch(url, options) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(function() { ctrl.abort(); }, 10000);
-      const opts = Object.assign({}, options || {}, { signal: ctrl.signal });
-      return fetch(url, opts).then(
-        function(res) { clearTimeout(timer); return res; },
-        function(err) { clearTimeout(timer); throw err; }
-      );
+      function attempt() {
+        const ctrl = new AbortController();
+        const timer = setTimeout(function() { ctrl.abort(); }, 10000);
+        const opts = Object.assign({}, options || {}, { signal: ctrl.signal });
+        return fetch(url, opts).then(
+          function(res) { clearTimeout(timer); return res; },
+          function(err) { clearTimeout(timer); throw err; }
+        );
+      }
+      return attempt().then(function(res) {
+        if (res.status !== 429) return res;
+        return new Promise(function(resolve) { setTimeout(resolve, 1000); }).then(attempt);
+      });
     }
 
     // Lightweight per-IP rate limiter for write-heavy endpoints, using the
@@ -111,16 +127,16 @@ export default {
       return String(value || "").replace(/"/g, '\\"');
     }
 
-    // Shared, top-level territory normalizer for the new session/territory
-    // enforcement work below. Identical logic to the existing internal
-    // copies inside buildDashboardResponse (normalizeTerritory) and
-    // get-watchlist (normalizeTerritoryWL) — those are left exactly as
-    // they are, untouched, since they already work correctly and this
-    // pass's job is to add new enforcement, not risk an unrelated
-    // regression by refactoring working code. This copy exists because
-    // territory comparison now also needs to happen at login and in
-    // every territory-enforcing endpoint below, none of which previously
-    // had access to either existing nested copy.
+    // Shared, top-level territory normalizer. Identical logic to the
+    // existing internal copies inside buildDashboardResponse
+    // (normalizeTerritory) and get-watchlist (normalizeTerritoryWL) —
+    // those are left exactly as they are, untouched. This copy exists so
+    // the same normalization can also run at login, where the session's
+    // own territory value is standardized for consistent display (e.g.
+    // "ABU DHABI" and "Abu Dhabi" both becoming the same canonical form).
+    // This is display normalization only — it has no access-restriction
+    // effect anywhere. Account access has no territory restriction at
+    // all; every authenticated role receives the complete Accounts list.
     function normalizeTerritoryShared(raw) {
       var value = raw;
 
@@ -434,7 +450,12 @@ export default {
       const _authSession = await verifySession(_authToken, env.SESSION_SECRET);
       if (!_authSession) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
 
-      const filterByUser = url.searchParams.get("filterByUser");
+      // Non-managers can only ever see their own visits, regardless of
+      // what (if anything) the client supplies here — closes both the
+      // "no filter at all" case and a rep supplying someone else's ID.
+      // Managers are unaffected, per the existing "Managers see all
+      // relevant activity" rule.
+      const filterByUser = (_authSession.role === "Manager") ? url.searchParams.get("filterByUser") : _authSession.userId;
       const territory = url.searchParams.get("territory");
       const rep = url.searchParams.get("rep");
       const isFiltered = !!(filterByUser || territory || rep);
@@ -604,6 +625,34 @@ export default {
           offset = data.offset || null;
         } while (offset);
 
+        // Normalizes an account name specifically for dismissal matching —
+        // trims and lowercases so whitespace or case differences between
+        // the name written at dismissal time and the name read back
+        // during suppression can never prevent a match. Only used for
+        // this comparison; does not affect how account names are
+        // displayed or grouped anywhere else.
+        function normalizeForDismissMatch(s) {
+          return String(s || "").trim().toLowerCase();
+        }
+        // One row per dismissal, so an account could have multiple —
+        // only the most recent one matters for suppressing stale evidence.
+        const dismissalMap = {};
+        try {
+          const dismissParams = new URLSearchParams();
+          dismissParams.append("pageSize", "100");
+          const dismissResponse = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(RADAR_DISMISSALS_TABLE)}?${dismissParams.toString()}`, { method: "GET", headers: airtableHeaders() });
+          if (dismissResponse.ok) {
+            const dismissData = await dismissResponse.json();
+            (dismissData.records || []).forEach(d => {
+              const df = d.fields || {};
+              const acctName = normalizeForDismissMatch(df["Account Name"]);
+              const dismissedAt = df["Dismissed At"] ? new Date(df["Dismissed At"]) : null;
+              if (!acctName || !dismissedAt) return;
+              if (!dismissalMap[acctName] || dismissedAt > dismissalMap[acctName]) dismissalMap[acctName] = dismissedAt;
+            });
+          }
+        } catch (e) { /* Radar dismissals are an enhancement, not a dependency — a failure here must never break the rest of the dashboard. */ }
+
         // Apply the same filters the dashboard's own UI exposes — mirrors
         // getFilteredRecords() in dashboard.html, done server-side instead.
         const periodRange = periodFilter ? getPeriodRange(periodFilter) : null;
@@ -666,10 +715,15 @@ export default {
           if (terr !== "Unknown") territories[terr] = (territories[terr] || 0) + 1;
 
           if (!isReviewed(f["Reviewed"])) {
-            const p = f["Priority"] || "";
-            if (p === "High") high.push(r);
-            else if (p === "Medium") medium.push(r);
-            else if (p === "Low") low.push(r);
+            const acctDismissedAt = dismissalMap[normalizeForDismissMatch(f["Customer Name"])] || null;
+            const rCreatedAt = r.createdTime ? new Date(r.createdTime) : null;
+            const dismissed = acctDismissedAt && (!rCreatedAt || rCreatedAt < acctDismissedAt);
+            if (!dismissed) {
+              const p = f["Priority"] || "";
+              if (p === "High") high.push(r);
+              else if (p === "Medium") medium.push(r);
+              else if (p === "Low") low.push(r);
+            }
           }
         });
 
@@ -762,11 +816,12 @@ export default {
           let highPriorityHit = null, negativeHit = null;
           acc.visits.forEach(r => {
             const rDate = r.fields["Visit Date"] ? new Date(r.fields["Visit Date"]) : null;
+            const rCreatedAt = r.createdTime ? new Date(r.createdTime) : null;
             if (r.fields["Priority"] === "High" && r.fields["Reviewed"] !== true) {
-              if (!highPriorityHit || (rDate && rDate > highPriorityHit.date)) highPriorityHit = { visitId: r.id, date: rDate };
+              if (!highPriorityHit || (rCreatedAt && (!highPriorityHit.createdAt || rCreatedAt > highPriorityHit.createdAt))) highPriorityHit = { visitId: r.id, date: rDate, createdAt: rCreatedAt };
             }
             if (r.fields["Outcome"] === "Negative" && r.fields["Reviewed"] !== true) {
-              if (!negativeHit || (rDate && rDate > negativeHit.date)) negativeHit = { visitId: r.id, date: rDate };
+              if (!negativeHit || (rCreatedAt && (!negativeHit.createdAt || rCreatedAt > negativeHit.createdAt))) negativeHit = { visitId: r.id, date: rDate, createdAt: rCreatedAt };
             }
           });
           const highPriorityUnreviewed = !!highPriorityHit;
@@ -776,19 +831,28 @@ export default {
           // date), any one wins for due-today since they're equally urgent.
           let overdueHit = null, dueTodayHit = null;
           acc.visits.forEach(r => {
+            const rDate = r.fields["Visit Date"] ? new Date(r.fields["Visit Date"]) : null;
+            const rCreatedAt = r.createdTime ? new Date(r.createdTime) : null;
             const ov = overdueActionByVisit.get(r.id);
-            if (ov && (!overdueHit || ov.dueDate < overdueHit.detail.dueDate)) overdueHit = { visitId: r.id, detail: ov };
+            if (ov && (!overdueHit || ov.dueDate < overdueHit.detail.dueDate)) overdueHit = { visitId: r.id, detail: ov, date: rDate, createdAt: rCreatedAt };
             const dt = dueTodayActionByVisit.get(r.id);
-            if (dt && !dueTodayHit) dueTodayHit = { visitId: r.id, detail: dt };
+            if (dt && !dueTodayHit) dueTodayHit = { visitId: r.id, detail: dt, date: rDate, createdAt: rCreatedAt };
           });
           const followUpOverdue = !!overdueHit;
           const followUpDueToday = !!dueTodayHit;
           const repCount = Object.keys(acc.reps).length;
-          if (highPriorityUnreviewed) evidence.push("High Priority visit not reviewed");
-          if (negativeUnreviewed) evidence.push("Negative outcome not reviewed");
-          if (followUpOverdue) evidence.push("Follow-up overdue");
-          if (followUpDueToday) evidence.push("Follow-up due today");
-          if (repCount >= 2) evidence.push("Visited by " + repCount + " different reps in the selected period");
+          const dismissedAt = dismissalMap[normalizeForDismissMatch(acc.name)] || null;
+          const lastVisitCreatedAt = (acc.lastVisitRecord && acc.lastVisitRecord.createdTime) ? new Date(acc.lastVisitRecord.createdTime) : null;
+          function survivesDismissal(hitCreatedAt) {
+            if (!dismissedAt) return true;
+            if (!hitCreatedAt) return false;
+            return hitCreatedAt >= dismissedAt;
+          }
+          if (highPriorityUnreviewed && survivesDismissal(highPriorityHit.createdAt)) evidence.push("High Priority visit not reviewed");
+          if (negativeUnreviewed && survivesDismissal(negativeHit.createdAt)) evidence.push("Negative outcome not reviewed");
+          if (followUpOverdue && survivesDismissal(overdueHit.createdAt)) evidence.push("Follow-up overdue");
+          if (followUpDueToday && survivesDismissal(dueTodayHit.createdAt)) evidence.push("Follow-up due today");
+          if (repCount >= 2 && survivesDismissal(lastVisitCreatedAt)) evidence.push("Visited by " + repCount + " different reps in the selected period");
           if (evidence.length > 0) {
             flagged.push({
               name: acc.name,
@@ -834,12 +898,29 @@ export default {
         };
 
         if (!isFiltered) {
-          // 60s TTL — short enough that a stale KPI/Priority Review/
-          // Management Radar view is never plausible for long even if a
-          // write somehow bypassed the explicit invalidation in
-          // /update-visit below, and long enough to absorb repeat opens
-          // within the same short window (the actual case this exists for).
-          const _res = jsonCached(responseBody, 60);
+          // Two genuinely separate things, not a contradiction: the
+          // Cache-Control header below is what's sent to EXTERNAL
+          // consumers (a browser, Cloudflare's own CDN edge) — deliberately
+          // no-cache, since a CDN-level copy is a layer this Worker's own
+          // cache.delete() calls can never reach or invalidate (confirmed
+          // and fixed earlier — a real production bug when this was
+          // previously max-age=60). The 60s TTL below is a completely
+          // separate thing: an explicit, programmatic entry in the
+          // Worker's OWN cache.default store, looked up directly via
+          // cache.match()/cache.put() further down and in this same
+          // function — governed by this code, not by the header, and
+          // reliably cleared by every write route that changes this data
+          // (/update-visit, /update-action, /complete-action,
+          // /dismiss-action, /send-reminder, /save-actions,
+          // /dismiss-radar-item). A stale KPI/Priority Review/Management
+          // Radar view is never plausible for long even if a write somehow
+          // bypassed one of those, and this is long enough to absorb
+          // repeat opens within the same short window (the actual case
+          // this exists for).
+          const _res = new Response(JSON.stringify(responseBody), {
+            status: 200,
+            headers: { ...h, "Content-Type": "application/json", "Cache-Control": "no-cache" }
+          });
           ctx.waitUntil(cache.put(req, _res.clone()));
           return _res;
         }
@@ -924,7 +1005,7 @@ export default {
       const _hit = await cache.match(req);
       if (_hit) return _hit;
       try {
-        const fields = ["User ID", "Display Name", "Role", "Territory", "Email", "Active?"];
+        const fields = ["User ID", "Display Name", "Role", "Territory", "Active?"];
         const params = new URLSearchParams();
         fields.forEach(f => params.append("fields[]", f));
         const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Users?${params.toString()}`, { method: "GET", headers: airtableHeaders() });
@@ -1476,6 +1557,11 @@ export default {
       // unchanged, since that route doesn't currently collect a local
       // date from its caller and this fix does not add that query.
       const todayStr = (localDateStr && /^\d{4}-\d{2}-\d{2}$/.test(localDateStr)) ? localDateStr : new Date().toISOString().slice(0, 10);
+      repActions.sort((a, b) => {
+        const da = a.fields["Due Date"] || "9999-99-99";
+        const db = b.fields["Due Date"] || "9999-99-99";
+        return da < db ? -1 : da > db ? 1 : 0;
+      });
       const dueToday = [], overdue = [], otherOpen = [];
       repActions.forEach(r => {
         const due = r.fields["Due Date"] ? String(r.fields["Due Date"]).slice(0, 10) : "";
@@ -1651,7 +1737,7 @@ export default {
         // "Tomorrow" is a filter over the same otherOpen data
         // buildRepBriefingData already returned — no new query.
         const tomorrowItems = otherOpenAll.filter(a => a.dueDate && String(a.dueDate).slice(0, 10) === tomorrowStr);
-        const laterItems = otherOpenAll.filter(a => a.dueDate && String(a.dueDate).slice(0, 10) > tomorrowStr).slice(0, 5);
+        const laterItems = otherOpenAll.filter(a => a.dueDate).slice(0, 5);
 
         function navFor(actionId) {
           return { label: "Open Actions", url: "./fieldiq-open-actions.html?actionId=" + encodeURIComponent(actionId) };
@@ -1671,7 +1757,7 @@ export default {
           });
         }
 
-        const upcomingSource = timeContext === "evening" ? tomorrowItems : laterItems;
+        const upcomingSource = timeContext === "evening" ? tomorrowItems.slice(0, 5) : laterItems;
         sections.push({
           icon: "📅",
           title: timeContext === "evening" ? "Tomorrow" : "Upcoming Visits",
@@ -2010,6 +2096,7 @@ Keep the whole answer under 55 words.`;
         if (userRecordId === _session.recordId) {
           actionsCacheRequestsFor(req, _session.role, _session.userId).forEach(r => ctx.waitUntil(cache.delete(r)));
         }
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
         return json({ success: true, created: created.length, records: created });
       } catch (err) { return json({ error: err.message }, 500); }
     }
@@ -2117,6 +2204,7 @@ Keep the whole answer under 55 words.`;
 
         actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
         actionsCacheRequestsFor(req, session.role, userId).forEach(r => ctx.waitUntil(cache.delete(r)));
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
 
         try {
           const notifParams = new URLSearchParams();
@@ -2211,6 +2299,7 @@ Keep the whole answer under 55 words.`;
 
         actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
         actionsCacheRequestsFor(req, session.role, userId).forEach(r => ctx.waitUntil(cache.delete(r)));
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
 
         try {
           const notifParams = new URLSearchParams();
@@ -2346,6 +2435,7 @@ Keep the whole answer under 55 words.`;
 
     // POST /update-action — v3.5: reschedule or cancel an Open Action
     if (url.pathname === "/update-action") {
+      if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
       try {
         const _token = getBearerToken(req);
         const _session = await verifySession(_token, env.SESSION_SECRET);
@@ -2372,6 +2462,66 @@ Keep the whole answer under 55 words.`;
         if (managerNotification !== undefined)      fields["Manager Notification"]         = managerNotification;
         if (managerNotificationViewed !== undefined) fields["Manager Notification Viewed"]  = managerNotificationViewed;
 
+        // Reschedule internal-consistency fix: if the new due date is being
+        // set, check whether the action's existing text names a date in
+        // writing and, if so, update it to match — otherwise the calendar
+        // and the action's own wording contradict each other after a
+        // manual reschedule. Only runs when dueDate is present, so this
+        // never touches AI Log Update's own calls to this same endpoint,
+        // which never send it.
+        //
+        // Scans the TEXT ITSELF for whatever date is actually written
+        // there, rather than assuming it matches the stored old Due Date —
+        // a record can already be inconsistent before this reschedule
+        // (confirmed live: Due Date said 21 July, text said 23 July), and
+        // searching for the wrong old value would never find a match.
+        if (dueDate) {
+          try {
+            const currentAction = await getAction(actionId);
+            const existingText = currentAction && currentAction.fields && currentAction.fields["Action Text"];
+            if (existingText) {
+              const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+              const monthPattern = months.join("|");
+              const dayFirstRegex = new RegExp("\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(" + monthPattern + ")(?:(,)?\\s+(\\d{4}))?\\b");
+              const monthFirstRegex = new RegExp("\\b(" + monthPattern + ")\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:(,)?\\s+(\\d{4}))?\\b");
+
+              const newD = new Date(dueDate + "T00:00:00Z");
+              let replacement = null;
+              if (!isNaN(newD)) {
+                const newDay = newD.getUTCDate();
+                const newMonth = months[newD.getUTCMonth()];
+                const newYear = newD.getUTCFullYear();
+
+                const dayFirstMatch = existingText.match(dayFirstRegex);
+                const monthFirstMatch = existingText.match(monthFirstRegex);
+                // Whichever pattern actually appears earlier in the text
+                // wins — day-first and month-first are mutually exclusive
+                // in practice (a real date is written one way or the
+                // other), but this keeps the choice unambiguous either way.
+                let chosen = null;
+                if (dayFirstMatch && (!monthFirstMatch || dayFirstMatch.index <= monthFirstMatch.index)) chosen = { m: dayFirstMatch, dayFirst: true };
+                else if (monthFirstMatch) chosen = { m: monthFirstMatch, dayFirst: false };
+
+                if (chosen) {
+                  const comma = chosen.dayFirst ? chosen.m[3] : chosen.m[3];
+                  const hadYear = chosen.dayFirst ? !!chosen.m[4] : !!chosen.m[4];
+                  if (chosen.dayFirst) {
+                    replacement = newDay + " " + newMonth + (hadYear ? (comma || "") + " " + newYear : "");
+                  } else {
+                    replacement = newMonth + " " + newDay + (hadYear ? (comma || "") + " " + newYear : "");
+                  }
+                  const full = chosen.m[0];
+                  const idx = chosen.m.index;
+                  fields["Action Text"] = existingText.slice(0, idx) + replacement + existingText.slice(idx + full.length);
+                }
+                // No match found: existingText is left completely
+                // untouched — only the real Due Date is updated. Never a
+                // guess, never a partial or corrupting replacement.
+              }
+            }
+          } catch (e) { /* Best-effort only — a lookup failure here must never block the reschedule itself. */ }
+        }
+
         if (Object.keys(fields).length === 0) {
           return json({ error: "No fields to update" }, 400);
         }
@@ -2388,6 +2538,9 @@ Keep the whole answer under 55 words.`;
         if (!atRes.ok) {
           return json({ error: atData.error?.message || "Airtable error", detail: atData }, 500);
         }
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        actionsCacheRequestsFor(req, _session.role, _session.userId).forEach(r => ctx.waitUntil(cache.delete(r)));
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
         return json({ success: true, record: atData });
 
       } catch (err) {
@@ -2455,6 +2608,7 @@ Keep the whole answer under 55 words.`;
         actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
         actionsCacheRequestsFor(req, "Sales Rep", recipientUserId).forEach(r => ctx.waitUntil(cache.delete(r)));
         ctx.waitUntil(cache.delete(new Request(new URL("/get-notifications?userId="+encodeURIComponent(recipientUserId), req.url).toString())));
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
         return json({ success: true, notification: notifData, action: updateData });
       } catch (err) { return json({ error: err.message }, 500); }
     }
@@ -2484,6 +2638,10 @@ Keep the whole answer under 55 words.`;
 
     // POST /transcribe
     if (url.pathname === "/transcribe") {
+      if (!(await checkRateLimit("transcribe", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      const _token = getBearerToken(req);
+      const _session = await verifySession(_token, env.SESSION_SECRET);
+      if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
       try {
         const formData = await req.formData();
         const response = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: "Bearer " + env.OPENAI_API_KEY }, body: formData });
@@ -2500,6 +2658,10 @@ Keep the whole answer under 55 words.`;
     // Does NOT write to Airtable directly; the frontend includes the returned URL
     // inside the subsequent /save-visit or /update-visit call as "Photo URLs".
     if (url.pathname === "/upload-photo") {
+      if (!(await checkRateLimit("upload-photo", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      const _token = getBearerToken(req);
+      const _session = await verifySession(_token, env.SESSION_SECRET);
+      if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
       try {
         const formData = await req.formData();
         const photo = formData.get("photo");
@@ -2545,8 +2707,10 @@ Keep the whole answer under 55 words.`;
         visitData["User Role"] = _session.role;
         let sourceVisitId = visitData["sourceVisitId"] || "";
         const sourceActionId = visitData["sourceActionId"] || "";
+        const submissionId = visitData["submissionId"] || "";
         delete visitData["sourceVisitId"];
         delete visitData["sourceActionId"];
+        delete visitData["submissionId"];
         // Fallback: if no direct source visit ID was resolved client-side
         // (the action's own Source Visit link was empty when Calendar
         // built the Log Update URL, so visitId was never included at
@@ -2597,6 +2761,25 @@ Keep the whole answer under 55 words.`;
             visitData["Visit Thread ID"] = sourceVisitId;
           }
         }
+        if (submissionId) {
+          const dupParams = new URLSearchParams();
+          dupParams.append("filterByFormula", `{Submission ID}="${safeFormula(submissionId)}"`);
+          dupParams.append("maxRecords", "1");
+          const dupRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Field%20Visits?${dupParams.toString()}`, { headers: airtableHeaders() });
+          const dupData = await dupRes.json();
+          if (dupRes.ok && dupData.records && dupData.records.length) {
+            const existing = dupData.records[0];
+            existing._isDuplicateSubmission = true;
+            existing._threadInfo = {
+              visitThreadId: (existing.fields && existing.fields["Visit Thread ID"]) || existing.id,
+              isNewThread: !sourceVisitId,
+              linkedFromSourceVisitId: sourceVisitId || null,
+              linkedFromSourceActionId: sourceActionId || null
+            };
+            return json(existing, 200);
+          }
+        }
+        if (submissionId) visitData["Submission ID"] = submissionId;
         const hasThreadId = !!visitData["Visit Thread ID"];
         const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Field%20Visits`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ fields: visitData }) });
         const data = await response.json();
@@ -2742,9 +2925,13 @@ Keep the whole answer under 55 words.`;
     // elsewhere in this file for linked-record fields.
     if (url.pathname === "/save-note") {
       if (!(await checkRateLimit("save-note", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      const _token = getBearerToken(req);
+      const _session = await verifySession(_token, env.SESSION_SECRET);
+      if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+      if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
       try {
         const body = await req.json();
-        const { actionId, commentText, createdBy } = body;
+        const { actionId, commentText } = body;
         if (!actionId || !commentText) {
           return json({ error: "actionId and commentText required" }, 400);
         }
@@ -2754,7 +2941,7 @@ Keep the whole answer under 55 words.`;
           "Created Date": new Date().toISOString(),
           "Acknowledged": false
         };
-        if (createdBy) fields["Created By"] = createdBy;
+        if (_session.displayName) fields["Created By"] = _session.displayName;
         const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Manager%20Notes`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ fields }) });
         const data = await response.json();
         return json(data, response.status);
@@ -2814,6 +3001,42 @@ Keep the whole answer under 55 words.`;
           await cache.delete(new Request(new URL("/get-watchlist", req.url).toString()));
         }
         return json(data, response.status);
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // POST /dismiss-radar-item
+    // Manager-only acknowledgement of a Management Radar signal — does not
+    // touch the visit, account, action, or review data that produced the
+    // signal in any way. Writes a single new row to a dedicated
+    // dismissals table; the account's evidence is then suppressed in
+    // buildDashboardResponse unless the triggering condition is newer
+    // than this dismissal (see dismissalMap/survivesDismissal above).
+    if (url.pathname === "/dismiss-radar-item") {
+      if (!(await checkRateLimit("dismiss-radar-item", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
+
+        const body = await req.json();
+        const { accountName } = body;
+        if (!accountName || !String(accountName).trim()) return json({ error: "accountName required" }, 400);
+        const fields = {
+          "Account Name": String(accountName).trim(),
+          "Dismissed At": new Date().toISOString()
+        };
+        if (_session.displayName) fields["Dismissed By"] = _session.displayName;
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(RADAR_DISMISSALS_TABLE)}`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ records: [{ fields }] }) });
+        const data = await response.json();
+        if (!response.ok) {
+          const airtableMsg = (data && data.error && (data.error.message || data.error.type)) || ("HTTP " + response.status);
+          return json({ error: "Airtable rejected the dismissal write.", airtableError: airtableMsg, airtableStatus: response.status }, response.status === 401 || response.status === 403 ? 502 : response.status);
+        }
+        const createdId = data.records && data.records[0] && data.records[0].id;
+        if (!createdId) return json({ error: "Airtable did not confirm the record was created." }, 502);
+        await cache.delete(new Request(new URL("/get-dashboard", req.url).toString()));
+        return json({ success: true, id: createdId });
       } catch (err) { return json({ error: err.message }, 500); }
     }
 
@@ -3093,8 +3316,12 @@ ${digest}`;
           // enforces this explicitly, and the deterministic bullet list
           // is always the fallback if this call fails, so a synthesis
           // failure degrades to "database-only" rather than an error.
-          async function synthesizeCommercialAdvice(lensLabel, factsDigest, env) {
+          async function synthesizeCommercialAdvice(lensLabel, factsDigest, env, immutableFacts) {
             if (!factsDigest || !factsDigest.trim()) return null;
+            const immutableBlock = immutableFacts ? `
+
+IMMUTABLE FACTS \u2014 already computed exactly and shown to the manager separately, outside this narrative. Do not restate, recalculate, round, or imply any different total, count, or number for anything covered here. If you reference these people or this total at all, use these exact figures and names, nothing else:
+${immutableFacts}` : "";
             const prompt = `You are an experienced Regional Sales Director reviewing a territory with its manager. You do not generate reports \u2014 you interpret evidence and give commercial advice, the way a trusted mentor would, looking at the same facts a manager already has and telling them what actually matters.
 
 Lens: "${lensLabel}"
@@ -3102,7 +3329,7 @@ Lens: "${lensLabel}"
 These are the ONLY facts you may use. Reason strongly from them, but reason ONLY from them.
 
 FACTS:
-${factsDigest}
+${factsDigest}${immutableBlock}
 
 Hard rules, no exceptions:
 - Never introduce an account name, number, or claim not listed above.
@@ -3111,6 +3338,7 @@ Hard rules, no exceptions:
 - Never assign a SALES STAGE \u2014 do not say "proposal," "demo," "closing," "negotiation," or similar, unless that exact word appears in the facts above.
 - Never state a generic sales pattern or truism as if it were derived from this data \u2014 do not say things like "deals almost always cool down after X days" or "this typically means." That is general sales knowledge, not something these specific facts prove, and presenting it as if it came from the data is exactly the kind of invented claim you must avoid.
 - If you want to flag a risk or interpretation the facts don't fully prove, label it plainly as your own inference \u2014 e.g., "I'd want to check whether X is the reason, but the record doesn't say" \u2014 never state it as settled fact.
+- If the facts name more than one person or account, address every one of them, even briefly \u2014 do not focus on a single case and silently omit the others just because it's the clearest or most actionable one. A manager reading this needs the full picture, not just the loudest signal.
 
 Write two to four sentences of plain-English commercial narrative: what's actually happening across these facts, and why it matters commercially \u2014 not database language like "positive visit" or "high engagement" on their own, but what that means for the business, using only what the facts support. If a cause isn't explicitly recorded or the evidence is thin, say so honestly within that narrative rather than asserting a conclusion the facts don't support \u2014 for example: "I suspect X may be the cause, but there isn't enough evidence yet."
 
@@ -3137,6 +3365,16 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
           try {
             const { allVisits, allOpenActions, allManagerNotes, activeRepUsers } = await gatherLensRawData();
             const repActivities = activeRepUsers.map(u => computeRepActivity(u, allVisits, allOpenActions));
+            const totalRepCount = repActivities.length;
+            const activeRepNames = repActivities.filter(r => r.visitCount > 0).map(r => r.name);
+            const inactiveRepNames = repActivities.filter(r => r.visitCount === 0).map(r => r.name);
+            const activeRepCount = activeRepNames.length;
+            const inactiveRepCount = inactiveRepNames.length;
+            // Deterministic, JS-constructed — never generated or restated
+            // by the AI. Prepended directly to every lens's answer below,
+            // outside the AI's own text, so these specific numbers can
+            // never be wrong regardless of what the narrative says.
+            const teamHeadcountLine = "Team size: " + totalRepCount + " rep" + (totalRepCount !== 1 ? "s" : "") + " total \u2014 " + activeRepCount + " active" + (activeRepNames.length ? " (" + activeRepNames.join(", ") + ")" : "") + ", " + inactiveRepCount + " with no recorded activity" + (inactiveRepNames.length ? " (" + inactiveRepNames.join(", ") + ")" : "") + ".";
             const unacknowledgedNotes = allManagerNotes.filter(n => !n.fields["Acknowledged"]);
             const actionsById = {}; allOpenActions.forEach(a => { actionsById[a.id] = a; });
             console.log(`[ask-fieldiq-debug] lens raw data: visits=${allVisits.length}, openActions=${allOpenActions.length}, notes=${allManagerNotes.length}, activeReps=${activeRepUsers.length}, question="${question}"`);
@@ -3164,8 +3402,8 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
                 }
               });
               const deterministicAnswer = lines.length ? "Today's Team Snapshot\n" + lines.map(l => "\u2022 " + l).join("\n") : "No active reps found.";
-              const synthesized = await synthesizeCommercialAdvice("What is my team working on?", lines.join("\n"), env);
-              result = { answer: synthesized || deterministicAnswer, sources };
+              const synthesized = await synthesizeCommercialAdvice("What is my team working on?", lines.join("\n"), env, teamHeadcountLine);
+              result = { answer: teamHeadcountLine + "\n\n" + (synthesized || deterministicAnswer), sources };
             }
 
             else if (question === HELP_Q) {
@@ -3218,7 +3456,7 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
                 if (r.visitCount === 0) needsSupport.push(r.name + " \u2014 no recorded activity, no recorded blocker.");
                 else if (r.daysSinceLastVisit !== null && r.daysSinceLastVisit > 14) needsSupport.push(r.name + " \u2014 no visit logged in " + r.daysSinceLastVisit + " days, no recorded blocker.");
               });
-              const importantVisits = allVisits.filter(v => v.fields["Priority"] === "High" || v.fields["Outcome"] === "Negative");
+              const importantVisits = allVisits.filter(v => (v.fields["Priority"] === "High" || v.fields["Outcome"] === "Negative") && v.fields["Reviewed"] !== true);
               let gapCount = 0;
               importantVisits.forEach(v => {
                 if (gapCount >= 3) return;
@@ -3234,8 +3472,8 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
               if (visibilityGaps.length) deterministicAnswer += (deterministicAnswer ? "\n\n" : "") + "Visibility gaps\n" + visibilityGaps.slice(0, 3).map(l => "\u2022 " + l).join("\n");
               if (!deterministicAnswer) deterministicAnswer = "No reps currently show a recorded reason for manager intervention.";
               const factsDigest = needsSupport.concat(visibilityGaps).join("\n");
-              const synthesized = await synthesizeCommercialAdvice("Where do my reps need my help?", factsDigest, env);
-              result = { answer: synthesized || deterministicAnswer, sources };
+              const synthesized = await synthesizeCommercialAdvice("Where do my reps need my help?", factsDigest, env, teamHeadcountLine);
+              result = { answer: teamHeadcountLine + "\n\n" + (synthesized || deterministicAnswer), sources };
             }
 
             else if (question === BLOCK_Q) {
@@ -3298,8 +3536,8 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
               if (knownInternal.length) factsDigestParts.push("KNOWN INTERNAL BLOCKERS:\n" + knownInternal.join("\n"));
               if (executionGaps.length) factsDigestParts.push("EXECUTION GAPS:\n" + executionGaps.join("\n"));
               if (visibilityGaps.length) factsDigestParts.push("VISIBILITY GAPS (no explicit cause recorded):\n" + visibilityGaps.join("\n"));
-              const synthesized = await synthesizeCommercialAdvice("What is blocking commercial progress?", factsDigestParts.join("\n\n"), env);
-              result = { answer: synthesized || deterministicAnswer, sources };
+              const synthesized = await synthesizeCommercialAdvice("What is blocking commercial progress?", factsDigestParts.join("\n\n"), env, teamHeadcountLine);
+              result = { answer: teamHeadcountLine + "\n\n" + (synthesized || deterministicAnswer), sources };
             }
 
             else if (question === OPP_Q) {
@@ -3337,8 +3575,8 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
               const deterministicAnswer = opportunities.length
                 ? "Opportunities to push\n" + opportunities.slice(0, 6).map(l => "\u2022 " + l).join("\n")
                 : "No accounts currently show a grounded opportunity signal (positive outcome, repeat engagement, or new account pending review).";
-              const synthesized = await synthesizeCommercialAdvice("Which opportunities should we push?", opportunities.join("\n"), env);
-              result = { answer: synthesized || deterministicAnswer, sources };
+              const synthesized = await synthesizeCommercialAdvice("Which opportunities should we push?", opportunities.join("\n"), env, teamHeadcountLine);
+              result = { answer: teamHeadcountLine + "\n\n" + (synthesized || deterministicAnswer), sources };
             }
 
             else { // COACH_Q
@@ -3365,8 +3603,8 @@ No markdown symbols, no other headings. Keep the whole answer under 130 words.`;
               if (insufficientEvidence.length) deterministicAnswer += (deterministicAnswer ? "\n\n" : "") + "Insufficient evidence\n" + insufficientEvidence.slice(0, 3).map(l => "\u2022 " + l).join("\n");
               if (!deterministicAnswer) deterministicAnswer = "All active reps show comparable activity levels \u2014 no clear coaching or recognition signal this period.";
               const factsDigest = recognition.concat(coaching).concat(insufficientEvidence).join("\n");
-              const synthesized = await synthesizeCommercialAdvice("Who needs coaching or recognition?", factsDigest, env);
-              result = { answer: synthesized || deterministicAnswer, sources: [] };
+              const synthesized = await synthesizeCommercialAdvice("Who needs coaching or recognition?", factsDigest, env, teamHeadcountLine);
+              result = { answer: teamHeadcountLine + "\n\n" + (synthesized || deterministicAnswer), sources: [] };
             }
 
             console.log(`[ask-fieldiq-debug] lens answered: question="${question}", sources=${result.sources.length}`);
@@ -3675,6 +3913,10 @@ Answer:`;
 
     // POST / — Claude AI
     if (url.pathname === "/") {
+      if (!(await checkRateLimit("root-anthropic-proxy", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      const _token = getBearerToken(req);
+      const _session = await verifySession(_token, env.SESSION_SECRET);
+      if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
       try {
         const body = await req.json();
         const response = await fetch("https://api.anthropic.com/v1/messages", {
