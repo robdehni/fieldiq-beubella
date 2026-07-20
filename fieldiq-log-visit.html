@@ -605,9 +605,9 @@ async function applyPrefillFromURL(){
         // when every one of its visits correctly recorded one. Only
         // attempted when arriving from Calendar's Log Update link with a
         // resolvable visitId.
-        if(visitIdParam){
+        if(visitIdParam||fwSourceVisitId){
           try{
-            var vRes=await fetch(WORKER+'/get-visit-territory?visitId='+encodeURIComponent(visitIdParam));
+            var vRes=await fetch(WORKER+'/get-visit-territory?visitId='+encodeURIComponent(visitIdParam||fwSourceVisitId));
             var vData=await vRes.json();
             if(vData&&vData.territory)resolvedTerritory=vData.territory;
           }catch(e){}
@@ -630,7 +630,7 @@ async function applyPrefillFromURL(){
         // value that failed to match any option (e.g. unnormalized raw
         // Airtable text) still passed this check as truthy, locking an
         // empty, unusable dropdown.
-        if(prefillSourceRef&&territorySelect.value){
+        if((prefillSourceRef||fwActionId)&&territorySelect.value){
           territorySelect.disabled=true;
           hospitalInput.disabled=true;
           hospitalInput.placeholder=match.name;
