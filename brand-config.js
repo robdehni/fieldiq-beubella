@@ -4,7 +4,8 @@
 // page picks it up automatically on load via applyBrand(). No other file
 // needs to be touched.
 var FIELDIQ_BRAND = {
-  name: 'Beu Bella Cosmetics'
+  name: 'Beu Bella Cosmetics',
+  fieldWorkflowEnabled: true
 };
 
 function applyBrand() {
