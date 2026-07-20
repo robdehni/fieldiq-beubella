@@ -354,6 +354,13 @@ function renderActionCard(r, account){
   if(reminderCount!==undefined)meta+='<span class="meta">Reminders: '+escapeHtml(reminderCount)+'</span>';
 
   var vHref=visitHref(r);
+  var _isFieldWorkflow=!!f['Field Workflow ID'];
+  var _fwLogVisitHref='';
+  if(_isFieldWorkflow){
+    var _fwSourceVisitId=(f['Source Visit']||[])[0]||'';
+    var _fwQ=['fwActionId='+encodeURIComponent(r.id),'fwWorkflowId='+encodeURIComponent(f['Field Workflow ID']),'fwSourceVisitId='+encodeURIComponent(_fwSourceVisitId),'account='+encodeURIComponent(account||'')];
+    _fwLogVisitHref='./fieldiq-log-visit.html?'+_fwQ.join('&');
+  }
 
   return (
     '<div class="action-card" id="card-'+r.id+'">'+
@@ -366,9 +373,11 @@ function renderActionCard(r, account){
       '<div class="meta-row">'+meta+'</div>'+
       '<div class="manager-notes-section" id="notes-'+r.id+'"></div>'+
       (vHref?'<a class="view-visit-link" href="'+escapeHtml(vHref)+'"><i data-lucide="file-text"></i> View Visit</a>':'')+
-      '<button class="complete-btn" onclick="completeAction(\''+r.id+'\')" id="btn-'+r.id+'">'+
-        '<i data-lucide="check"></i> Complete'+
-      '</button>'+
+      (_isFieldWorkflow
+        ?'<a class="complete-btn" href="'+escapeHtml(_fwLogVisitHref)+'" style="display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none"><i data-lucide="mic"></i> Log Specialist Visit</a>'
+        :'<button class="complete-btn" onclick="completeAction(\''+r.id+'\')" id="btn-'+r.id+'">'+
+          '<i data-lucide="check"></i> Complete'+
+        '</button>')+
       '<button class="dismiss-btn" onclick="dismissAction(\''+r.id+'\')" id="dbtn-'+r.id+'">'+
         '<i data-lucide="x"></i> Dismiss'+
       '</button>'+
