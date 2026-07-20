@@ -585,9 +585,11 @@ function loadActionsForVisit(detailEl,visitRecordId){
 // else in this app. Renders nothing if the thread has only one member (a
 // normal visit no Log Update has joined yet).
 var _threadToggleCounter=0;
+var _threadMemberCache={};
 function renderThreadCards(members,threadId,currentId){
   var html='';var followUpNum=0;
   members.forEach(function(m){
+    _threadMemberCache[m.id]=m;
     var mf=m.fields||{};
     var isCurrent=m.id===currentId;
     var isOrig=m.id===threadId;
@@ -596,7 +598,7 @@ function renderThreadCards(members,threadId,currentId){
     var snippet=truncateSummary(mf['AI Summary']||mf['Meeting Notes']||'',70).replace(/^[:\s]+/,'');
     var actionHtml=isCurrent
       ? '<span class="thread-card-status">Currently viewing</span>'
-      : '<button type="button" class="thread-action-btn thread-action-btn-small" onclick="event.stopPropagation();expandAndScrollToVisit(\''+m.id+'\');">Open</button>';
+      : '<button type="button" class="thread-action-btn thread-action-btn-small thread-open-btn" data-visit-id="'+escapeHtml(m.id)+'">Open</button>';
     html+='<div class="thread-card'+(isCurrent?' thread-card-current':'')+'">'+
       '<div class="thread-card-label">'+label+'</div>'+
       '<div class="thread-card-meta">'+(dateStr?escapeHtmlLocal(dateStr):'')+(dateStr&&snippet?' · ':'')+escapeHtmlLocal(snippet)+'</div>'+
@@ -869,9 +871,32 @@ function applyUrlParams(){
   if(period)document.getElementById('filterPeriod').value=period;  
 }  
   
-function expandAndScrollToVisit(recordId){  
+document.addEventListener('click',function(e){
+  var btn=e.target.closest?e.target.closest('.thread-open-btn'):null;
+  if(!btn)return;
+  e.stopPropagation();
+  var vid=btn.getAttribute('data-visit-id');
+  if(vid)expandAndScrollToVisit(vid,_threadMemberCache[vid]);
+});
+
+function expandAndScrollToVisit(recordId,memberRecord){  
   if(!recordId)return;  
-  var card=document.querySelector('.visit-card[data-id="'+recordId+'"]');if(!card)return;  
+  var card=document.querySelector('.visit-card[data-id="'+recordId+'"]');
+  if(!card&&memberRecord){
+    // This specific thread member has no rendered card at all — it
+    // belongs to a different rep and was never part of this viewer's own
+    // /get-visits results. The full record is already in hand from
+    // /get-visit-thread (via the shared cache above), so it's injected
+    // directly into the existing list and re-rendered through the same,
+    // unmodified renderVisits() every other card already goes through —
+    // no second fetch, no new rendering path.
+    if(!allRecordsRaw.some(function(r){return r.id===recordId;})){
+      allRecordsRaw=[memberRecord].concat(allRecordsRaw);
+    }
+    renderVisits(allRecordsRaw);
+    card=document.querySelector('.visit-card[data-id="'+recordId+'"]');
+  }
+  if(!card)return;  
   var idx=card.getAttribute('data-idx');var detail=document.getElementById('detail-'+idx);var toggle=card.querySelector('.visit-toggle');  
   // Command Centre / Open Actions context marker — purely in-memory, a
   // plain DOM class with no storage backing it at all. Manager sources
