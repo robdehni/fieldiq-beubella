@@ -243,7 +243,7 @@ async function loadCalendar(){
     loaded=(openData.records||[])
       .filter(function(r){
         var f=r.fields||{};
-        return !isCompleted(f)&&getDueDate(f)&&belongsToCurrentRep(f);
+        return !isCompleted(f)&&getDueDate(f);
       })
       .map(normalizeActionRecord);
 
