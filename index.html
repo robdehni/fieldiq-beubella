@@ -558,14 +558,15 @@ async function loadNotifications(){
     if(fwRecords.length){
       var fwCount=fwRecords.length;
       var fwLatest=fwRecords[0].fields||{};
+      var fwRoleLabel=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Team Member';
       var fwBodyText=fwCount===1
-        ?('Your specialist has completed the requested visit'+(fwLatest['Message']?(': '+escapeHtml(fwLatest['Message'])):'.')+' Tap below to review it.')
-        :('Your specialists have completed '+fwCount+' requested visits. Tap below to review them.');
+        ?('Your '+fwRoleLabel.toLowerCase()+' has completed the requested visit'+(fwLatest['Message']?(': '+escapeHtml(fwLatest['Message'])):'.')+' Tap below to review it.')
+        :('Your '+fwRoleLabel.toLowerCase()+'s have completed '+fwCount+' requested visits. Tap below to review them.');
       panelsHtml+=
         '<div class="notif-panel">'+
           '<div class="notif-panel-header">'+
             '<span class="notif-bell">✅</span>'+
-            '<span class="notif-title">Specialist Visit'+(fwCount>1?'s':'')+' Completed ('+fwCount+')</span>'+
+            '<span class="notif-title">'+fwRoleLabel+' Visit'+(fwCount>1?'s':'')+' Completed ('+fwCount+')</span>'+
           '</div>'+
           '<div class="notif-body">'+fwBodyText+'</div>'+
           '<a class="notif-action-btn" href="./fieldiq-open-actions.html">View Completed Visit'+(fwCount>1?'s':'')+' →</a>'+
