@@ -167,6 +167,7 @@ audio{width:100%;border-radius:8px;margin:8px 0;display:none}
 <div class="mic-section">
   <button class="mic-btn" id="micBtn"><i data-lucide="mic"></i></button>
   <div class="status" id="status">Tap mic to start recording</div>
+  <button type="button" id="tryAgainRecordingBtn" style="display:none;width:100%;margin-top:8px;padding:11px;border-radius:10px;border:1.5px solid #2f8fff;background:#eaf3ff;color:#1f6fe0;font-weight:800;font-size:13.5px;cursor:pointer">🎙️ Try Again — Start New Recording</button>
   <div class="recording-indicator" id="recordingIndicator"><div class="recording-timer" id="recordingTimer">0:00</div></div>
   <div id="autoStopChoice" style="display:none;margin:10px 0;padding:12px;border:1px solid #e3ebf5;border-radius:12px;background:#fff">
     <div style="display:flex;gap:8px">
@@ -323,6 +324,27 @@ function getMissingFields(){var missing=[];if(!territorySelect.value)missing.pus
 function updateMicAvailability(){var missing=getMissingFields();if(missing.length>0){micBtn.disabled=true;if(validationMessageEl){if(missing.indexOf('Account (duplicate)')>-1){validationMessageEl.textContent='This account already exists. Please select it from Account Search instead of adding it as new.';}else{validationMessageEl.textContent='Complete required fields to start recording: '+missing.join(', ');}validationMessageEl.style.display='block';}}else{micBtn.disabled=false;if(validationMessageEl){validationMessageEl.style.display='none';}}}
 updateMicAvailability();
 
+var tryAgainRecordingBtn=document.getElementById('tryAgainRecordingBtn');
+function resetRecordingOnly(){
+  chunks=[];seconds=0;wasAutoStopped=false;pendingAutoStopBlob=null;isRecording=false;
+  clearTimeout(autoStopTimeout);clearInterval(timerInterval);
+  document.getElementById('recordingTimer').textContent='0:00';
+  document.getElementById('recordingIndicator').className='recording-indicator';
+  document.getElementById('autoStopChoice').style.display='none';
+  transcriptText.value='';
+  audioPlayer.src='';audioPlayer.style.display='none';
+  document.getElementById('editNotice').className='edit-notice';
+  micBtn.className='mic-btn';micBtn.innerHTML='<i data-lucide="mic"></i>';
+  if(typeof lucide!=='undefined')lucide.createIcons({el:micBtn});
+  if(mediaRecorder&&mediaRecorder.state!=='inactive'){try{mediaRecorder.stop();}catch(e){}}
+  mediaRecorder=null;
+  if(streamRef){streamRef.getTracks().forEach(function(t){t.stop();});streamRef=null;}
+  statusEl.className='status';statusEl.textContent='Tap mic to start recording';
+  tryAgainRecordingBtn.style.display='none';
+  updateMicAvailability();
+}
+tryAgainRecordingBtn.addEventListener('click',resetRecordingOnly);
+
 // Reps are locked to their own assigned territory — the account list below
 // already filters by whatever this dropdown is set to, so locking it here
 // is the entire change needed. This is a display filter for the pilot, not
@@ -349,10 +371,10 @@ micBtn.addEventListener('click',function(){if(!isRecording)startRecording();else
 function proceedToTranscribe(blob){
   statusEl.className='status transcribing';statusEl.textContent='Transcribing visit...';
   var fd=new FormData();fd.append('file',blob,'visit.webm');fd.append('model','whisper-1');
-  fetch(WORKER+'/transcribe',{method:'POST',headers:{'Authorization':'Bearer '+currentSessionToken},body:fd}).then(function(r){return r.json();}).then(function(d){var t=d.text||d.transcript||'';if(t){transcriptText.value=t;statusEl.className='status done';statusEl.textContent='Transcript ready. Edit if needed then process.';document.getElementById('editNotice').className='edit-notice visible';micBtn.disabled=true;}else{statusEl.className='status';statusEl.textContent='Transcription failed. Type notes manually.';updateMicAvailability();}}).catch(function(){statusEl.className='status';statusEl.textContent='Transcription error — type notes manually.';updateMicAvailability();});
+  fetch(WORKER+'/transcribe',{method:'POST',headers:{'Authorization':'Bearer '+currentSessionToken},body:fd}).then(function(r){return r.json().then(function(d){return {ok:r.ok,status:r.status,data:d};});}).then(function(res){var t=res.data.text||res.data.transcript||'';if(t){transcriptText.value=t;statusEl.className='status done';statusEl.textContent='Transcript ready. Edit if needed then process.';document.getElementById('editNotice').className='edit-notice visible';micBtn.disabled=true;}else{statusEl.className='status';var _terr=String(res.data.error||'unknown error').replace(/\.+$/,'');statusEl.textContent='Transcription failed (status '+res.status+'): '+_terr+'. Try again, or type notes manually below.';tryAgainRecordingBtn.style.display='block';updateMicAvailability();}}).catch(function(e){statusEl.className='status';statusEl.textContent='Transcription error — could not reach the server ('+e.message+'). Try again, or type notes manually below.';tryAgainRecordingBtn.style.display='block';updateMicAvailability();});
 }
 async function startRecording(){
-  try{isRecording=true;chunks=[];seconds=0;wasAutoStopped=false;document.getElementById('recordingTimer').textContent='0:00';transcriptText.value='';audioPlayer.style.display='none';successCard.style.display='none';statusEl.className='status active';
+  try{isRecording=true;chunks=[];seconds=0;wasAutoStopped=false;tryAgainRecordingBtn.style.display='none';document.getElementById('recordingTimer').textContent='0:00';transcriptText.value='';audioPlayer.style.display='none';successCard.style.display='none';statusEl.className='status active';
   streamRef=await navigator.mediaDevices.getUserMedia({audio:true});mediaRecorder=new MediaRecorder(streamRef);
   mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)chunks.push(e.data);};
   mediaRecorder.onstop=function(){isRecording=false;var blob=new Blob(chunks,{type:'audio/webm'});audioPlayer.src=URL.createObjectURL(blob);audioPlayer.style.display='block';micBtn.className='mic-btn';micBtn.innerHTML='<i data-lucide="mic"></i>';lucide.createIcons({el:micBtn});document.getElementById('recordingIndicator').className='recording-indicator';if(streamRef)streamRef.getTracks().forEach(function(t){t.stop();});
