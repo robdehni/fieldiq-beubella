@@ -14,36 +14,48 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .sidebar{display:none}
 .main{flex:1;min-width:0;padding:20px 18px 90px}
 
-.header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:22px}
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:16px}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-cloud{font-size:24px;line-height:1}
 .brand-text h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#0b1f3a}
 .brand-text h1 span{color:#2f8fff}
 .brand-text p.eyebrow{font-size:10px;color:#8a9bb3;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-top:2px}
-.brand-text p.page-subtitle{color:#7a8aa3;font-size:12.5px;margin-top:4px;font-weight:600}
 .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .exit-manager-btn{font-size:11px;color:#c43048;background:#fff;border:1px solid #f6c4cc;border-radius:20px;padding:6px 12px;cursor:pointer;font-weight:700}
 .exit-manager-btn:hover{background:#fff0f0}
 
-.section-label{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1.1px;font-weight:800;margin:32px 0 12px}
+.section-label{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1.1px;font-weight:800;margin:24px 0 10px}
 .section-label:first-of-type{margin-top:0}
 
-.greeting{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;margin-bottom:4px}
-.greeting-sub{font-size:12.5px;color:#7a8aa3;font-weight:600;margin-bottom:24px}
+.greeting{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;margin-bottom:3px}
+.greeting-sub{font-size:12.5px;color:#7a8aa3;font-weight:600;margin-bottom:16px}
 
-.command-strip{display:flex;background:#fff;border:1px solid #e8edf5;border-radius:14px;padding:14px 4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.exec-status{display:flex;align-items:center;gap:10px;border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.exec-status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.exec-status.status-green{background:#effaf3;border:1px solid #cdeedb;color:#1a9c53}
+.exec-status.status-green .exec-status-dot{background:#1a9c53}
+.exec-status.status-amber{background:#fff9ef;border:1px solid #ffe0a3;color:#8a5a10}
+.exec-status.status-amber .exec-status-dot{background:#c9871c}
+.exec-status.status-red{background:#fff4f4;border:1px solid #f5c2c2;color:#a52a2a}
+.exec-status.status-red .exec-status-dot{background:#c43048}
+
+.command-strip{display:flex;background:#fff;border:1px solid #e8edf5;border-radius:14px;padding:15px 4px;margin-bottom:14px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
 .command-stat{flex:1;text-align:center;padding:0 4px;border-right:1px solid #eef2f8}
 .command-stat:last-child{border-right:none}
-.command-stat-value{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;line-height:1}
+.command-stat-value{font-size:23px;font-weight:800;color:#0b1f3a;letter-spacing:-0.5px;line-height:1}
 .command-stat-value.alert{color:#b9711f}
-.command-stat-label{font-size:9px;color:#8a9bb3;text-transform:uppercase;letter-spacing:0.5px;font-weight:800;margin-top:4px}
+.command-stat-label{font-size:9px;color:#8a9bb3;text-transform:uppercase;letter-spacing:0.5px;font-weight:800;margin-top:5px}
 
-.attention-panel{background:#fff;border:1px solid #ffe0a3;border-radius:16px;padding:4px;margin-bottom:22px;box-shadow:0 4px 14px rgba(11,31,58,0.05);overflow:hidden}
+.home-grid{display:contents}
+.home-grid-main{display:contents}
+.home-grid-side{display:contents}
+
+.attention-panel{background:#fff;border:1px solid #ffe0a3;border-radius:16px;padding:4px;margin-bottom:14px;box-shadow:0 4px 14px rgba(11,31,58,0.05);overflow:hidden}
 .attention-panel.all-clear{border-color:#cdeedb}
-.attention-panel-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#b9711f;text-transform:uppercase;letter-spacing:0.6px;padding:12px 14px 8px}
+.attention-panel-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#b9711f;text-transform:uppercase;letter-spacing:0.6px;padding:11px 14px 7px}
 .attention-panel.all-clear .attention-panel-head{color:#1a9c53}
 .attention-panel-head svg{width:14px;height:14px;flex-shrink:0}
-.attention-row{display:flex;align-items:center;gap:10px;padding:11px 14px;text-decoration:none;border-top:1px solid #fbeecb}
+.attention-row{display:flex;align-items:center;gap:10px;padding:10px 14px;text-decoration:none;border-top:1px solid #fbeecb}
 .attention-panel.all-clear .attention-row{border-top-color:#e3f5ea}
 .attention-rank{width:20px;height:20px;border-radius:50%;background:#fff3e0;color:#b9711f;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .attention-body{flex:1;min-width:0}
@@ -51,8 +63,8 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .attention-reason{font-size:11px;color:#8a9bb3;margin-top:1px}
 .attention-arrow{color:#aab8cc;font-size:15px;flex-shrink:0}
 
-.ask-card{background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
-.ask-card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ask-card{background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:15px;margin-bottom:14px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.ask-card-header{display:flex;align-items:center;gap:10px;margin-bottom:11px}
 .ask-card-icon{font-size:20px;line-height:1;display:inline-flex}
 .ask-card-icon [data-lucide]{width:22px;height:22px;stroke-width:1.9;color:#2f8fff}
 .ask-card-title{font-size:13.5px;font-weight:800;color:#0b1f3a}
@@ -62,10 +74,10 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .ask-chip:hover:not(:disabled){border-color:#bcd8ff;background:#eef6ff}
 .ask-chip:disabled{opacity:.5;cursor:not-allowed}
 .ask-answer-box{margin-top:12px;background:#f4f9ff;border:1px solid #d3e6ff;border-radius:12px;padding:14px}
-.mgr-topline{font-size:13.5px;color:#0b1f3a;font-weight:700;margin-bottom:14px;background:linear-gradient(135deg,#f4f9ff,#eef6ff);border:1px solid #d3e6ff;border-radius:12px;padding:12px 14px}
-.mgr-section{margin-bottom:14px}
+.mgr-topline{font-size:15px;line-height:1.45;color:#0b1f3a;font-weight:700;margin-bottom:14px;background:linear-gradient(135deg,#f4f9ff,#eef6ff);border:1px solid #d3e6ff;border-left:4px solid #2f8fff;border-radius:12px;padding:14px 16px}
+.mgr-section{margin-bottom:12px}
 .mgr-section:last-of-type{margin-bottom:0}
-.mgr-section-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#0b1f3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
+.mgr-section-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#0b1f3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
 .mgr-section-icon{font-size:13px}
 .mgr-section-icon [data-lucide]{width:15px;height:15px;stroke-width:2;color:#2f8fff;vertical-align:-3px}
 .mgr-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fbff;border:1px solid #edf2f8;border-radius:10px;padding:9px 12px;margin-bottom:5px;text-decoration:none}
@@ -92,12 +104,18 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .ask-retry-btn{margin-top:8px;border:none;background:#2f8fff;color:#fff;padding:8px 14px;border-radius:8px;font-weight:800;font-size:11.5px;cursor:pointer}
 .ask-again-link{margin-top:10px;font-size:11.5px;color:#2f8fff;font-weight:700;cursor:pointer;text-decoration:underline;display:inline-block}
 
-.primary-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:20px}
-.primary-tile{display:flex;flex-direction:column;align-items:center;gap:9px;background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:18px 6px;text-decoration:none;box-shadow:0 2px 8px rgba(11,31,58,0.03)}
+.briefing-more-toggle{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:#f8fbff;border:1px dashed #cfe3ff;border-radius:10px;padding:9px;font-size:11.5px;font-weight:800;color:#2f6fd8;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;margin-top:2px}
+.briefing-more-toggle svg{width:12px;height:12px;transition:transform 0.15s}
+.briefing-more-toggle.open svg{transform:rotate(180deg)}
+.briefing-extra{display:none}
+.briefing-extra.open{display:block}
+
+.primary-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.primary-tile{display:flex;flex-direction:column;align-items:center;gap:7px;background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:14px 6px;text-decoration:none;box-shadow:0 2px 8px rgba(11,31,58,0.03)}
 .primary-tile.primary{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
-.primary-tile-icon{width:42px;height:42px;border-radius:12px;background:#eaf3ff;display:flex;align-items:center;justify-content:center}
+.primary-tile-icon{width:38px;height:38px;border-radius:11px;background:#eaf3ff;display:flex;align-items:center;justify-content:center}
 .primary-tile.primary .primary-tile-icon{background:#fff}
-.primary-tile-icon [data-lucide]{width:20px;height:20px;stroke-width:1.9;color:#2f8fff}
+.primary-tile-icon [data-lucide]{width:19px;height:19px;stroke-width:1.9;color:#2f8fff}
 .primary-tile-label{font-size:12px;font-weight:800;color:#0b1f3a;text-align:center}
 .primary-tile.primary .primary-tile-label{color:#fff}
 
@@ -127,7 +145,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .qa-arrow{margin-left:auto;color:#aab8cc}
 .quick-action.primary .qa-arrow{color:#fff}
 
-.footer{text-align:center;color:#aab8cc;font-size:11px;margin-top:32px;font-weight:600}
+.footer{text-align:center;color:#aab8cc;font-size:11px;margin-top:24px;font-weight:600}
 
 @media(min-width:1100px){
   .sidebar{
@@ -149,12 +167,21 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   .sidebar-link [data-lucide]{width:17px;height:17px;stroke-width:1.9;flex-shrink:0;color:#2f8fff}
   .sidebar-link.current [data-lucide]{color:#1f6fe0}
 
-  .main{padding:32px 40px 60px;max-width:1120px}
-  .header{margin-bottom:32px}
-  .command-strip{max-width:640px}
-  .attention-panel{max-width:640px}
-  .ask-card{max-width:640px}
-  .primary-actions{max-width:260px;grid-template-columns:1fr}
+  .main{padding:26px 40px 60px;max-width:1120px}
+  .header{margin-bottom:20px}
+  /* The sidebar already shows the brand name and tagline at all times on
+     desktop — repeating it prominently here was exactly the redundancy
+     being addressed. Quieted rather than removed, so a manager who
+     scrolled past the sidebar still has a small anchor of where they are. */
+  .brand{gap:8px}
+  .brand-cloud{font-size:17px}
+  .brand-text h1{font-size:15px;font-weight:700;color:#5b6b85}
+  .brand-text h1 span{color:#5b6b85}
+  .brand-text p.eyebrow{display:none}
+  .home-grid{display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start}
+  .home-grid-main{display:block;min-width:0}
+  .home-grid-side{display:block;position:sticky;top:26px}
+  .primary-actions{max-width:none;grid-template-columns:1fr}
   .desktop-hide{display:none}
   .lv-hero{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
   .lv-hero .primary-tile-icon{background:#fff}
@@ -196,7 +223,6 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
         <div class="brand-text">
           <h1 data-brand-name>Beu Bella Cosmetics</h1>
           <p class="eyebrow" data-brand-tagline>by FieldIQ</p>
-          <p class="page-subtitle">Everything you need to manage your field team in one place.</p>
         </div>
       </div>
       <div class="header-right">
@@ -207,33 +233,15 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     <div class="greeting" id="greetingText">Manager Command Centre</div>
     <div class="greeting-sub">Here's what needs your attention today.</div>
 
+    <div class="home-grid">
+    <div class="home-grid-main">
+    <div id="execStatusBanner"></div>
     <div class="command-strip" id="commandStrip">
       <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">Today</div></div>
       <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">Reps</div></div>
       <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">Priority</div></div>
       <div class="command-stat"><div class="command-stat-value">—</div><div class="command-stat-label">New</div></div>
     </div>
-
-    <div class="primary-actions">
-      <a class="primary-tile primary desktop-hide" href="./dashboard.html">
-        <div class="primary-tile-icon"><i data-lucide="layout-dashboard"></i></div>
-        <div class="primary-tile-label">Dashboard</div>
-      </a>
-      <a class="primary-tile desktop-hide" href="./fieldiq-operations.html">
-        <div class="primary-tile-icon"><i data-lucide="activity"></i></div>
-        <div class="primary-tile-label">Operations</div>
-      </a>
-      <a class="primary-tile lv-hero" href="./fieldiq-log-visit.html">
-        <div class="primary-tile-icon"><i data-lucide="mic"></i></div>
-        <div class="primary-tile-label">Log Visit</div>
-      </a>
-      <a class="primary-tile" href="./fieldiq-broadcast.html">
-        <div class="primary-tile-icon"><i data-lucide="megaphone"></i></div>
-        <div class="primary-tile-label">Broadcast</div>
-      </a>
-    </div>
-
-    <div id="broadcastSection"></div>
 
     <div class="attention-panel" id="attentionPanel">
       <div class="attention-panel-head" id="attentionPanelHead">
@@ -260,6 +268,31 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
         <button type="button" class="ask-chip" data-question="Who needs coaching or recognition?">Who needs coaching or recognition?</button>
       </div>
       <div id="askAnswerArea"></div>
+    </div>
+    </div>
+
+    <div class="home-grid-side">
+    <div class="primary-actions">
+      <a class="primary-tile primary desktop-hide" href="./dashboard.html">
+        <div class="primary-tile-icon"><i data-lucide="layout-dashboard"></i></div>
+        <div class="primary-tile-label">Dashboard</div>
+      </a>
+      <a class="primary-tile desktop-hide" href="./fieldiq-operations.html">
+        <div class="primary-tile-icon"><i data-lucide="activity"></i></div>
+        <div class="primary-tile-label">Operations</div>
+      </a>
+      <a class="primary-tile lv-hero" href="./fieldiq-log-visit.html">
+        <div class="primary-tile-icon"><i data-lucide="mic"></i></div>
+        <div class="primary-tile-label">Log Visit</div>
+      </a>
+      <a class="primary-tile" href="./fieldiq-broadcast.html">
+        <div class="primary-tile-icon"><i data-lucide="megaphone"></i></div>
+        <div class="primary-tile-label">Broadcast</div>
+      </a>
+    </div>
+
+    <div id="broadcastSection"></div>
+    </div>
     </div>
 
     <button type="button" class="more-toggle" id="moreToggle">
@@ -356,6 +389,25 @@ function escapeHtmlHome(str){
   });
 }
 
+function _renderExecutiveStatus(actionableCount, priorityCount, newAccountsPending){
+  var el = document.getElementById('execStatusBanner');
+  if (!el) return;
+  var cls, text;
+  if (actionableCount > 0) {
+    cls = 'status-red';
+    text = actionableCount + ' account' + (actionableCount !== 1 ? 's' : '') + ' need' + (actionableCount === 1 ? 's' : '') + ' your review today.';
+  } else if (priorityCount > 0 || newAccountsPending > 0) {
+    cls = 'status-amber';
+    var parts = [];
+    if (priorityCount > 0) parts.push(priorityCount + ' visit' + (priorityCount !== 1 ? 's' : '') + ' awaiting review');
+    if (newAccountsPending > 0) parts.push(newAccountsPending + ' new account' + (newAccountsPending !== 1 ? 's' : '') + ' pending');
+    text = 'No critical issues detected — ' + parts.join(', ') + '.';
+  } else {
+    cls = 'status-green';
+    text = 'No urgent issues detected right now.';
+  }
+  el.innerHTML = '<div class="exec-status ' + cls + '"><span class="exec-status-dot"></span>' + escapeHtmlHome(text) + '</div>';
+}
 function renderHomeSummary(agg){
   var strip = document.getElementById('commandStrip');
   var priorityCount = (agg.priorityReview.high.length + agg.priorityReview.medium.length + agg.priorityReview.low.length);
@@ -379,6 +431,7 @@ function renderHomeSummary(agg){
            evidence.indexOf('Follow-up due today') > -1;
   });
   var top = actionable.slice(0, 3);
+  _renderExecutiveStatus(actionable.length, priorityCount, agg.kpi.newAccountsPending);
   if (!top.length && priorityCount === 0) {
     panel.classList.add('all-clear');
     panelHead.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> All Clear';
@@ -498,6 +551,35 @@ function renderManagerBriefingContent(data){
   });
   return html;
 }
+// Purely visual, additive post-processing on the already-rendered
+// briefing — never touches the AI's data or renderManagerBriefingContent
+// itself. Keeps the topline plus the first 2 sections visible by
+// default; anything beyond that is moved into a collapsible container.
+// Nothing is deleted — every section and item the AI returned is still
+// in the DOM, just not all competing for attention on first glance.
+function _collapseExtraBriefingSections(){
+  var area = document.getElementById('briefingArea');
+  if (!area) return;
+  var sections = area.querySelectorAll('.mgr-section');
+  if (sections.length <= 2) return;
+  var extra = document.createElement('div');
+  extra.className = 'briefing-extra';
+  extra.id = 'briefingExtra';
+  for (var i = sections.length - 1; i >= 2; i--) {
+    extra.insertBefore(sections[i], extra.firstChild);
+  }
+  var toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'briefing-more-toggle';
+  toggle.innerHTML = 'Show full briefing (' + (sections.length - 2) + ' more) <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  toggle.addEventListener('click', function(){
+    var isOpen = extra.classList.toggle('open');
+    toggle.classList.toggle('open', isOpen);
+    toggle.childNodes[0].textContent = isOpen ? 'Show less ' : 'Show full briefing (' + (sections.length - 2) + ' more) ';
+  });
+  sections[1].insertAdjacentElement('afterend', toggle);
+  toggle.insertAdjacentElement('afterend', extra);
+}
 function loadManagerBriefing(){
   var area = document.getElementById('briefingArea');
   if (!area) return;
@@ -521,6 +603,7 @@ function loadManagerBriefing(){
       if (!result.ok || !result.data) { renderBriefingError(); return; }
       if (result.data.sections) {
         area.innerHTML = renderManagerBriefingContent(result.data) + renderSourcesHtml(result.data.sources);
+        _collapseExtraBriefingSections();
         if (window.lucide) lucide.createIcons();
         return;
       }
