@@ -225,6 +225,16 @@ if(!currentUserId||!currentUserName){
 }
 document.getElementById('identityBar').innerHTML='Logging visit as <strong style="color:#00d4ff">'+currentUserName+'</strong> ('+(currentUserRole||'Sales Rep')+')';
 var notListedCheck=document.getElementById('notListedCheck');var newAccountFields=document.getElementById('newAccountFields');var hospitalInput=document.getElementById('hospital');var hospitalList=document.getElementById('hospitalList');var territorySelect=document.getElementById('territory');var accountBlock=document.getElementById('accountBlock');
+(function(){
+  var _earlyLockParams=new URLSearchParams(window.location.search);
+  if(_earlyLockParams.get('sourceRef')||_earlyLockParams.get('fwActionId')){
+    territorySelect.disabled=true;
+    hospitalInput.disabled=true;
+    accountBlock.style.opacity='1';
+    accountBlock.style.pointerEvents='none';
+    accountBlock.style.cursor='not-allowed';
+  }
+})();
 // GPS accuracy gate — visits must not save coordinates that are missing or
 // worse than this threshold. 500m chosen as a reasonable field-visit
 // precision floor (single constant, easy to adjust if a different value is
