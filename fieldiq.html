@@ -695,9 +695,17 @@ async function _fwShowReassignHome(actionId){
   var expand=document.getElementById('fw-mgr-expand-'+actionId);
   var action=_fwInProgressCache.find(function(r){return r.id===actionId;});
   if(!action){expand.innerHTML='';return;}
-  var neededRole=action.fields['Requested Role']||action.fields['Assigned Role']||'';
+  var neededRole=action.fields['Requested Role']||action.fields['Assigned Role']||(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'';
   var allUsers=await _fwGetUsersHome();
-  var candidates=allUsers.filter(function(u){return u.fields['Role']===neededRole&&u.fields['Active?']!==false&&u.id!==(action.fields['Assigned Rep']||[])[0];});
+  var currentAssigneeId=(action.fields['Assigned Rep']||[])[0];
+  var candidates=allUsers.filter(function(u){return String(u.fields['Role']||'').trim().toLowerCase()===String(neededRole).trim().toLowerCase()&&u.fields['Active?']!==false&&u.id!==currentAssigneeId;});
+  if(!candidates.length){
+    expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #dde8f5;border-radius:10px;background:#f7f9fc">'
+      +'<div style="font-size:12.5px;color:#7a8aa3;margin-bottom:10px">No other active '+escapeHtmlHome(neededRole||'Team Member')+'s available to reassign to.</div>'
+      +'<button type="button" onclick="document.getElementById(\'fw-mgr-expand-'+actionId+'\').innerHTML=\'\'" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Close</button>'
+      +'</div>';
+    return;
+  }
   var opts='<option value="">Select a replacement…</option>'+candidates.map(function(u){return '<option value="'+u.id+'">'+escapeHtmlHome(u.fields['Display Name']||u.fields['User ID']||'Unknown')+'</option>';}).join('');
   expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #dde8f5;border-radius:10px;background:#f7f9fc">'
     +'<select id="fw-mgr-reassign-select-'+actionId+'" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px">'+opts+'</select>'
@@ -798,7 +806,7 @@ async function loadFieldWorkflowQueue(){
     var allUsers = usersData.records || [];
     body.querySelectorAll('.fw-specialist-select').forEach(function(sel){
       var neededRole = sel.getAttribute('data-role');
-      allUsers.filter(function(u){ return u.fields['Role'] === neededRole && u.fields['Active?'] !== false; })
+      allUsers.filter(function(u){ return String(u.fields['Role']||'').trim().toLowerCase() === String(neededRole||'').trim().toLowerCase() && u.fields['Active?'] !== false; })
         .forEach(function(u){
           var opt = document.createElement('option');
           opt.value = u.id;
