@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beu Bella Cosmetics — Manager</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="./brand-config.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+
+.shell{display:flex;min-height:100vh}
+.sidebar{display:none}
+.main{flex:1;min-width:0;padding:20px 18px 90px}
+
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-cloud{font-size:24px;line-height:1}
+.brand-text h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#0b1f3a}
+.brand-text h1 span{color:#2f8fff}
+.brand-text p.eyebrow{font-size:10px;color:#8a9bb3;letter-spacing:1.2px;text-transform:uppercase;font-weight:700;margin-top:2px}
+.brand-text p.page-subtitle{color:#7a8aa3;font-size:12.5px;margin-top:4px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.exit-manager-btn{font-size:11px;color:#c43048;background:#fff;border:1px solid #f6c4cc;border-radius:20px;padding:6px 12px;cursor:pointer;font-weight:700}
+.exit-manager-btn:hover{background:#fff0f0}
+
+.section-label{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1.1px;font-weight:800;margin:32px 0 12px}
+.section-label:first-of-type{margin-top:0}
+
+.greeting{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;margin-bottom:4px}
+.greeting-sub{font-size:12.5px;color:#7a8aa3;font-weight:600;margin-bottom:24px}
+
+.command-strip{display:flex;background:#fff;border:1px solid #e8edf5;border-radius:14px;padding:14px 4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.command-stat{flex:1;text-align:center;padding:0 4px;border-right:1px solid #eef2f8}
+.command-stat:last-child{border-right:none}
+.command-stat-value{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;line-height:1}
+.command-stat-value.alert{color:#b9711f}
+.command-stat-label{font-size:9px;color:#8a9bb3;text-transform:uppercase;letter-spacing:0.5px;font-weight:800;margin-top:4px}
+
+.attention-panel{background:#fff;border:1px solid #ffe0a3;border-radius:16px;padding:4px;margin-bottom:22px;box-shadow:0 4px 14px rgba(11,31,58,0.05);overflow:hidden}
+.attention-panel.all-clear{border-color:#cdeedb}
+.attention-panel-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#b9711f;text-transform:uppercase;letter-spacing:0.6px;padding:12px 14px 8px}
+.attention-panel.all-clear .attention-panel-head{color:#1a9c53}
+.attention-panel-head svg{width:14px;height:14px;flex-shrink:0}
+.attention-row{display:flex;align-items:center;gap:10px;padding:11px 14px;text-decoration:none;border-top:1px solid #fbeecb}
+.attention-panel.all-clear .attention-row{border-top-color:#e3f5ea}
+.attention-rank{width:20px;height:20px;border-radius:50%;background:#fff3e0;color:#b9711f;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.attention-body{flex:1;min-width:0}
+.attention-name{font-size:13px;font-weight:800;color:#0b1f3a}
+.attention-reason{font-size:11px;color:#8a9bb3;margin-top:1px}
+.attention-arrow{color:#aab8cc;font-size:15px;flex-shrink:0}
+
+.ask-card{background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
+.ask-card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ask-card-icon{font-size:20px;line-height:1;display:inline-flex}
+.ask-card-icon [data-lucide]{width:22px;height:22px;stroke-width:1.9;color:#2f8fff}
+.ask-card-title{font-size:13.5px;font-weight:800;color:#0b1f3a}
+.ask-card-sub{font-size:11px;color:#8a9bb3;font-weight:600;margin-top:1px}
+.ask-suggested-row{display:flex;flex-direction:column;gap:8px}
+.ask-chip{text-align:left;background:#f8fbff;border:1px solid #e3ebf5;color:#2f6fd8;font-size:12px;font-weight:700;padding:10px 12px;border-radius:10px;cursor:pointer}
+.ask-chip:hover:not(:disabled){border-color:#bcd8ff;background:#eef6ff}
+.ask-chip:disabled{opacity:.5;cursor:not-allowed}
+.ask-answer-box{margin-top:12px;background:#f4f9ff;border:1px solid #d3e6ff;border-radius:12px;padding:14px}
+.mgr-topline{font-size:13.5px;color:#0b1f3a;font-weight:700;margin-bottom:14px;background:linear-gradient(135deg,#f4f9ff,#eef6ff);border:1px solid #d3e6ff;border-radius:12px;padding:12px 14px}
+.mgr-section{margin-bottom:14px}
+.mgr-section:last-of-type{margin-bottom:0}
+.mgr-section-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#0b1f3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
+.mgr-section-icon{font-size:13px}
+.mgr-section-icon [data-lucide]{width:15px;height:15px;stroke-width:2;color:#2f8fff;vertical-align:-3px}
+.mgr-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fbff;border:1px solid #edf2f8;border-radius:10px;padding:9px 12px;margin-bottom:5px;text-decoration:none}
+.mgr-item:last-child{margin-bottom:0}
+.mgr-item-link{cursor:pointer}
+.mgr-item-link:hover{border-color:#bcd8ff;background:#eef6ff}
+.mgr-item-text{font-size:12.5px;color:#0b1f3a;font-weight:600;flex:1}
+.mgr-item-nav{font-size:10.5px;color:#2f8fff;font-weight:800;flex-shrink:0;white-space:nowrap}
+.ask-sources{margin-top:12px;padding-top:12px;border-top:1px solid #d3e6ff}
+.ask-sources-label{font-size:9.5px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:7px}
+.ask-sources-row{display:flex;flex-direction:column;gap:6px}
+.ask-sources-toggle{background:none;border:1px dashed #cfe3ff;border-radius:8px;color:#1f6fe0;font-size:12px;font-weight:700;padding:8px 10px;cursor:pointer;text-align:center}
+.ask-source-btn{display:block;font-size:11.5px;font-weight:700;padding:8px 12px;border-radius:8px;text-decoration:none;background:#fff;border:1px solid #cfe4ff;color:#2f6fd8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ask-source-btn:hover{background:#eef6ff;border-color:#2f8fff}
+.ask-source-btn.visit{border-left:3px solid #2f8fff}
+.ask-source-btn.action{border-left:3px solid #c9871c}
+.ask-source-btn.account{border-left:3px solid #5b6b85}
+.ask-answer-question{font-size:11px;color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.ask-answer-text{font-size:13px;color:#0b1f3a;line-height:1.6;font-weight:600;white-space:pre-line}
+.ask-loading{margin-top:12px;font-size:12.5px;color:#8a9bb3;font-weight:600;display:flex;align-items:center;gap:8px}
+.ask-spinner{width:14px;height:14px;border:2px solid #d3e6ff;border-top:2px solid #2f8fff;border-radius:50%;animation:askSpin .7s linear infinite}
+@keyframes askSpin{to{transform:rotate(360deg)}}
+.ask-error{margin-top:12px;background:#fff3e0;border:1px solid #ffe0a3;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#7a6000;font-weight:600}
+.ask-retry-btn{margin-top:8px;border:none;background:#2f8fff;color:#fff;padding:8px 14px;border-radius:8px;font-weight:800;font-size:11.5px;cursor:pointer}
+.ask-again-link{margin-top:10px;font-size:11.5px;color:#2f8fff;font-weight:700;cursor:pointer;text-decoration:underline;display:inline-block}
+
+.primary-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:20px}
+.primary-tile{display:flex;flex-direction:column;align-items:center;gap:9px;background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:18px 6px;text-decoration:none;box-shadow:0 2px 8px rgba(11,31,58,0.03)}
+.primary-tile.primary{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
+.primary-tile-icon{width:42px;height:42px;border-radius:12px;background:#eaf3ff;display:flex;align-items:center;justify-content:center}
+.primary-tile.primary .primary-tile-icon{background:#fff}
+.primary-tile-icon [data-lucide]{width:20px;height:20px;stroke-width:1.9;color:#2f8fff}
+.primary-tile-label{font-size:12px;font-weight:800;color:#0b1f3a;text-align:center}
+.primary-tile.primary .primary-tile-label{color:#fff}
+
+.more-toggle{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:none;border:none;padding:10px;font-size:11.5px;font-weight:800;color:#7a8aa3;text-transform:uppercase;letter-spacing:0.6px;cursor:pointer}
+.more-toggle svg{width:13px;height:13px;transition:transform 0.15s}
+.more-toggle.open svg{transform:rotate(180deg)}
+.more-tools-collapsible{display:none}
+.more-tools-collapsible.open{display:block}
+
+.home-columns{display:block}
+
+
+.summary-empty{font-size:12.5px;color:#aab8cc;font-weight:600;padding:8px 2px}
+
+.quick-actions{display:flex;flex-direction:column;gap:10px}
+.quick-action{
+  display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e8edf5;border-radius:14px;
+  padding:14px 16px;text-decoration:none;
+}
+.quick-action.primary{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
+.quick-action.primary .qa-title{color:#fff}
+.quick-action.primary .qa-icon-wrap{background:#fff}
+.qa-icon-wrap{width:38px;height:38px;border-radius:11px;background:#eaf3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qa-icon-wrap [data-lucide]{width:19px;height:19px;stroke-width:1.9;color:#2f8fff}
+.quick-action.primary .qa-icon-wrap [data-lucide]{color:#2f8fff}
+.qa-title{font-size:13.5px;font-weight:800;color:#0b1f3a}
+.qa-arrow{margin-left:auto;color:#aab8cc}
+.quick-action.primary .qa-arrow{color:#fff}
+
+.footer{text-align:center;color:#aab8cc;font-size:11px;margin-top:32px;font-weight:600}
+
+@media(min-width:1100px){
+  .sidebar{
+    display:flex;flex-direction:column;width:240px;flex-shrink:0;background:#fff;
+    border-right:1px solid #e8edf5;padding:24px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  .sidebar-brand{display:flex;align-items:center;gap:9px;margin-bottom:4px;padding:0 8px}
+  .sidebar-brand h1{font-size:19px;font-weight:800;letter-spacing:-0.4px;color:#0b1f3a}
+  .sidebar-brand h1 span{color:#2f8fff}
+  .sidebar-eyebrow{font-size:9px;color:#8a9bb3;letter-spacing:1px;text-transform:uppercase;font-weight:700;padding:0 8px;margin-bottom:26px}
+  .sidebar-group-label{font-size:10px;color:#aab8cc;text-transform:uppercase;letter-spacing:0.9px;font-weight:800;padding:0 8px;margin:18px 0 6px}
+  .sidebar-group-label:first-of-type{margin-top:0}
+  .sidebar-link{
+    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;text-decoration:none;
+    color:#5b6b85;font-size:13.5px;font-weight:700;margin-bottom:2px;
+  }
+  .sidebar-link:hover{background:#eaf3ff}
+  .sidebar-link.current{background:#eaf3ff;color:#1f6fe0;pointer-events:none;cursor:default}
+  .sidebar-link [data-lucide]{width:17px;height:17px;stroke-width:1.9;flex-shrink:0;color:#2f8fff}
+  .sidebar-link.current [data-lucide]{color:#1f6fe0}
+
+  .main{padding:32px 40px 60px;max-width:1120px}
+  .header{margin-bottom:32px}
+  .command-strip{max-width:640px}
+  .attention-panel{max-width:640px}
+  .ask-card{max-width:640px}
+  .primary-actions{max-width:260px;grid-template-columns:1fr}
+  .desktop-hide{display:none}
+  .lv-hero{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
+  .lv-hero .primary-tile-icon{background:#fff}
+  .lv-hero .primary-tile-label{color:#fff}
+  .more-toggle,.more-tools-collapsible{display:none}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="sidebar">
+    <div class="sidebar-brand"><span class="brand-cloud">☁️</span><h1 data-brand-name>Beu Bella Cosmetics</h1></div>
+    <div class="sidebar-eyebrow" data-brand-tagline>by FieldIQ</div>
+
+    <a href="./fieldiq.html" class="sidebar-link"><i data-lucide="home"></i> Manager Home</a>
+
+    <div class="sidebar-group-label">Management</div>
+    <a href="./dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a href="./fieldiq-operations.html" class="sidebar-link"><i data-lucide="activity"></i> Operations</a>
+    <a href="./fieldiq-actions.html" class="sidebar-link"><i data-lucide="check-square"></i> Open Actions</a>
+    <a href="./fieldiq-manager-calendar.html" class="sidebar-link"><i data-lucide="calendar-days"></i> Manager Calendar</a>
+    <a href="./fieldiq-team-requests.html" class="sidebar-link current"><i data-lucide="users"></i> Team Requests</a>
+    <a href="./fieldiq-accounts.html" class="sidebar-link"><i data-lucide="building-2"></i> Account Directory</a>
+
+    <div class="sidebar-group-label">Intelligence</div>
+    <a href="./fieldiq-insights.html" class="sidebar-link"><i data-lucide="brain-circuit"></i> AI Insights</a>
+    <a href="./fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map</a>
+
+    <div class="sidebar-group-label">Field &amp; Help</div>
+    <a href="./fieldiq-visit-history.html?source=manager-home" class="sidebar-link"><i data-lucide="clock"></i> Visit History</a>
+    <a href="./fieldiq-guide.html" class="sidebar-link"><i data-lucide="book-open"></i> Quick Start Guide</a>
+  </nav>
+
+  <div class="main">
+    <div class="header">
+      <div class="brand">
+        <span class="brand-cloud">☁️</span>
+        <div class="brand-text">
+          <h1 data-brand-name>Beu Bella Cosmetics</h1>
+          <p class="eyebrow" data-brand-tagline>by FieldIQ</p>
+          <p class="page-subtitle">Assign, reassign, and reschedule trainer support requests.</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="exit-manager-btn" onclick="exitManager()">Exit Manager</button>
+      </div>
+    </div>
+
+    <div class="greeting" id="greetingText">Team Requests</div>
+    <div class="greeting-sub">Trainer support requests, from pending through completion.</div>
+
+    <div id="fieldWorkflowQueueSection" style="display:none">
+      <button type="button" class="more-toggle" style="margin-top:0">
+        Field Workflow — Pending Requests (<span id="fwQueueCount">0</span>)
+      </button>
+      <div id="fieldWorkflowQueueBody" style="margin-top:10px"></div>
+    </div>
+
+    <div id="fieldWorkflowInProgressSection" style="display:none;margin-top:16px"></div>
+
+
+    <div class="footer">FieldIQ v2.1 · Team Requests · 2026</div>
+  </div>
+</div>
+<script>
+var currentSessionToken = localStorage.getItem('fieldiq_session_token');
+var WORKER_URL_HOME = 'https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+
+function escapeHtmlHome(str){
+  return String(str||'').replace(/[&<>"']/g,function(m){
+    return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
+  });
+}
+
+// Clears everything that represents an authenticated session. Deliberately
+// preserves fieldiq_last_user_id — that key only controls which profile is
+// preselected on index.html's next visit, it has never authenticated
+// anyone, so clearing it here would just be worse UX for no security
+// benefit.
+function clearActiveSession(){
+  localStorage.removeItem('fieldiq_user_id');
+  localStorage.removeItem('fieldiq_user_name');
+  localStorage.removeItem('fieldiq_user_role');
+  localStorage.removeItem('fieldiq_user_record_id');
+  localStorage.removeItem('fieldiq_session_token');
+}
+function exitManager(){
+  clearActiveSession();
+  window.location.href = './index.html';
+}
+function expireCurrentSession(){
+  localStorage.removeItem('fieldiq_session_token');
+  currentSessionToken = '';
+}
+// ── Field Workflow — Manager pending queue ──────────────────────────────────
+// New, additive feature. Loads and renders only if there's something
+// pending; otherwise the panel stays hidden and nothing about today's
+// Manager Home changes at all.
+var _fwInProgressCache=[];
+var _fwManagerUsersCacheHome=null;
+async function _fwGetUsersHome(){
+  if(_fwManagerUsersCacheHome)return _fwManagerUsersCacheHome;
+  try{
+    var res=await fetch(WORKER_URL_HOME+'/get-users',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    var data=res.ok?await res.json():{records:[]};
+    _fwManagerUsersCacheHome=data.records||[];
+  }catch(e){_fwManagerUsersCacheHome=[];}
+  return _fwManagerUsersCacheHome;
+}
+function _fwFormatDateHome(v){
+  if(!v)return 'No date set';
+  try{return new Date(v+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}catch(e){return v;}
+}
+async function loadFieldWorkflowInProgress(){
+  var section=document.getElementById('fieldWorkflowInProgressSection');
+  try{
+    var res=await fetch(WORKER_URL_HOME+'/get-actions?role=Manager&status=Open',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    if(!res.ok){section.style.display='none';return;}
+    var data=await res.json();
+    var allActions=data.records||[];
+    _fwInProgressCache=allActions.filter(function(r){
+      var f=r.fields||{};
+      return f['Field Workflow ID']&&f['Assigned Rep']&&f['Assigned Rep'].length&&f['Status']==='Open';
+    });
+    if(!_fwInProgressCache.length){section.style.display='none';section.innerHTML='';return;}
+
+    var allUsers=await _fwGetUsersHome();
+    function nameFor(recordId){
+      var u=allUsers.find(function(u){return u.id===recordId;});
+      return u?(u.fields['Display Name']||u.fields['User ID']||'Unknown'):'Unknown';
+    }
+
+    var html='<button type="button" class="more-toggle" style="margin-top:0">Field Workflow — In Progress ('+_fwInProgressCache.length+')</button><div style="margin-top:10px">';
+    _fwInProgressCache.forEach(function(r){
+      var f=r.fields||{};
+      var requesterId=(f['Return To']||[])[0]||'';
+      var specialistId=(f['Assigned Rep']||[])[0]||'';
+      html+='<div class="ask-card" style="margin-bottom:8px" id="fw-mgr-card-'+r.id+'">'
+        +'<div style="font-weight:800;font-size:13.5px;color:#0b1f3a">'+escapeHtmlHome(f['Account Name']||'Unknown Account')+'</div>'
+        +'<div style="font-size:11.5px;color:#8a9bb3;margin:4px 0 2px">Requested by: '+escapeHtmlHome(nameFor(requesterId))+' &middot; Assigned: '+escapeHtmlHome(nameFor(specialistId))+'</div>'
+        +'<div style="font-size:11.5px;color:#8a9bb3;margin:0 0 8px">Scheduled: '+escapeHtmlHome(_fwFormatDateHome(f['Due Date']))+'</div>'
+        +(f['Action Text']?'<div style="font-size:12px;color:#3d4f6b;margin-bottom:10px">'+escapeHtmlHome(f['Action Text'])+'</div>':'')
+        +'<div id="fw-mgr-controls-'+r.id+'" style="display:flex;gap:8px">'
+          +'<button type="button" onclick="_fwShowReassignHome(\''+r.id+'\')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Reassign</button>'
+          +'<button type="button" onclick="_fwShowChangeDateHome(\''+r.id+'\')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Change Date</button>'
+        +'</div>'
+        +'<div id="fw-mgr-expand-'+r.id+'"></div>'
+        +'</div>';
+    });
+    html+='</div>';
+    section.innerHTML=html;
+    section.style.display='block';
+    if(typeof lucide!=='undefined')lucide.createIcons();
+  }catch(e){console.error('Could not load in-progress Field Workflow items:',e);section.style.display='none';}
+}
+
+async function _fwShowReassignHome(actionId){
+  var expand=document.getElementById('fw-mgr-expand-'+actionId);
+  var action=_fwInProgressCache.find(function(r){return r.id===actionId;});
+  if(!action){expand.innerHTML='';return;}
+  var neededRole=action.fields['Requested Role']||action.fields['Assigned Role']||(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'';
+  var allUsers=await _fwGetUsersHome();
+  var currentAssigneeId=(action.fields['Assigned Rep']||[])[0];
+  var candidates=allUsers.filter(function(u){return String(u.fields['Role']||'').trim().toLowerCase()===String(neededRole).trim().toLowerCase()&&u.fields['Active?']!==false&&u.id!==currentAssigneeId;});
+  if(!candidates.length){
+    expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #dde8f5;border-radius:10px;background:#f7f9fc">'
+      +'<div style="font-size:12.5px;color:#7a8aa3;margin-bottom:10px">No other active '+escapeHtmlHome(neededRole||'Team Member')+'s available to reassign to.</div>'
+      +'<button type="button" onclick="document.getElementById(\'fw-mgr-expand-'+actionId+'\').innerHTML=\'\'" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Close</button>'
+      +'</div>';
+    return;
+  }
+  var opts='<option value="">Select a replacement…</option>'+candidates.map(function(u){return '<option value="'+u.id+'">'+escapeHtmlHome(u.fields['Display Name']||u.fields['User ID']||'Unknown')+'</option>';}).join('');
+  expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #dde8f5;border-radius:10px;background:#f7f9fc">'
+    +'<select id="fw-mgr-reassign-select-'+actionId+'" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px">'+opts+'</select>'
+    +'<div style="display:flex;gap:8px">'
+      +'<button type="button" id="fw-mgr-reassign-confirm-'+actionId+'" style="flex:1;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer">Confirm Reassign</button>'
+      +'<button type="button" onclick="document.getElementById(\'fw-mgr-expand-'+actionId+'\').innerHTML=\'\'" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Cancel</button>'
+    +'</div>'
+    +'<div id="fw-mgr-reassign-err-'+actionId+'" style="display:none;color:#e0344a;font-size:12px;margin-top:6px"></div>'
+    +'</div>';
+  document.getElementById('fw-mgr-reassign-confirm-'+actionId).addEventListener('click',function(){_fwConfirmReassignHome(actionId);});
+}
+
+async function _fwConfirmReassignHome(actionId){
+  var sel=document.getElementById('fw-mgr-reassign-select-'+actionId);
+  var errEl=document.getElementById('fw-mgr-reassign-err-'+actionId);
+  var newSpecialistId=sel?sel.value:'';
+  if(!newSpecialistId){errEl.textContent='Please select a replacement first.';errEl.style.display='block';return;}
+  var btn=document.getElementById('fw-mgr-reassign-confirm-'+actionId);
+  btn.disabled=true;btn.textContent='Reassigning…';
+  try{
+    var releaseRes=await fetch(WORKER_URL_HOME+'/reassign-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId})});
+    var releaseData=await releaseRes.json();
+    if(!releaseRes.ok){errEl.textContent=releaseData.error||'Could not release the current assignment.';errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';return;}
+    var assignRes=await fetch(WORKER_URL_HOME+'/assign-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId,specialistRecordId:newSpecialistId})});
+    var assignData=await assignRes.json();
+    if(!assignRes.ok){errEl.textContent='Released, but could not assign the replacement: '+(assignData.error||'please try again from the queue.');errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';return;}
+    loadFieldWorkflowInProgress();
+    loadFieldWorkflowQueue();
+  }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';}
+}
+
+function _fwShowChangeDateHome(actionId){
+  var expand=document.getElementById('fw-mgr-expand-'+actionId);
+  var action=_fwInProgressCache.find(function(r){return r.id===actionId;});
+  var currentDate=action?(action.fields['Due Date']||''):'';
+  expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #dde8f5;border-radius:10px;background:#f7f9fc">'
+    +'<input type="date" id="fw-mgr-date-input-'+actionId+'" value="'+escapeHtmlHome(currentDate)+'" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px">'
+    +'<div style="display:flex;gap:8px">'
+      +'<button type="button" id="fw-mgr-date-confirm-'+actionId+'" style="flex:1;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer">Save Date</button>'
+      +'<button type="button" onclick="document.getElementById(\'fw-mgr-expand-'+actionId+'\').innerHTML=\'\'" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Cancel</button>'
+    +'</div>'
+    +'<div id="fw-mgr-date-err-'+actionId+'" style="display:none;color:#e0344a;font-size:12px;margin-top:6px"></div>'
+    +'</div>';
+  document.getElementById('fw-mgr-date-confirm-'+actionId).addEventListener('click',function(){_fwConfirmChangeDateHome(actionId);});
+}
+
+async function _fwConfirmChangeDateHome(actionId){
+  var input=document.getElementById('fw-mgr-date-input-'+actionId);
+  var errEl=document.getElementById('fw-mgr-date-err-'+actionId);
+  var newDate=input?input.value:'';
+  if(!newDate){errEl.textContent='Please choose a date.';errEl.style.display='block';return;}
+  var btn=document.getElementById('fw-mgr-date-confirm-'+actionId);
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    var res=await fetch(WORKER_URL_HOME+'/reschedule-field-workflow-date',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId,newDate:newDate})});
+    var data=await res.json();
+    if(!res.ok){errEl.textContent=data.error||'Could not update the date.';errEl.style.display='block';btn.disabled=false;btn.textContent='Save Date';return;}
+    loadFieldWorkflowInProgress();
+  }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Save Date';}
+}
+
+async function loadFieldWorkflowQueue(){
+  try{
+    var res = await fetch(WORKER_URL_HOME + '/get-field-workflow-queue', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } });
+    if(!res.ok) return;
+    var data = await res.json();
+    var records = data.records || [];
+    var section = document.getElementById('fieldWorkflowQueueSection');
+    var countEl = document.getElementById('fwQueueCount');
+    var body = document.getElementById('fieldWorkflowQueueBody');
+    if(!records.length){ section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    countEl.textContent = records.length;
+    var html = '';
+    records.forEach(function(r){
+      var f = r.fields || {};
+      var requestedDate = f['Due Date'] ? new Date(f['Due Date']).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'No date set';
+      var requesterRecordId = (f['Return To']||[])[0] || '';
+      var roleLabel = f['Assigned Role'] || (typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel) || 'Team Member';
+      html += '<div class="ask-card" style="margin-bottom:8px">'
+        + '<div style="font-weight:800;font-size:13.5px;color:#0b1f3a">' + escapeHtmlHome(f['Account Name'] || 'Unknown Account') + '</div>'
+        + '<div style="font-size:11.5px;color:#8a9bb3;margin:3px 0 2px">Needs: ' + escapeHtmlHome(roleLabel) + ' &middot; Requested date: ' + escapeHtmlHome(requestedDate) + ' &middot; Status: Pending Assignment</div>'
+        + '<div style="font-size:11.5px;color:#8a9bb3;margin:0 0 8px" class="fw-requester-name" data-requester-id="' + escapeHtmlHome(requesterRecordId) + '">Requested by: …</div>'
+        + '<div style="font-size:12px;color:#3d4f6b;margin-bottom:10px">' + escapeHtmlHome(f['Action Text'] || '') + '</div>'
+        + '<select class="fw-specialist-select" data-action-id="' + r.id + '" data-role="' + escapeHtmlHome(roleLabel) + '" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px"><option value="">Select a ' + escapeHtmlHome(roleLabel.toLowerCase()) + '…</option></select>'
+        + '<button type="button" class="fw-assign-btn" data-action-id="' + r.id + '" style="width:100%;padding:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer">Assign Team Member</button>'
+        + '</div>';
+    });
+    body.innerHTML = html;
+
+    // Populate each request's specialist dropdown, filtered to the role
+    // that specific request actually needs. Reuses the same authenticated,
+    // cached user list already used by In Progress, rather than a second,
+    // separate fetch.
+    var allUsers = await _fwGetUsersHome();
+    body.querySelectorAll('.fw-specialist-select').forEach(function(sel){
+      var neededRole = sel.getAttribute('data-role');
+      allUsers.filter(function(u){ return String(u.fields['Role']||'').trim().toLowerCase() === String(neededRole||'').trim().toLowerCase() && u.fields['Active?'] !== false; })
+        .forEach(function(u){
+          var opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.fields['Display Name'] || u.fields['User ID'] || 'Unknown';
+          sel.appendChild(opt);
+        });
+    });
+    body.querySelectorAll('.fw-requester-name').forEach(function(el){
+      var requesterId = el.getAttribute('data-requester-id');
+      var requester = allUsers.find(function(u){ return u.id === requesterId; });
+      el.textContent = 'Requested by: ' + (requester ? (requester.fields['Display Name'] || requester.fields['User ID'] || 'Unknown') : 'Unknown');
+    });
+
+    body.querySelectorAll('.fw-assign-btn').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        var actionId = btn.getAttribute('data-action-id');
+        var sel = body.querySelector('.fw-specialist-select[data-action-id="' + actionId + '"]');
+        var roleForThisRequest = sel ? (sel.getAttribute('data-role') || (typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel) || 'Team Member') : ((typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel) || 'Team Member');
+        var specialistRecordId = sel ? sel.value : '';
+        if(!specialistRecordId){ alert('Please select a ' + roleForThisRequest.toLowerCase() + ' first.'); return; }
+        btn.disabled = true; btn.textContent = 'Assigning Team Member…';
+        try{
+          var assignRes = await fetch(WORKER_URL_HOME + '/assign-field-workflow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + currentSessionToken },
+            body: JSON.stringify({ actionId: actionId, specialistRecordId: specialistRecordId })
+          });
+          if(!assignRes.ok){
+            var errData = await assignRes.json().catch(function(){ return {}; });
+            alert('Could not assign: ' + (errData.error || 'please try again.'));
+            btn.disabled = false; btn.textContent = 'Assign Team Member';
+            return;
+          }
+          loadFieldWorkflowQueue();
+          loadFieldWorkflowInProgress();
+        }catch(e){
+          alert('Error: ' + e.message);
+          btn.disabled = false; btn.textContent = 'Assign Team Member';
+        }
+      });
+    });
+  }catch(e){
+    console.error('Could not load Field Workflow queue:', e);
+  }
+}
+function initTeamRequests(){
+  lucide.createIcons();
+  if (typeof FIELDIQ_BRAND !== 'undefined' && FIELDIQ_BRAND.fieldWorkflowEnabled) {
+    loadFieldWorkflowQueue();
+    loadFieldWorkflowInProgress();
+  }
+}
+function validateAndInit(){
+  if (!currentSessionToken) {
+    window.location.href = './index.html';
+    return;
+  }
+  fetch(WORKER_URL_HOME + '/validate-session', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
+    .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+    .then(function(result){
+      if (!result.ok || !result.data || !result.data.valid || result.data.role !== 'Manager') {
+        clearActiveSession();
+        window.location.href = './index.html';
+        return;
+      }
+      // Confirmed by the Worker, not assumed from whatever was already in
+      // localStorage — refresh the stored identity fields to match
+      // exactly what the verified token says.
+      localStorage.setItem('fieldiq_user_id', result.data.userId);
+      localStorage.setItem('fieldiq_user_name', result.data.name);
+      localStorage.setItem('fieldiq_user_role', result.data.role);
+      localStorage.setItem('fieldiq_user_record_id', result.data.recordId);
+      initTeamRequests();
+    })
+    .catch(function(){
+      // Network failure during validation — never proceed as if
+      // authenticated on a guess. Back to sign-in, not a silent bypass.
+      window.location.href = './index.html';
+    });
+}
+document.addEventListener('DOMContentLoaded', validateAndInit);
+
+// Ensures a fresh /get-dashboard fetch happens if this page is restored
+// from the browser's back-forward cache (e.g. the manager marks a visit
+// Reviewed on Visit History, then taps the browser Back button to return
+// here) — bfcache restoration does not re-fire DOMContentLoaded, so
+// without this the page would keep showing whatever it rendered before
+// navigating away. Same pattern already used elsewhere in this app
+// (fieldiq-visit-history.html) for the same reason.
+window.addEventListener('pageshow', function(event){
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+</script>
+</body>
+</html>
