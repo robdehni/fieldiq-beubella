@@ -268,6 +268,8 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
       <div id="fieldWorkflowQueueBody" style="margin-top:10px"></div>
     </div>
 
+    <div id="fieldWorkflowInProgressSection" style="display:none;margin-top:16px"></div>
+
     <button type="button" class="more-toggle" id="moreToggle">
       More Manager Tools
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -631,6 +633,132 @@ function askFieldIQ(question){
 // New, additive feature. Loads and renders only if there's something
 // pending; otherwise the panel stays hidden and nothing about today's
 // Manager Home changes at all.
+var _fwInProgressCache=[];
+var _fwManagerUsersCacheHome=null;
+async function _fwGetUsersHome(){
+  if(_fwManagerUsersCacheHome)return _fwManagerUsersCacheHome;
+  try{
+    var res=await fetch(WORKER_URL_HOME+'/get-users',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    var data=res.ok?await res.json():{records:[]};
+    _fwManagerUsersCacheHome=data.records||[];
+  }catch(e){_fwManagerUsersCacheHome=[];}
+  return _fwManagerUsersCacheHome;
+}
+function _fwFormatDateHome(v){
+  if(!v)return 'No date set';
+  try{return new Date(v+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}catch(e){return v;}
+}
+async function loadFieldWorkflowInProgress(){
+  var section=document.getElementById('fieldWorkflowInProgressSection');
+  try{
+    var res=await fetch(WORKER_URL_HOME+'/get-actions?role=Manager&status=Open',{headers:{'Authorization':'Bearer '+currentSessionToken}});
+    if(!res.ok){section.style.display='none';return;}
+    var data=await res.json();
+    var allActions=data.records||[];
+    _fwInProgressCache=allActions.filter(function(r){
+      var f=r.fields||{};
+      return f['Field Workflow ID']&&f['Assigned Rep']&&f['Assigned Rep'].length&&f['Status']==='Open';
+    });
+    if(!_fwInProgressCache.length){section.style.display='none';section.innerHTML='';return;}
+
+    var allUsers=await _fwGetUsersHome();
+    function nameFor(recordId){
+      var u=allUsers.find(function(u){return u.id===recordId;});
+      return u?(u.fields['Display Name']||u.fields['User ID']||'Unknown'):'Unknown';
+    }
+
+    var html='<button type="button" class="more-toggle" style="margin-top:0">Field Workflow — In Progress ('+_fwInProgressCache.length+')</button><div style="margin-top:10px">';
+    _fwInProgressCache.forEach(function(r){
+      var f=r.fields||{};
+      var requesterId=(f['Return To']||[])[0]||'';
+      var specialistId=(f['Assigned Rep']||[])[0]||'';
+      html+='<div class="ask-card" style="margin-bottom:8px" id="fw-mgr-card-'+r.id+'">'
+        +'<div style="font-weight:800;font-size:13.5px;color:#0b1f3a">'+escapeHtmlHome(f['Account Name']||'Unknown Account')+'</div>'
+        +'<div style="font-size:11.5px;color:#8a9bb3;margin:4px 0 2px">Requested by: '+escapeHtmlHome(nameFor(requesterId))+' &middot; Assigned: '+escapeHtmlHome(nameFor(specialistId))+'</div>'
+        +'<div style="font-size:11.5px;color:#8a9bb3;margin:0 0 8px">Scheduled: '+escapeHtmlHome(_fwFormatDateHome(f['Due Date']))+'</div>'
+        +(f['Action Text']?'<div style="font-size:12px;color:#3d4f6b;margin-bottom:10px">'+escapeHtmlHome(f['Action Text'])+'</div>':'')
+        +'<div id="fw-mgr-controls-'+r.id+'" style="display:flex;gap:8px">'
+          +'<button type="button" onclick="_fwShowReassignHome(\''+r.id+'\')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Reassign</button>'
+          +'<button type="button" onclick="_fwShowChangeDateHome(\''+r.id+'\')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Change Date</button>'
+        +'</div>'
+        +'<div id="fw-mgr-expand-'+r.id+'"></div>'
+        +'</div>';
+    });
+    html+='</div>';
+    section.innerHTML=html;
+    section.style.display='block';
+    if(typeof lucide!=='undefined')lucide.createIcons();
+  }catch(e){console.error('Could not load in-progress Field Workflow items:',e);section.style.display='none';}
+}
+
+async function _fwShowReassignHome(actionId){
+  var expand=document.getElementById('fw-mgr-expand-'+actionId);
+  var action=_fwInProgressCache.find(function(r){return r.id===actionId;});
+  if(!action){expand.innerHTML='';return;}
+  var neededRole=action.fields['Requested Role']||action.fields['Assigned Role']||'';
+  var allUsers=await _fwGetUsersHome();
+  var candidates=allUsers.filter(function(u){return u.fields['Role']===neededRole&&u.fields['Active?']!==false&&u.id!==(action.fields['Assigned Rep']||[])[0];});
+  var opts='<option value="">Select a replacement…</option>'+candidates.map(function(u){return '<option value="'+u.id+'">'+escapeHtmlHome(u.fields['Display Name']||u.fields['User ID']||'Unknown')+'</option>';}).join('');
+  expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #dde8f5;border-radius:10px;background:#f7f9fc">'
+    +'<select id="fw-mgr-reassign-select-'+actionId+'" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px">'+opts+'</select>'
+    +'<div style="display:flex;gap:8px">'
+      +'<button type="button" id="fw-mgr-reassign-confirm-'+actionId+'" style="flex:1;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer">Confirm Reassign</button>'
+      +'<button type="button" onclick="document.getElementById(\'fw-mgr-expand-'+actionId+'\').innerHTML=\'\'" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Cancel</button>'
+    +'</div>'
+    +'<div id="fw-mgr-reassign-err-'+actionId+'" style="display:none;color:#e0344a;font-size:12px;margin-top:6px"></div>'
+    +'</div>';
+  document.getElementById('fw-mgr-reassign-confirm-'+actionId).addEventListener('click',function(){_fwConfirmReassignHome(actionId);});
+}
+
+async function _fwConfirmReassignHome(actionId){
+  var sel=document.getElementById('fw-mgr-reassign-select-'+actionId);
+  var errEl=document.getElementById('fw-mgr-reassign-err-'+actionId);
+  var newSpecialistId=sel?sel.value:'';
+  if(!newSpecialistId){errEl.textContent='Please select a replacement first.';errEl.style.display='block';return;}
+  var btn=document.getElementById('fw-mgr-reassign-confirm-'+actionId);
+  btn.disabled=true;btn.textContent='Reassigning…';
+  try{
+    var releaseRes=await fetch(WORKER_URL_HOME+'/reassign-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId})});
+    var releaseData=await releaseRes.json();
+    if(!releaseRes.ok){errEl.textContent=releaseData.error||'Could not release the current assignment.';errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';return;}
+    var assignRes=await fetch(WORKER_URL_HOME+'/assign-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId,specialistRecordId:newSpecialistId})});
+    var assignData=await assignRes.json();
+    if(!assignRes.ok){errEl.textContent='Released, but could not assign the replacement: '+(assignData.error||'please try again from the queue.');errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';return;}
+    loadFieldWorkflowInProgress();
+    loadFieldWorkflowQueue();
+  }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';}
+}
+
+function _fwShowChangeDateHome(actionId){
+  var expand=document.getElementById('fw-mgr-expand-'+actionId);
+  var action=_fwInProgressCache.find(function(r){return r.id===actionId;});
+  var currentDate=action?(action.fields['Due Date']||''):'';
+  expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #dde8f5;border-radius:10px;background:#f7f9fc">'
+    +'<input type="date" id="fw-mgr-date-input-'+actionId+'" value="'+escapeHtmlHome(currentDate)+'" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px">'
+    +'<div style="display:flex;gap:8px">'
+      +'<button type="button" id="fw-mgr-date-confirm-'+actionId+'" style="flex:1;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer">Save Date</button>'
+      +'<button type="button" onclick="document.getElementById(\'fw-mgr-expand-'+actionId+'\').innerHTML=\'\'" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Cancel</button>'
+    +'</div>'
+    +'<div id="fw-mgr-date-err-'+actionId+'" style="display:none;color:#e0344a;font-size:12px;margin-top:6px"></div>'
+    +'</div>';
+  document.getElementById('fw-mgr-date-confirm-'+actionId).addEventListener('click',function(){_fwConfirmChangeDateHome(actionId);});
+}
+
+async function _fwConfirmChangeDateHome(actionId){
+  var input=document.getElementById('fw-mgr-date-input-'+actionId);
+  var errEl=document.getElementById('fw-mgr-date-err-'+actionId);
+  var newDate=input?input.value:'';
+  if(!newDate){errEl.textContent='Please choose a date.';errEl.style.display='block';return;}
+  var btn=document.getElementById('fw-mgr-date-confirm-'+actionId);
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    var res=await fetch(WORKER_URL_HOME+'/reschedule-field-workflow-date',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId,newDate:newDate})});
+    var data=await res.json();
+    if(!res.ok){errEl.textContent=data.error||'Could not update the date.';errEl.style.display='block';btn.disabled=false;btn.textContent='Save Date';return;}
+    loadFieldWorkflowInProgress();
+  }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Save Date';}
+}
+
 async function loadFieldWorkflowQueue(){
   try{
     var res = await fetch(WORKER_URL_HOME + '/get-field-workflow-queue', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } });
@@ -705,6 +833,7 @@ async function loadFieldWorkflowQueue(){
             return;
           }
           loadFieldWorkflowQueue();
+          loadFieldWorkflowInProgress();
         }catch(e){
           alert('Error: ' + e.message);
           btn.disabled = false; btn.textContent = 'Assign Team Member';
@@ -718,6 +847,7 @@ async function loadFieldWorkflowQueue(){
 document.addEventListener('DOMContentLoaded', function(){
   if (typeof FIELDIQ_BRAND !== 'undefined' && FIELDIQ_BRAND.fieldWorkflowEnabled) {
     loadFieldWorkflowQueue();
+    loadFieldWorkflowInProgress();
   }
 });
 
