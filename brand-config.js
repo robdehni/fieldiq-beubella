@@ -5,7 +5,8 @@
 // needs to be touched.
 var FIELDIQ_BRAND = {
   name: 'Beu Bella Cosmetics',
-  fieldWorkflowEnabled: true
+  fieldWorkflowEnabled: true,
+  specialistRoleLabel: 'Trainer'
 };
 
 function applyBrand() {
