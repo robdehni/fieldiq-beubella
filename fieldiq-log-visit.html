@@ -844,7 +844,7 @@ submitBtn.addEventListener('click',async function(){
       fwBtn.type='button';
       fwBtn.className='btn btn-primary';
       fwBtn.style.cssText='margin-top:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0)';
-      fwBtn.textContent='Request '+((typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Team Member')+' for this Account';
+      fwBtn.textContent='Request Team Member for this Account';
       fwBtn.addEventListener('click',function(){
         var targetRole=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Team Member';
         document.getElementById('fwModalTitle').textContent='Request '+targetRole;
