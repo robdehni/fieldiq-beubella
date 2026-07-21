@@ -655,7 +655,7 @@ async function loadFieldWorkflowQueue(){
         + '<div style="font-size:11.5px;color:#8a9bb3;margin:0 0 8px" class="fw-requester-name" data-requester-id="' + escapeHtmlHome(requesterRecordId) + '">Requested by: …</div>'
         + '<div style="font-size:12px;color:#3d4f6b;margin-bottom:10px">' + escapeHtmlHome(f['Action Text'] || '') + '</div>'
         + '<select class="fw-specialist-select" data-action-id="' + r.id + '" data-role="' + escapeHtmlHome(roleLabel) + '" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px"><option value="">Select a ' + escapeHtmlHome(roleLabel.toLowerCase()) + '…</option></select>'
-        + '<button type="button" class="fw-assign-btn" data-action-id="' + r.id + '" style="width:100%;padding:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer">Assign ' + escapeHtmlHome(roleLabel) + '</button>'
+        + '<button type="button" class="fw-assign-btn" data-action-id="' + r.id + '" style="width:100%;padding:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer">Assign Team Member</button>'
         + '</div>';
     });
     body.innerHTML = html;
@@ -691,7 +691,7 @@ async function loadFieldWorkflowQueue(){
         var roleForThisRequest = sel ? (sel.getAttribute('data-role') || (typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel) || 'Team Member') : ((typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel) || 'Team Member');
         var specialistRecordId = sel ? sel.value : '';
         if(!specialistRecordId){ alert('Please select a ' + roleForThisRequest.toLowerCase() + ' first.'); return; }
-        btn.disabled = true; btn.textContent = 'Assigning ' + roleForThisRequest + '…';
+        btn.disabled = true; btn.textContent = 'Assigning Team Member…';
         try{
           var assignRes = await fetch(WORKER_URL_HOME + '/assign-field-workflow', {
             method: 'POST',
@@ -701,13 +701,13 @@ async function loadFieldWorkflowQueue(){
           if(!assignRes.ok){
             var errData = await assignRes.json().catch(function(){ return {}; });
             alert('Could not assign: ' + (errData.error || 'please try again.'));
-            btn.disabled = false; btn.textContent = 'Assign ' + roleForThisRequest;
+            btn.disabled = false; btn.textContent = 'Assign Team Member';
             return;
           }
           loadFieldWorkflowQueue();
         }catch(e){
           alert('Error: ' + e.message);
-          btn.disabled = false; btn.textContent = 'Assign ' + roleForThisRequest;
+          btn.disabled = false; btn.textContent = 'Assign Team Member';
         }
       });
     });
