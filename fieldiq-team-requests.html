@@ -269,6 +269,14 @@ function _fwFormatDateHome(v){
   if(!v)return 'No date set';
   try{return new Date(v+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}catch(e){return v;}
 }
+var _fwReloadChain = Promise.resolve();
+function _fwReloadAll(){
+  _fwReloadChain = _fwReloadChain
+    .catch(function(){})
+    .then(function(){ return Promise.all([loadFieldWorkflowInProgress(true), loadFieldWorkflowQueue()]); })
+    .catch(function(e){ console.error('Field Workflow reload failed:', e); });
+  return _fwReloadChain;
+}
 async function loadFieldWorkflowInProgress(forceFresh){
   var section=document.getElementById('fieldWorkflowInProgressSection');
   try{
@@ -360,8 +368,7 @@ async function _fwConfirmReassignHome(actionId){
     var assignRes=await fetch(WORKER_URL_HOME+'/assign-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId,specialistRecordId:newSpecialistId})});
     var assignData=await assignRes.json();
     if(!assignRes.ok){errEl.textContent='Released, but could not assign the replacement: '+(assignData.error||'please try again from the queue.');errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';return;}
-    loadFieldWorkflowInProgress(true);
-    loadFieldWorkflowQueue();
+    _fwReloadAll();
   }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';}
 }
 
@@ -391,7 +398,7 @@ async function _fwConfirmChangeDateHome(actionId){
     var res=await fetch(WORKER_URL_HOME+'/reschedule-field-workflow-date',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId,newDate:newDate})});
     var data=await res.json();
     if(!res.ok){errEl.textContent=data.error||'Could not update the date.';errEl.style.display='block';btn.disabled=false;btn.textContent='Save Date';return;}
-    loadFieldWorkflowInProgress(true);
+    _fwReloadAll();
   }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Save Date';}
 }
 
@@ -465,8 +472,7 @@ async function loadFieldWorkflowQueue(){
             btn.disabled = false; btn.textContent = 'Assign Team Member';
             return;
           }
-          loadFieldWorkflowQueue();
-          loadFieldWorkflowInProgress(true);
+          _fwReloadAll();
         }catch(e){
           alert('Error: ' + e.message);
           btn.disabled = false; btn.textContent = 'Assign Team Member';
