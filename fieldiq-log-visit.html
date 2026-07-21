@@ -844,9 +844,9 @@ submitBtn.addEventListener('click',async function(){
       fwBtn.type='button';
       fwBtn.className='btn btn-primary';
       fwBtn.style.cssText='margin-top:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0)';
-      fwBtn.textContent='Request '+((typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Specialist')+' for this Account';
+      fwBtn.textContent='Request '+((typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Team Member')+' for this Account';
       fwBtn.addEventListener('click',function(){
-        var targetRole=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Trainer';
+        var targetRole=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Team Member';
         document.getElementById('fwModalTitle').textContent='Request '+targetRole;
         document.getElementById('fwModalSubtitle').textContent='This will let your manager assign a '+targetRole+'.';
         var dateInput=document.getElementById('fwModalDate');
@@ -881,7 +881,7 @@ submitBtn.addEventListener('click',async function(){
         function onSubmit(){
           var requiredDateInput=(dateInput.value||'').trim();
           if(!/^\d{4}-\d{2}-\d{2}$/.test(requiredDateInput)){
-            errorEl.textContent='Please choose a valid required date — this is needed so the specialist sees the request on their Calendar.';
+            errorEl.textContent='Please choose a valid required date — this is needed so the '+targetRole.toLowerCase()+' sees the request on their Calendar.';
             errorEl.style.display='block';
             return;
           }
