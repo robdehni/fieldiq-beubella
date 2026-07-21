@@ -844,11 +844,11 @@ submitBtn.addEventListener('click',async function(){
       fwBtn.type='button';
       fwBtn.className='btn btn-primary';
       fwBtn.style.cssText='margin-top:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0)';
-      fwBtn.textContent='Request Specialist for this Account';
+      fwBtn.textContent='Request '+((typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Specialist')+' for this Account';
       fwBtn.addEventListener('click',function(){
         var targetRole=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Trainer';
         document.getElementById('fwModalTitle').textContent='Request '+targetRole;
-        document.getElementById('fwModalSubtitle').textContent='This will be sent to your manager for assignment.';
+        document.getElementById('fwModalSubtitle').textContent='This will let your manager assign a '+targetRole+'.';
         var dateInput=document.getElementById('fwModalDate');
         var notesInput=document.getElementById('fwModalNotes');
         var errorEl=document.getElementById('fwModalError');
@@ -858,7 +858,7 @@ submitBtn.addEventListener('click',async function(){
 
         var prefillDate='';
         var aiDate=(parsed.suggestedDate||'').trim();
-        if(aiDate&&aiDate.toLowerCase()!=='none'){
+        if(aiDate&&aiDate.toLowerCase()!=='none'&&/\d{4}/.test(aiDate)){
           var parsedAiDate=new Date(aiDate);
           if(!isNaN(parsedAiDate.getTime())){
             prefillDate=parsedAiDate.getFullYear()+'-'+String(parsedAiDate.getMonth()+1).padStart(2,'0')+'-'+String(parsedAiDate.getDate()).padStart(2,'0');
@@ -899,7 +899,7 @@ submitBtn.addEventListener('click',async function(){
               submitBtnFw.disabled=false;submitBtnFw.textContent='Request';
               return;
             }
-            fwBtn.textContent='Specialist Requested ✓';
+            fwBtn.textContent=targetRole+' Requested ✓';
             closeModal();
           }).catch(function(e){
             errorEl.textContent='Error: '+e.message;
@@ -945,7 +945,7 @@ document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
 </script>
 <div id="fwModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(11,31,58,0.55);z-index:10000;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 50px rgba(11,31,58,0.25)">
-    <h3 id="fwModalTitle" style="margin:0 0 4px;font-size:18px;font-weight:800;color:#0b1f3a">Request Specialist</h3>
+    <h3 id="fwModalTitle" style="margin:0 0 4px;font-size:18px;font-weight:800;color:#0b1f3a">Request</h3>
     <p id="fwModalSubtitle" style="margin:0 0 18px;font-size:13px;color:#7a8aa3">This will be sent to your manager for assignment.</p>
     <label style="display:block;font-size:12px;font-weight:700;color:#3d4f6b;margin-bottom:6px">Requested date</label>
     <input type="date" id="fwModalDate" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid #dde8f5;font-size:14px;margin-bottom:14px;box-sizing:border-box">
