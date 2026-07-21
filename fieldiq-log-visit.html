@@ -846,23 +846,69 @@ submitBtn.addEventListener('click',async function(){
       fwBtn.style.cssText='margin-top:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0)';
       fwBtn.textContent='Request Specialist for this Account';
       fwBtn.addEventListener('click',function(){
-        var targetRole=prompt('Which specialist role is needed? (e.g. Trainer)','Trainer');
-        if(!targetRole||!targetRole.trim())return;
-        var notes=prompt('Any notes for the specialist? (optional)','')||'';
-        var requiredDateInput=prompt('Required date (format YYYY-MM-DD, e.g. 2026-07-23) — needed so the specialist sees this on their Calendar:','')||'';
-        if(!/^\d{4}-\d{2}-\d{2}$/.test(requiredDateInput.trim())){
-          alert('Please enter a valid required date in YYYY-MM-DD format — this is needed so the specialist sees the request on their Calendar.');
-          return;
+        var targetRole=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Trainer';
+        document.getElementById('fwModalTitle').textContent='Request '+targetRole;
+        document.getElementById('fwModalSubtitle').textContent='This will be sent to your manager for assignment.';
+        var dateInput=document.getElementById('fwModalDate');
+        var notesInput=document.getElementById('fwModalNotes');
+        var errorEl=document.getElementById('fwModalError');
+        var submitBtnFw=document.getElementById('fwModalSubmit');
+        var cancelBtnFw=document.getElementById('fwModalCancel');
+        var overlay=document.getElementById('fwModalOverlay');
+
+        var prefillDate='';
+        var aiDate=(parsed.suggestedDate||'').trim();
+        if(aiDate&&aiDate.toLowerCase()!=='none'){
+          var parsedAiDate=new Date(aiDate);
+          if(!isNaN(parsedAiDate.getTime())){
+            prefillDate=parsedAiDate.getFullYear()+'-'+String(parsedAiDate.getMonth()+1).padStart(2,'0')+'-'+String(parsedAiDate.getDate()).padStart(2,'0');
+          }
         }
-        fwBtn.disabled=true;fwBtn.textContent='Sending request…';
-        fetch(WORKER+'/start-field-workflow',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
-          body:JSON.stringify({accountName:hospitalName,accountId:isNewAccount?newAccountId:selectedAccountId,targetRole:targetRole.trim(),notes:notes.trim(),requiredDate:requiredDateInput.trim(),visitRecordId:saveData.id})
-        }).then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});}).then(function(res){
-          if(!res.ok){alert('Could not send request: '+(res.data.error||'please try again.'));fwBtn.disabled=false;fwBtn.textContent='Request Specialist for this Account';return;}
-          fwBtn.textContent='Specialist Requested ✓';
-        }).catch(function(e){alert('Error: '+e.message);fwBtn.disabled=false;fwBtn.textContent='Request Specialist for this Account';});
+        dateInput.value=prefillDate;
+        notesInput.value='';
+        errorEl.style.display='none';
+        submitBtnFw.disabled=false;submitBtnFw.textContent='Request';
+        overlay.style.display='flex';
+
+        function closeModal(){
+          overlay.style.display='none';
+          cancelBtnFw.removeEventListener('click',onCancel);
+          submitBtnFw.removeEventListener('click',onSubmit);
+        }
+        function onCancel(){
+          closeModal();
+        }
+        function onSubmit(){
+          var requiredDateInput=(dateInput.value||'').trim();
+          if(!/^\d{4}-\d{2}-\d{2}$/.test(requiredDateInput)){
+            errorEl.textContent='Please choose a valid required date — this is needed so the specialist sees the request on their Calendar.';
+            errorEl.style.display='block';
+            return;
+          }
+          errorEl.style.display='none';
+          submitBtnFw.disabled=true;submitBtnFw.textContent='Sending…';
+          var notes=(notesInput.value||'').trim();
+          fetch(WORKER+'/start-field-workflow',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+            body:JSON.stringify({accountName:hospitalName,accountId:isNewAccount?newAccountId:selectedAccountId,targetRole:targetRole.trim(),notes:notes,requiredDate:requiredDateInput,visitRecordId:saveData.id})
+          }).then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});}).then(function(res){
+            if(!res.ok){
+              errorEl.textContent='Could not send request: '+(res.data.error||'please try again.');
+              errorEl.style.display='block';
+              submitBtnFw.disabled=false;submitBtnFw.textContent='Request';
+              return;
+            }
+            fwBtn.textContent='Specialist Requested ✓';
+            closeModal();
+          }).catch(function(e){
+            errorEl.textContent='Error: '+e.message;
+            errorEl.style.display='block';
+            submitBtnFw.disabled=false;submitBtnFw.textContent='Request';
+          });
+        }
+        cancelBtnFw.addEventListener('click',onCancel);
+        submitBtnFw.addEventListener('click',onSubmit);
       });
       document.getElementById('reportContent').insertAdjacentElement('afterend',fwBtn);
     })();
@@ -897,5 +943,20 @@ document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
   },{passive:true});
 })();
 </script>
+<div id="fwModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(11,31,58,0.55);z-index:10000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 50px rgba(11,31,58,0.25)">
+    <h3 id="fwModalTitle" style="margin:0 0 4px;font-size:18px;font-weight:800;color:#0b1f3a">Request Specialist</h3>
+    <p id="fwModalSubtitle" style="margin:0 0 18px;font-size:13px;color:#7a8aa3">This will be sent to your manager for assignment.</p>
+    <label style="display:block;font-size:12px;font-weight:700;color:#3d4f6b;margin-bottom:6px">Requested date</label>
+    <input type="date" id="fwModalDate" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid #dde8f5;font-size:14px;margin-bottom:14px;box-sizing:border-box">
+    <label style="display:block;font-size:12px;font-weight:700;color:#3d4f6b;margin-bottom:6px">Notes (optional)</label>
+    <textarea id="fwModalNotes" rows="3" style="width:100%;padding:11px;border-radius:10px;border:1.5px solid #dde8f5;font-size:14px;margin-bottom:6px;box-sizing:border-box;resize:vertical;font-family:inherit"></textarea>
+    <p id="fwModalError" style="display:none;margin:6px 0 0;font-size:12.5px;color:#e0344a;font-weight:600"></p>
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button type="button" id="fwModalCancel" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:14px;cursor:pointer">Cancel</button>
+      <button type="button" id="fwModalSubmit" style="flex:1;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;font-weight:800;font-size:14px;cursor:pointer">Request</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
