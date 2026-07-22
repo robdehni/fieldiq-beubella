@@ -10,6 +10,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 20px 50px}
+body.signin-active{height:100vh;overflow:hidden}
+body.signin-active #identitySection{flex:1;min-height:0;display:flex;flex-direction:column}
+body.signin-active .user-list{flex:1;max-height:none}
 
 /* ── Brand block — matches fieldiq.html reference ── */
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -162,7 +165,7 @@ body{background:#f4f8fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   <meta name="apple-mobile-web-app-title" content="FieldIQ">
   <link rel="apple-touch-icon" href="./icon-180.png">
 </head>
-<body>
+<body class="signin-active">
 
 <div class="logo">
   <div class="brand">
@@ -387,6 +390,7 @@ function checkPin(){
           return;
         }
         pendingUser=null;
+        document.body.classList.remove('signin-active');
         renderSignedInBar(signedInUser);
         renderModules();
         loadRepBriefing();
@@ -853,6 +857,7 @@ function startUp(){
         window.location.href = './fieldiq.html';
         return;
       }
+      document.body.classList.remove('signin-active');
       renderSignedInBar(restoredUser);
       renderModules();
       loadRepBriefing();
