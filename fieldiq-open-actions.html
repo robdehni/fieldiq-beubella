@@ -224,22 +224,28 @@ function buildReturnHref(actionId){
   }
   return './fieldiq-open-actions.html?'+q.join('&');
 }
-function _findNearestVisibleAction(){
-  var cards=document.querySelectorAll('.action-card');
-  for(var i=0;i<cards.length;i++){
-    var rect=cards[i].getBoundingClientRect();
+function _findNearestVisibleAccount(){
+  var groups=document.querySelectorAll('.account-group');
+  for(var i=0;i<groups.length;i++){
+    var rect=groups[i].getBoundingClientRect();
     if(rect.bottom>0){
-      return cards[i].id.replace(/^card-/,'');
+      return groups[i].getAttribute('data-account');
     }
   }
   return null;
 }
+function buildAccountReturnHref(account){
+  return './fieldiq-open-actions.html?account='+encodeURIComponent(account);
+}
 function _goToCalendarWithContext(evt){
-  var actionId=_findNearestVisibleAction();
-  if(!actionId){return true;}
-  var record=actions.find(function(a){return a.id===actionId;});
+  var account=_findNearestVisibleAccount();
+  if(!account){return true;}
+  var groupEl=document.querySelector('.account-group[data-account="'+CSS.escape(account)+'"]');
+  var firstCard=groupEl?groupEl.querySelector('.action-card'):null;
+  var firstId=firstCard?firstCard.id.replace(/^card-/,''):null;
+  var record=firstId?actions.find(function(a){return a.id===firstId;}):null;
   var due=record&&record.fields?(record.fields['Due Date']||''):'';
-  var q=['returnTo='+encodeURIComponent(buildReturnHref(actionId))];
+  var q=['returnTo='+encodeURIComponent(buildAccountReturnHref(account))];
   if(due){
     var parts=due.split('-');
     if(parts.length===3){
@@ -473,7 +479,7 @@ function render(){
   });
 
   sortedAccounts.forEach(function(account){
-    html+='<div class="account-group">';
+    html+='<div class="account-group" data-account="'+escapeHtml(account)+'">';
     html+='<div class="account-group-label">'+escapeHtml(account)+'</div>';
 
     groups[account].forEach(function(r){
@@ -642,6 +648,7 @@ document.addEventListener('DOMContentLoaded',function(){
   lucide.createIcons();
   var _params=new URLSearchParams(window.location.search);
   var targetActionId=_params.get('actionId');
+  var targetAccount=_params.get('account');
   // If opened from Calendar, point the back button to Calendar with context restored.
   if(_params.get('returnTo')==='calendar'){
     var _cy=_params.get('calYear')||'',_cm=_params.get('calMonth')||'',_cd=_params.get('calDay')||'';
@@ -655,6 +662,11 @@ document.addEventListener('DOMContentLoaded',function(){
     if(_hb){_hb.href=_cu;_hb.textContent='← Calendar';}
   }
   loadActions().then(function(){
+    if(targetAccount){
+      var groupEl=document.querySelector('.account-group[data-account="'+CSS.escape(targetAccount)+'"]');
+      if(groupEl)setTimeout(function(){groupEl.scrollIntoView({behavior:'smooth',block:'start'});},100);
+      return;
+    }
     if(!targetActionId)return;
     var card=document.getElementById('card-'+targetActionId);
     if(!card)return;
