@@ -134,6 +134,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
   </div>
 
   <a href="./fieldiq.html" class="home-btn" id="homeBtn">← Manager Home</a>
+  <a href="./fieldiq-manager-calendar.html" class="home-btn home-btn-secondary" id="calendarNavBtn" onclick="return _goToCalendarWithContext(event);">Calendar</a>
 
   <div class="summary-grid">
     <div class="summary-card"><div class="summary-num" id="openCount">0</div><div class="summary-label">Open</div></div>
@@ -219,10 +220,12 @@ if(currentUserRole!=='Manager'){
 //  - from=operations (no source param): the pre-existing direct
 //    Operations → Actions path (e.g. the Rep Activity feed). Unchanged.
 var targetActionId=null;
+var targetAccountCard=null;
 var calReturn=null;
 (function(){
   var params=new URLSearchParams(window.location.search);
   targetActionId=params.get('actionId')||null;
+  targetAccountCard=params.get('actionCard')||null;
 
   if(params.get('source')==='manager-calendar'){
     calReturn={
@@ -623,6 +626,40 @@ function updateCounts(){
 function safeKeyFor(key){
   return btoa(unescape(encodeURIComponent(key))).replace(/=/g,'');
 }
+function _findNearestVisibleAccountCard(){
+  var cards=document.querySelectorAll('.account-card');
+  for(var i=0;i<cards.length;i++){
+    var rect=cards[i].getBoundingClientRect();
+    if(rect.bottom>0){
+      return cards[i].id.replace(/^account-card-/,'');
+    }
+  }
+  return null;
+}
+function _goToCalendarWithContext(evt){
+  var sk=_findNearestVisibleAccountCard();
+  if(!sk){return true;}
+  var q=['returnTo='+encodeURIComponent('./fieldiq-actions.html?actionCard='+encodeURIComponent(sk))];
+  try{
+    var key=keyMap[sk];
+    if(key){
+      var freshGroups=groupActions(listForTab());
+      var group=freshGroups[key];
+      var due=group?nextDue(group):'';
+      if(due){
+        var parts=due.split('-');
+        if(parts.length===3){
+          q.push('calYear='+encodeURIComponent(parts[0]));
+          q.push('calMonth='+encodeURIComponent(String(parseInt(parts[1],10)-1)));
+          q.push('calDay='+encodeURIComponent(due));
+        }
+      }
+    }
+  }catch(e){}
+  window.location.href='./fieldiq-manager-calendar.html?'+q.join('&');
+  if(evt)evt.preventDefault();
+  return false;
+}
 function countState(group,state){
   return group.filter(function(r){return getDueState(r.fields||{})===state;}).length;
 }
@@ -1016,7 +1053,16 @@ document.addEventListener('DOMContentLoaded',function(){
   bindStaticEvents();
   if(window.lucide)lucide.createIcons();
   loadActions(pendingScroll).then(function(){
-    if(pendingScroll===null&&targetActionId)focusOnAction(targetActionId);
+    if(pendingScroll===null&&targetActionId){focusOnAction(targetActionId);return;}
+    if(pendingScroll===null&&targetAccountCard){
+      setTimeout(function(){
+        var cardEl=document.getElementById('account-card-'+targetAccountCard);
+        if(cardEl){
+          var _t=cardEl.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0);
+          window.scrollTo({top:_t,behavior:'smooth'});
+        }
+      },100);
+    }
   });
 });
 </script>
