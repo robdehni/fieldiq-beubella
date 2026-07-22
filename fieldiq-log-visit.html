@@ -159,6 +159,7 @@ audio{width:100%;border-radius:8px;margin:8px 0;display:none}
     </div>
   </div>
   <div class="field"><label>Visit Date</label><input type="date" id="visitDate"></div>
+  <div class="field"><label>Visit Time</label><input type="time" id="visitTime"></div>
   <div class="field"><label>Visit Type</label><select id="visitType"><option value="">Select type</option><option>In-person</option><option>Virtual</option><option>Phone</option></select></div>
 </div>
 
@@ -315,12 +316,14 @@ hospitalInput.addEventListener('input',function(){selectedAccountId=null;showLis
 hospitalInput.addEventListener('focus',function(){showList(this.value);});
 document.addEventListener('click',function(e){if(!e.target.closest('.hospital-wrapper'))hospitalList.classList.remove('open');});
 document.getElementById('visitDate').value=(function(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();})();
+document.getElementById('visitTime').value=(function(){var d=new Date();return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();})();
 document.getElementById('visitDate').addEventListener('change',function(){updateMicAvailability();});
+document.getElementById('visitTime').addEventListener('change',function(){updateMicAvailability();});
 document.getElementById('visitType').addEventListener('change',function(){updateMicAvailability();});
 var mediaRecorder=null,chunks=[],seconds=0,timerInterval=null,streamRef=null,isRecording=false,autoStopTimeout=null,wasAutoStopped=false,pendingAutoStopBlob=null;
 var micBtn=document.getElementById('micBtn');var statusEl=document.getElementById('status');var transcriptText=document.getElementById('transcriptText');var audioPlayer=document.getElementById('audioPlayer');var submitBtn=document.getElementById('submitBtn');var successCard=document.getElementById('successCard');var processingOverlay=document.getElementById('processingOverlay');
 var validationMessageEl=document.getElementById('validationMessage');
-function getMissingFields(){var missing=[];if(!territorySelect.value)missing.push('Territory');var newAccountNameVal=notListedCheck.checked?document.getElementById('newAccountName').value.trim():'';var isDuplicateNewAccount=notListedCheck.checked&&newAccountNameVal.length>0&&findPossibleDuplicates(newAccountNameVal).length>0;var accountOk=!!selectedAccountId||(notListedCheck.checked&&newAccountNameVal.length>0&&!isDuplicateNewAccount);if(!accountOk)missing.push(isDuplicateNewAccount?'Account (duplicate)':'Account');if(!document.getElementById('visitDate').value)missing.push('Visit Date');if(!document.getElementById('visitType').value)missing.push('Visit Type');if(!currentUserId||!currentUserName)missing.push('Rep Identity');return missing;}
+function getMissingFields(){var missing=[];if(!territorySelect.value)missing.push('Territory');var newAccountNameVal=notListedCheck.checked?document.getElementById('newAccountName').value.trim():'';var isDuplicateNewAccount=notListedCheck.checked&&newAccountNameVal.length>0&&findPossibleDuplicates(newAccountNameVal).length>0;var accountOk=!!selectedAccountId||(notListedCheck.checked&&newAccountNameVal.length>0&&!isDuplicateNewAccount);if(!accountOk)missing.push(isDuplicateNewAccount?'Account (duplicate)':'Account');if(!document.getElementById('visitDate').value)missing.push('Visit Date');if(!document.getElementById('visitTime').value)missing.push('Visit Time');if(!document.getElementById('visitType').value)missing.push('Visit Type');if(!currentUserId||!currentUserName)missing.push('Rep Identity');return missing;}
 function updateMicAvailability(){var missing=getMissingFields();if(missing.length>0){micBtn.disabled=true;if(validationMessageEl){if(missing.indexOf('Account (duplicate)')>-1){validationMessageEl.textContent='This account already exists. Please select it from Account Search instead of adding it as new.';}else{validationMessageEl.textContent='Complete required fields to start recording: '+missing.join(', ');}validationMessageEl.style.display='block';}}else{micBtn.disabled=false;if(validationMessageEl){validationMessageEl.style.display='none';}}}
 updateMicAvailability();
 
@@ -765,7 +768,8 @@ submitBtn.addEventListener('click',async function(){
     var OWNERSHIP_TAG_RE=/^\[([^\]]+)\]\s*/gm;
     var resultForDisplay=result.replace(OWNERSHIP_TAG_RE,'');
     var nextStepsForDisplay=(parsed.nextSteps||'').replace(OWNERSHIP_TAG_RE,'');
-    var visitDate=document.getElementById('visitDate').value;var territory=document.getElementById('territory').value;var visitType=document.getElementById('visitType').value;
+    var visitDate=document.getElementById('visitDate').value;var visitTime=document.getElementById('visitTime').value;var territory=document.getElementById('territory').value;var visitType=document.getElementById('visitType').value;
+    var visitDateTimeISO=new Date(visitDate+'T'+visitTime+':00').toISOString();
     var newAccountId=null;
     if(isNewAccount){
       document.getElementById('processingText').textContent='Creating account...';
@@ -794,7 +798,7 @@ submitBtn.addEventListener('click',async function(){
       document.getElementById('processingText').textContent = 'Saving visit...';
     }
 
-    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDate,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':resultForDisplay,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':nextStepsForDisplay,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId};
+    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDateTimeISO,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':resultForDisplay,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':nextStepsForDisplay,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId};
     var _fwUrlParamsForSave=new URLSearchParams(window.location.search);
     var _fwSourceVisitIdForSave=fwSourceVisitId||_fwUrlParamsForSave.get('fwSourceVisitId')||'';
     var _fwWorkflowIdForSave=fwWorkflowId||_fwUrlParamsForSave.get('fwWorkflowId')||'';
