@@ -117,7 +117,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
   </div>
 
   <a href="./index.html" class="home-btn">← Home</a>
-  <a href="./fieldiq-calendar.html?returnTo=./fieldiq-open-actions.html" class="home-btn home-btn-secondary">Calendar</a>
+  <a href="./fieldiq-calendar.html?returnTo=./fieldiq-open-actions.html" class="home-btn home-btn-secondary" id="calendarNavBtn" onclick="return _goToCalendarWithContext(event);">Calendar</a>
 
   <div class="summary">
     <div class="summary-left">
@@ -223,6 +223,34 @@ function buildReturnHref(actionId){
     });
   }
   return './fieldiq-open-actions.html?'+q.join('&');
+}
+function _findNearestVisibleAction(){
+  var cards=document.querySelectorAll('.action-card');
+  for(var i=0;i<cards.length;i++){
+    var rect=cards[i].getBoundingClientRect();
+    if(rect.bottom>0){
+      return cards[i].id.replace(/^card-/,'');
+    }
+  }
+  return null;
+}
+function _goToCalendarWithContext(evt){
+  var actionId=_findNearestVisibleAction();
+  if(!actionId){return true;}
+  var record=actions.find(function(a){return a.id===actionId;});
+  var due=record&&record.fields?(record.fields['Due Date']||''):'';
+  var q=['returnTo='+encodeURIComponent(buildReturnHref(actionId))];
+  if(due){
+    var parts=due.split('-');
+    if(parts.length===3){
+      q.push('calYear='+encodeURIComponent(parts[0]));
+      q.push('calMonth='+encodeURIComponent(String(parseInt(parts[1],10)-1)));
+      q.push('calDay='+encodeURIComponent(due));
+    }
+  }
+  window.location.href='./fieldiq-calendar.html?'+q.join('&');
+  if(evt)evt.preventDefault();
+  return false;
 }
 function visitHref(r){
   var f=r.fields||{};
