@@ -559,6 +559,15 @@ function setPopupBusy(busy){
 document.addEventListener('DOMContentLoaded',function(){
   lucide.createIcons();
 
+  var _rp=new URLSearchParams(window.location.search);
+  var _returnTo=_rp.get('returnTo');
+  var _returnToDecoded='';
+  try{_returnToDecoded=decodeURIComponent(_returnTo||'');}catch(e){}
+  if(/^\.\/fieldiq-actions\.html\?actionCard=[A-Za-z0-9+/\-_]+$/.test(_returnToDecoded)){
+    var _hb=document.getElementById('homeBtn');
+    if(_hb){_hb.href=_returnTo;_hb.textContent='← Back';}
+  }
+
   document.getElementById('apBtnClose').addEventListener('click',closeActionPopup);
 
   document.getElementById('apOverlay').addEventListener('click',function(e){
