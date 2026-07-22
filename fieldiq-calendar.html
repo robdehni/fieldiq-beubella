@@ -552,6 +552,11 @@ document.addEventListener('DOMContentLoaded',function(){
   if(ry)viewYear=parseInt(ry,10);
   if(rm!==null&&rm!=='')viewMonth=parseInt(rm,10);
   if(rd)selectedDayISO=rd;
+  var _returnTo=rp.get('returnTo');
+  if(_returnTo==='./fieldiq-open-actions.html'){
+    var _hb=document.querySelector('.home-btn');
+    if(_hb){_hb.href=_returnTo;_hb.textContent='← Back';}
+  }
   loadCalendar();
 });
 </script>
