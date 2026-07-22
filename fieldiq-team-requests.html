@@ -24,6 +24,8 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .exit-manager-btn{font-size:11px;color:#c43048;background:#fff;border:1px solid #f6c4cc;border-radius:20px;padding:6px 12px;cursor:pointer;font-weight:700}
 .exit-manager-btn:hover{background:#fff0f0}
+.home-btn{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#2f8fff;font-size:13px;font-weight:700;text-decoration:none;padding:9px 16px;border-radius:30px;margin-bottom:16px;border:1px solid #e3ebf5;box-shadow:0 2px 8px rgba(11,31,58,0.05)}
+.home-btn:hover{border-color:#2f8fff}
 
 .section-label{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1.1px;font-weight:800;margin:32px 0 12px}
 .section-label:first-of-type{margin-top:0}
@@ -199,10 +201,9 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
           <p class="page-subtitle">Assign, reassign, and reschedule trainer support requests.</p>
         </div>
       </div>
-      <div class="header-right">
-        <button class="exit-manager-btn" onclick="exitManager()">Exit Manager</button>
-      </div>
     </div>
+
+    <a href="./fieldiq.html" class="home-btn" id="homeBtn">← Manager Home</a>
 
     <div class="greeting" id="greetingText">Team Requests</div>
     <div class="greeting-sub">Trainer support requests, from pending through completion.</div>
@@ -271,9 +272,14 @@ function _fwFormatDateHome(v){
 }
 var _fwReloadChain = Promise.resolve();
 function _fwReloadAll(){
+  var _tQueued=performance.now();
+  console.log('[FW TIMING] Reload queued at', _tQueued.toFixed(1));
   _fwReloadChain = _fwReloadChain
     .catch(function(){})
-    .then(function(){ return Promise.all([loadFieldWorkflowInProgress(true), loadFieldWorkflowQueue()]); })
+    .then(function(){
+      console.log('[FW TIMING] Reload actually starting at', performance.now().toFixed(1), '(waited', (performance.now()-_tQueued).toFixed(1), 'ms behind any prior reload in the chain)');
+      return Promise.all([loadFieldWorkflowInProgress(true), loadFieldWorkflowQueue()]);
+    })
     .catch(function(e){ console.error('Field Workflow reload failed:', e); });
   return _fwReloadChain;
 }
@@ -328,9 +334,14 @@ async function loadFieldWorkflowInProgress(forceFresh){
 }
 
 async function _fwShowReassignHome(actionId){
+  console.log('[FW TIMING] Reassign button clicked at', performance.now().toFixed(1), 'for actionId', actionId);
   var expand=document.getElementById('fw-mgr-expand-'+actionId);
   var action=_fwInProgressCache.find(function(r){return r.id===actionId;});
-  if(!action){expand.innerHTML='';return;}
+  if(!action){
+    console.warn('[FW TIMING] actionId', actionId, 'not found in current _fwInProgressCache (size:', _fwInProgressCache.length, ') — this is why nothing appeared to happen.');
+    expand.innerHTML='<div style="margin-top:8px;padding:10px;border:1.5px solid #f5c2c2;border-radius:10px;background:#fff5f5;color:#b23b3b;font-size:12.5px">This request just changed — please wait a moment for the list to refresh, then try again.</div>';
+    return;
+  }
   var neededRole=action.fields['Requested Role']||action.fields['Assigned Role']||(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'';
   var allUsers=await _fwGetUsersHome();
   var currentAssigneeId=(action.fields['Assigned Rep']||[])[0];
@@ -355,6 +366,8 @@ async function _fwShowReassignHome(actionId){
 }
 
 async function _fwConfirmReassignHome(actionId){
+  var _tClick=performance.now();
+  console.log('[FW TIMING] Confirm Reassign clicked at', _tClick.toFixed(1), 'for actionId', actionId);
   var sel=document.getElementById('fw-mgr-reassign-select-'+actionId);
   var errEl=document.getElementById('fw-mgr-reassign-err-'+actionId);
   var newSpecialistId=sel?sel.value:'';
@@ -362,13 +375,25 @@ async function _fwConfirmReassignHome(actionId){
   var btn=document.getElementById('fw-mgr-reassign-confirm-'+actionId);
   btn.disabled=true;btn.textContent='Reassigning…';
   try{
+    var _tReleaseSent=performance.now();
+    console.log('[FW TIMING] /reassign-field-workflow sent at', _tReleaseSent.toFixed(1), '(', (_tReleaseSent-_tClick).toFixed(1), 'ms after click)');
     var releaseRes=await fetch(WORKER_URL_HOME+'/reassign-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId})});
+    var _tReleaseReceived=performance.now();
     var releaseData=await releaseRes.json();
+    console.log('[FW TIMING] /reassign-field-workflow response received at', _tReleaseReceived.toFixed(1), '(round trip:', (_tReleaseReceived-_tReleaseSent).toFixed(1), 'ms) — Worker-reported timing:', releaseData._timing);
     if(!releaseRes.ok){errEl.textContent=releaseData.error||'Could not release the current assignment.';errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';return;}
+    var _tAssignSent=performance.now();
+    console.log('[FW TIMING] /assign-field-workflow sent at', _tAssignSent.toFixed(1), '(', (_tAssignSent-_tReleaseReceived).toFixed(1), 'ms after previous response)');
     var assignRes=await fetch(WORKER_URL_HOME+'/assign-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId,specialistRecordId:newSpecialistId})});
+    var _tAssignReceived=performance.now();
     var assignData=await assignRes.json();
+    console.log('[FW TIMING] /assign-field-workflow response received at', _tAssignReceived.toFixed(1), '(round trip:', (_tAssignReceived-_tAssignSent).toFixed(1), 'ms) — Worker-reported timing:', assignData._timing);
     if(!assignRes.ok){errEl.textContent='Released, but could not assign the replacement: '+(assignData.error||'please try again from the queue.');errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';return;}
-    _fwReloadAll();
+    var _tReloadTriggered=performance.now();
+    console.log('[FW TIMING] Mutation fully complete, reload triggered at', _tReloadTriggered.toFixed(1), '(', (_tReloadTriggered-_tClick).toFixed(1), 'ms total since click)');
+    _fwReloadAll().then(function(){
+      console.log('[FW TIMING] UI reload finished and re-rendered at', performance.now().toFixed(1), '(', (performance.now()-_tClick).toFixed(1), 'ms total since click)');
+    });
   }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';}
 }
 
