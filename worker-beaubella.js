@@ -22,6 +22,13 @@ export default {
     const BASE_ID = "appwHLTGnkS3uiywl";
     const OPEN_ACTIONS_TABLE = "tblH6hTkfUMB8KxXk";
     const NOTIFICATIONS_TABLE = "tblJ8B3jw5RM4zakV";
+    // Field Workflow is deliberately restricted to this one role for this
+    // deployment — a request can only ever be for a Trainer, enforced here
+    // server-side, not just filtered in the UI. Kept as a single named
+    // constant rather than the literal string scattered through the
+    // enforcement checks below, so a future white-label deployment needing
+    // a different role changes this one line, not the logic itself.
+    const FIELD_WORKFLOW_ALLOWED_ROLE = "Trainer";
     // Fields: Message, Sender (linked User), Sent At, Excluded Roles
     // (single line text, comma-separated role names), Active (checkbox,
     // default true), Expires At (date/time, optional).
@@ -125,6 +132,71 @@ export default {
 
     function safeFormula(value) {
       return String(value || "").replace(/"/g, '\\"');
+    }
+
+    // Given a Field Workflow action, finds whether the given user has
+    // genuinely logged a follow-up visit on the same thread as the
+    // action's original source visit, created after the action itself
+    // existed. Returns the visit record if found, otherwise null.
+    // Shared by both /get-field-workflow-visit-check (used to gate the
+    // Complete button up front) and /complete-action (the actual,
+    // authoritative check before completing).
+    async function findValidFieldWorkflowVisit(action, userId) {
+      const originalVisitId = (action.fields["Source Visit"] || [])[0];
+      if (!originalVisitId) return null;
+      const ovRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Field%20Visits/${originalVisitId}`, { headers: airtableHeaders() });
+      if (!ovRes.ok) return null;
+      const originalVisit = await ovRes.json();
+      const threadId = (originalVisit.fields || {})["Visit Thread ID"] || originalVisitId;
+
+      const tParams = new URLSearchParams();
+      tParams.append("filterByFormula", `AND({Visit Thread ID}="${safeFormula(threadId)}", {User ID}="${safeFormula(userId)}")`);
+      tParams.append("pageSize", "50");
+      const tRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Field%20Visits?${tParams.toString()}`, { headers: airtableHeaders() });
+      const tData = await tRes.json();
+      const actionCreatedTime = action.createdTime ? new Date(action.createdTime).getTime() : 0;
+      const candidates = (tData.records || []).filter(v => {
+        const vTime = v.createdTime ? new Date(v.createdTime).getTime() : 0;
+        return v.id !== originalVisitId && vTime > actionCreatedTime;
+      }).sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
+
+      return candidates.length ? candidates[0] : null;
+    }
+
+    // Given a visit a user just logged, determines whether it's genuinely
+    // a Field Workflow follow-up visit — matched by Visit Thread ID against
+    // a still-open, Field-Workflow-tagged action assigned to that same
+    // user — and if so, returns the original requester's record ID. Used
+    // by /save-actions to route newly-extracted actions to the person who
+    // actually owns the next step, rather than always defaulting to
+    // whoever happened to log the visit.
+    async function findOriginalRequesterForFieldWorkflowVisit(visitRecordId, userRecordId, userId) {
+      const vRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Field%20Visits/${visitRecordId}`, { headers: airtableHeaders() });
+      if (!vRes.ok) return null;
+      const visit = await vRes.json();
+      const threadId = (visit.fields || {})["Visit Thread ID"] || visitRecordId;
+
+      const aParams = new URLSearchParams();
+      aParams.append("filterByFormula", `AND({Status}="Open", {Field Workflow ID}!="")`);
+      aParams.append("pageSize", "50");
+      const aRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}?${aParams.toString()}`, { headers: airtableHeaders() });
+      const aData = await aRes.json();
+      const candidateActions = (aData.records || []).filter(a => (a.fields["Assigned Rep"] || []).includes(userRecordId));
+      if (!candidateActions.length) return null;
+
+      for (const candidate of candidateActions) {
+        const origVisitId = (candidate.fields["Source Visit"] || [])[0];
+        if (!origVisitId) continue;
+        const ovRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Field%20Visits/${origVisitId}`, { headers: airtableHeaders() });
+        if (!ovRes.ok) continue;
+        const origVisit = await ovRes.json();
+        const origThreadId = (origVisit.fields || {})["Visit Thread ID"] || origVisitId;
+        if (origThreadId === threadId) {
+          const returnTo = (candidate.fields["Return To"] || [])[0];
+          return returnTo || null;
+        }
+      }
+      return null;
     }
 
     // Shared, top-level territory normalizer. Identical logic to the
@@ -1070,6 +1142,7 @@ export default {
         const role = _session.role || "";
         const visitId = url.searchParams.get("visitId") || "";
         const status = url.searchParams.get("status") || "Open";
+        const skipCache = url.searchParams.get("fresh") === "1";
 
         // Cache key includes the verified identity, not just the bare
         // request URL — two different users can otherwise construct an
@@ -1094,7 +1167,7 @@ export default {
         // all, and the Open-status query can also trigger a second,
         // sequential fetch of the entire Field Visits table (the
         // inference fallback below) when any action lacks a real link.
-        if (!visitId) {
+        if (!visitId && !skipCache) {
           const _hit = await cache.match(_cacheReq);
           if (_hit) return _hit;
         }
@@ -1214,10 +1287,102 @@ export default {
         }
         if (!visitId) {
           const _res = jsonCached({ records: allRecords }, 20);
-          ctx.waitUntil(cache.put(_cacheReq, _res.clone()));
+          if (!skipCache) ctx.waitUntil(cache.put(_cacheReq, _res.clone()));
           return _res;
         }
         return json({ records: allRecords });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // GET /get-field-workflow-queue
+    // New, dedicated route for the manager's pending queue — deliberately
+    // separate from /get-actions rather than a new branch inside it, to
+    // avoid any risk to that endpoint's existing, carefully-tuned caching
+    // behavior. Manager-only. Returns exactly the unclaimed Field
+    // Workflow requests currently waiting for assignment.
+    if (req.method === "GET" && url.pathname === "/get-field-workflow-queue") {
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
+
+        const params = new URLSearchParams();
+        params.append("filterByFormula", `AND({Status}="Open", {Assigned Role}!="")`);
+        params.append("pageSize", "100");
+        params.append("sort[0][field]", "Due Date");
+        params.append("sort[0][direction]", "asc");
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}?${params.toString()}`, { headers: airtableHeaders() });
+        const data = await response.json();
+        if (!response.ok) return json(data, response.status);
+
+        const pending = (data.records || []).filter(r => !(r.fields["Assigned Rep"] && r.fields["Assigned Rep"].length));
+        return json({ success: true, records: pending });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // GET /get-field-workflow-visit-check
+    // Lets the frontend gate the Complete button up front, before the
+    // trainer even taps it, using the exact same check /complete-action
+    // itself authoritatively enforces — not a separate, looser rule.
+    if (req.method === "GET" && url.pathname === "/get-field-workflow-visit-check") {
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+
+        const actionId = url.searchParams.get("actionId") || "";
+        if (!actionId) return json({ error: "actionId required" }, 400);
+
+        const action = await getAction(actionId);
+        if (!action) return json({ error: "Action not found" }, 404);
+        const assigned = action.fields["Assigned Rep"] || [];
+        if (!assigned.includes(_session.recordId)) {
+          return json({ error: "Only the assigned rep can check this action." }, 403);
+        }
+        if (!action.fields["Field Workflow ID"]) {
+          return json({ success: true, hasValidUpdate: true }); // not a Field Workflow action — nothing to gate
+        }
+
+        const found = await findValidFieldWorkflowVisit(action, _session.userId);
+        return json({ success: true, hasValidUpdate: !!found });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // GET /get-linked-visit
+    // Narrow, two-directional Field Workflow visibility exception:
+    //   (a) the assigned specialist may read the visit linked to their
+    //       own action (Habiba's original visit, "Visit A")
+    //   (b) the original requester may read the visit linked to the
+    //       return action they received (the specialist's visit, "Visit B")
+    // No other relationship grants access. A user with no genuine tie to
+    // the specified action is rejected outright.
+    if (req.method === "GET" && url.pathname === "/get-linked-visit") {
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+
+        const actionId = url.searchParams.get("actionId") || "";
+        const visitId = url.searchParams.get("visitId") || "";
+        if (!actionId || !visitId) return json({ error: "actionId and visitId required" }, 400);
+
+        const linkAction = await getAction(actionId);
+        if (!linkAction) return json({ error: "Action not found" }, 404);
+        const lf = linkAction.fields || {};
+
+        const isAssignedSpecialist = (lf["Assigned Rep"] || []).includes(_session.recordId);
+        const isOriginalRequester = (lf["Return To"] || []).includes(_session.recordId);
+        const sourceVisitOnAction = (lf["Source Visit"] || [])[0];
+
+        const authorized = (isAssignedSpecialist || isOriginalRequester) && sourceVisitOnAction === visitId;
+        if (!authorized) return json({ error: "You do not have access to this visit." }, 403);
+
+        const visitRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/Field%20Visits/${visitId}`, { headers: airtableHeaders() });
+        const visitData = await visitRes.json();
+        if (!visitRes.ok) return json(visitData, visitRes.status);
+
+        return json({ success: true, record: visitData });
       } catch (err) { return json({ error: err.message }, 500); }
     }
 
@@ -2064,12 +2229,49 @@ Keep the whole answer under 55 words.`;
         // what assignedRepRecordId the client sent.
         const userRecordId = (_session.role === "Manager" && assignedRepRecordId) ? assignedRepRecordId : _session.recordId;
         if (!userRecordId) return json({ error: "Assigned rep not found" }, 400);
+
+        // If this specific visit is genuinely a Field Workflow follow-up
+        // (this trainer logging a visit within a workflow someone else
+        // originated), newly-extracted next-step actions belong to that
+        // original requester, not the trainer — she isn't the owner of
+        // continuing the sales relationship. Only applies when the current
+        // user would otherwise receive the action; a Manager's explicit
+        // reassignment is never overridden.
+        let originalRequesterId = null;
+        if (_session.role !== "Manager") {
+          try {
+            originalRequesterId = await findOriginalRequesterForFieldWorkflowVisit(visitRecordId, userRecordId, _session.userId);
+          } catch (rerouteErr) { /* non-fatal — no reroute candidate found */ }
+        }
+        // Deliberately narrow, conservative fallback signal — used only
+        // when the AI's own explicit ownership tag (below) isn't present.
+        const SALES_OWNED_SIGNAL = /\b(pricing|price|quotation|quote|contract|discount|purchase|invoice|payment|commercial terms|order|deal)\b/i;
+        // The AI is asked (see the prompt, only for genuine follow-up-
+        // thread visits) to prefix each Next Steps line with who owns it:
+        // "[Sales] ..." for a commercial/account matter, or "[<role>] ..."
+        // for anything the speaker themselves committed to. This is the
+        // authoritative signal when present — the keyword check above is
+        // only a safety net for when it's missing entirely.
+        const OWNERSHIP_TAG = /^\[([^\]]+)\]\s*/;
+        function resolveAssigneeForAction(actionText) {
+          const tagMatch = actionText.match(OWNERSHIP_TAG);
+          if (tagMatch) {
+            const cleanText = actionText.replace(OWNERSHIP_TAG, "").trim();
+            const isSalesTag = /^sales$/i.test(tagMatch[1].trim());
+            const assigneeId = (isSalesTag && originalRequesterId) ? originalRequesterId : userRecordId;
+            return { assigneeId, cleanText };
+          }
+          const assigneeId = (originalRequesterId && SALES_OWNED_SIGNAL.test(actionText)) ? originalRequesterId : userRecordId;
+          return { assigneeId, cleanText: actionText };
+        }
+
         const actions = splitActions(actionText);
         if (actions.length === 0) return json({ success: true, created: 0 });
         const records = actions.map(action => {
+          const { assigneeId: finalAssigneeId, cleanText: finalActionText } = resolveAssigneeForAction(action);
           const fields = {
-            "Action Text": action, "Status": "Open", "Source": "AI",
-            "Account Name": accountName, "Assigned Rep": [userRecordId],
+            "Action Text": finalActionText, "Status": "Open", "Source": "AI",
+            "Account Name": accountName, "Assigned Rep": [finalAssigneeId],
             "Source Visit": [visitRecordId], "Reminder Count": 0
           };
           if (accountId) fields["Account"] = [accountId];
@@ -2098,6 +2300,228 @@ Keep the whole answer under 55 words.`;
         }
         ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
         return json({ success: true, created: created.length, records: created });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // POST /start-field-workflow
+    // New, additive Field Workflow feature. Any authenticated user may
+    // initiate a request — creates a single, unclaimed Open Action with
+    // Assigned Role set instead of Assigned Rep. Assigned Rep is left
+    // genuinely empty here, the same default state every existing reader
+    // of that field (Calendar, Rep Briefing, Dashboard rep grouping)
+    // already handles correctly today, so nothing existing needs to
+    // change to tolerate this. Return To records who initiated it, so
+    // the eventual completion can hand the outcome back to them
+    // specifically, not to a hardcoded role.
+    if (url.pathname === "/start-field-workflow") {
+      if (!(await checkRateLimit("start-field-workflow", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+
+        const body = await req.json();
+        const { accountName, accountId, targetRole, notes, visitRecordId, requiredDate } = body;
+        if (!accountName || !targetRole) {
+          return json({ error: "accountName and targetRole required" }, 400);
+        }
+        if (String(targetRole).trim().toLowerCase() !== FIELD_WORKFLOW_ALLOWED_ROLE.toLowerCase()) {
+          return json({ error: `Field Workflow requests can only be created for ${FIELD_WORKFLOW_ALLOWED_ROLE}.` }, 400);
+        }
+        if (!requiredDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(requiredDate).trim())) {
+          return json({ error: `A required date is needed so the assigned ${targetRole} can see this on their Calendar.` }, 400);
+        }
+
+        const workflowId = "wf-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+        const fields = {
+          "Action Text": (notes && String(notes).trim()) || `Field Workflow request — ${targetRole} needed`,
+          "Status": "Open",
+          "Source": "Field Workflow",
+          "Account Name": accountName,
+          "Assigned Role": targetRole,
+          "Requested Role": targetRole,
+          "Field Workflow ID": workflowId,
+          "Return To": [_session.recordId],
+          "Reminder Count": 0,
+          "Due Date": String(requiredDate).trim()
+        };
+        if (accountId) fields["Account"] = [accountId];
+        if (visitRecordId) fields["Source Visit"] = [visitRecordId];
+
+        const response = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ records: [{ fields }] }) });
+        const data = await response.json();
+        if (!response.ok) return json({ error: (data.error && data.error.message) ? data.error.message : "Airtable error", detail: data }, response.status);
+
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
+
+        return json({ success: true, record: (data.records || [])[0] || null, workflowId });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // POST /assign-field-workflow
+    // Manager-only, matching the finalized specification precisely: the
+    // manager assigns the request to the correct specialist — this is
+    // not a self-serve claim. Moves an unclaimed, role-held request to a
+    // specific named person: sets Assigned Rep, clears Assigned Role.
+    // Refuses to act on anything that isn't a genuinely unclaimed Field
+    // Workflow request, so this cannot be used to reassign an ordinary
+    // action created by any other existing flow.
+    if (url.pathname === "/assign-field-workflow") {
+      const _tReceived = Date.now();
+      if (!(await checkRateLimit("assign-field-workflow", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
+
+        const body = await req.json();
+        const { actionId, specialistRecordId } = body;
+        if (!actionId || !specialistRecordId) return json({ error: "actionId and specialistRecordId required" }, 400);
+
+        const action = await getAction(actionId);
+        if (!action) return json({ error: "Action not found" }, 404);
+        const f = action.fields || {};
+        if (!f["Assigned Role"] || (f["Assigned Rep"] && f["Assigned Rep"].length)) {
+          return json({ error: "This action is not an unclaimed Field Workflow request." }, 400);
+        }
+
+        const neededRole = f["Requested Role"] || f["Assigned Role"] || "";
+        const specialistUserForCheck = await getUserByRecordId(specialistRecordId);
+        if (!specialistUserForCheck || !specialistUserForCheck.fields) {
+          return json({ error: "Specialist not found." }, 404);
+        }
+        const specialistActualRole = (specialistUserForCheck.fields["Role"] || "").trim().toLowerCase();
+        if (specialistActualRole !== String(neededRole).trim().toLowerCase()) {
+          return json({ error: `This request needs a ${neededRole}. The selected user's role does not match.` }, 400);
+        }
+        if (specialistUserForCheck.fields["Active?"] === false) {
+          return json({ error: "This user is not active and cannot be assigned." }, 400);
+        }
+
+        const _tPatchStart = Date.now();
+        const response = await airtableFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}/${actionId}`,
+          { method: "PATCH", headers: airtableHeaders(), body: JSON.stringify({ fields: { "Assigned Rep": [specialistRecordId], "Assigned Role": "" } }) }
+        );
+        const _tPatchEnd = Date.now();
+        const data = await response.json();
+        if (!response.ok) return json({ error: (data.error && data.error.message) ? data.error.message : "Airtable error", detail: data }, response.status);
+
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        actionsCacheRequestsFor(req, specialistUserForCheck.fields["Role"] || "", specialistUserForCheck.fields["User ID"] || "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
+
+        return json({ success: true, record: data, _timing: { receivedAt: _tReceived, patchStartAt: _tPatchStart, patchEndAt: _tPatchEnd, respondedAt: Date.now(), patchDurationMs: _tPatchEnd - _tPatchStart, totalWorkerMs: Date.now() - _tReceived } });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // POST /reschedule-field-workflow-date
+    // Changes only the Due Date (the Trainer Support Date) on a Field
+    // Workflow action — never the original visit's own Visit Date, which
+    // this endpoint never touches at all. Permission depends on whether
+    // the request is currently unclaimed or already assigned:
+    //   - Unclaimed (no Assigned Rep yet): Manager only.
+    //   - Assigned: only the specialist it's currently assigned to.
+    if (url.pathname === "/reschedule-field-workflow-date") {
+      if (!(await checkRateLimit("reschedule-field-workflow-date", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+
+        const body = await req.json();
+        const { actionId, newDate } = body;
+        if (!actionId || !newDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(newDate).trim())) {
+          return json({ error: "actionId and a valid newDate (YYYY-MM-DD) are required." }, 400);
+        }
+
+        const action = await getAction(actionId);
+        if (!action) return json({ error: "Action not found" }, 404);
+        const f = action.fields || {};
+        if (!f["Field Workflow ID"]) return json({ error: "This action is not a Field Workflow request." }, 400);
+
+        const assignedRep = f["Assigned Rep"] || [];
+        if (assignedRep.length) {
+          if (_session.role !== "Manager" && !assignedRep.includes(_session.recordId)) {
+            return json({ error: "Only the assigned specialist or a Manager can reschedule this request once it has been assigned." }, 403);
+          }
+        } else {
+          if (_session.role !== "Manager") return json({ error: "Manager access required to reschedule an unassigned request." }, 403);
+        }
+
+        const response = await airtableFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}/${actionId}`,
+          { method: "PATCH", headers: airtableHeaders(), body: JSON.stringify({ fields: { "Due Date": String(newDate).trim() } }) }
+        );
+        const data = await response.json();
+        if (!response.ok) return json({ error: (data.error && data.error.message) ? data.error.message : "Airtable error", detail: data }, response.status);
+
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        actionsCacheRequestsFor(req, _session.role, _session.userId).forEach(r => ctx.waitUntil(cache.delete(r)));
+        if (assignedRep.length) {
+          try {
+            const assignedUser = await getUserByRecordId(assignedRep[0]);
+            if (assignedUser && assignedUser.fields) {
+              actionsCacheRequestsFor(req, assignedUser.fields["Role"] || "", assignedUser.fields["User ID"] || "").forEach(r => ctx.waitUntil(cache.delete(r)));
+            }
+          } catch (cacheErr) { /* non-fatal — the reschedule itself already succeeded above */ }
+        }
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
+
+        return json({ success: true, record: data });
+      } catch (err) { return json({ error: err.message }, 500); }
+    }
+
+    // POST /reassign-field-workflow
+    // Manager-only. Releases an already-assigned Field Workflow request
+    // back to unclaimed — clearing Assigned Rep and restoring Assigned
+    // Role from the permanent Requested Role field — so it reappears in
+    // the same queue /get-field-workflow-queue already serves. The actual
+    // new assignment is a completely separate, already-existing call to
+    // /assign-field-workflow. Never touches the original visit, Due Date,
+    // notes, or Field Workflow ID.
+    if (url.pathname === "/reassign-field-workflow") {
+      const _tReceived = Date.now();
+      if (!(await checkRateLimit("reassign-field-workflow", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
+      try {
+        const _token = getBearerToken(req);
+        const _session = await verifySession(_token, env.SESSION_SECRET);
+        if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
+        if (_session.role !== "Manager") return json({ error: "Manager access required." }, 403);
+
+        const body = await req.json();
+        const { actionId } = body;
+        if (!actionId) return json({ error: "actionId required" }, 400);
+
+        const action = await getAction(actionId);
+        if (!action) return json({ error: "Action not found" }, 404);
+        const f = action.fields || {};
+        const previousAssignee = f["Assigned Rep"] || [];
+        if (!previousAssignee.length) return json({ error: "This action is not currently assigned to anyone — nothing to reassign." }, 400);
+        const restoredRole = f["Requested Role"] || f["Assigned Role"] || "";
+        if (!restoredRole) return json({ error: "This action has no recoverable role and cannot be released for reassignment." }, 400);
+
+        const _tPatchStart = Date.now();
+        const response = await airtableFetch(
+          `https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}/${actionId}`,
+          { method: "PATCH", headers: airtableHeaders(), body: JSON.stringify({ fields: { "Assigned Rep": [], "Assigned Role": restoredRole } }) }
+        );
+        const _tPatchEnd = Date.now();
+        const data = await response.json();
+        if (!response.ok) return json({ error: (data.error && data.error.message) ? data.error.message : "Airtable error", detail: data }, response.status);
+
+        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        try {
+          const previousUser = await getUserByRecordId(previousAssignee[0]);
+          if (previousUser && previousUser.fields) {
+            actionsCacheRequestsFor(req, previousUser.fields["Role"] || "", previousUser.fields["User ID"] || "").forEach(r => ctx.waitUntil(cache.delete(r)));
+          }
+        } catch (cacheErr) { /* non-fatal — release itself already succeeded above */ }
+        ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
+
+        return json({ success: true, record: data, _timing: { receivedAt: _tReceived, patchStartAt: _tPatchStart, patchEndAt: _tPatchEnd, respondedAt: Date.now(), patchDurationMs: _tPatchEnd - _tPatchStart, totalWorkerMs: Date.now() - _tReceived } });
       } catch (err) { return json({ error: err.message }, 500); }
     }
 
@@ -2191,6 +2615,23 @@ Keep the whole answer under 55 words.`;
           return json({ error: "Only the assigned rep can complete this action" }, 403);
         }
 
+        if (action.fields["Status"] === "Completed") {
+          return json({ error: "This action has already been completed." }, 409);
+        }
+
+        // Field Workflow enforcement: this action cannot be completed via
+        // the ordinary bare Complete path — it requires a genuinely
+        // logged specialist visit first. An ordinary action, with no
+        // Field Workflow ID, skips this block entirely and behaves
+        // exactly as it always has.
+        let specialistVisitRecord = null;
+        if (action.fields["Field Workflow ID"]) {
+          specialistVisitRecord = await findValidFieldWorkflowVisit(action, userId);
+          if (!specialistVisitRecord) {
+            return json({ error: "Please log your visit from Calendar before completing this action." }, 400);
+          }
+        }
+
         const completeRes = await airtableFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}/${actionId}`,
           {
@@ -2205,6 +2646,53 @@ Keep the whole answer under 55 words.`;
         actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
         actionsCacheRequestsFor(req, session.role, userId).forEach(r => ctx.waitUntil(cache.delete(r)));
         ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
+
+        // Field Workflow auto-return: only activates if this specific
+        // action was created by /start-field-workflow (i.e. genuinely
+        // carries Return To and Field Workflow ID). An ordinary action,
+        // completed exactly as it is today, has neither field and never
+        // reaches any of this.
+        try {
+          const returnTo = action.fields["Return To"] || [];
+          const workflowId = action.fields["Field Workflow ID"];
+          if (returnTo.length && workflowId) {
+            const completionNote = (body.completionNote && String(body.completionNote).trim()) || `Follow up with ${action.fields["Account Name"] || "the customer"} after the field visit. Confirm satisfaction and continue the sales process.`;
+            const returnFields = {
+              "Action Text": completionNote,
+              "Status": "Open",
+              "Source": "Field Workflow",
+              "Account Name": action.fields["Account Name"] || "",
+              "Assigned Rep": returnTo,
+              "Reminder Count": 0
+            };
+            if (action.fields["Account"]) returnFields["Account"] = action.fields["Account"];
+            if (specialistVisitRecord && specialistVisitRecord.id) returnFields["Source Visit"] = [specialistVisitRecord.id];
+            const returnRes = await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}`, { method: "POST", headers: airtableHeaders(), body: JSON.stringify({ records: [{ fields: returnFields }] }) });
+            const returnData = await returnRes.json();
+            if (returnRes.ok) {
+              const newActionId = (returnData.records || [])[0] && returnData.records[0].id;
+              const returnUser = await getUserByRecordId(returnTo[0]);
+              if (returnUser && newActionId) {
+                await airtableFetch(`https://api.airtable.com/v0/${BASE_ID}/${NOTIFICATIONS_TABLE}`, {
+                  method: "POST", headers: airtableHeaders(),
+                  body: JSON.stringify({ fields: {
+                    "Recipient User ID": returnUser.fields["User ID"] || "",
+                    "Recipient Name": returnUser.fields["Display Name"] || "",
+                    "Type": "Field Workflow",
+                    "Action Text": completionNote,
+                    "Message": `Field Workflow completed for ${action.fields["Account Name"] || "an account"} — ${session.displayName || "your colleague"} finished their part.`,
+                    "Is Read": false,
+                    "Delivery Channel": "In-App",
+                    "Related Action ID": newActionId
+                  } })
+                });
+              }
+              actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
+            }
+          }
+        } catch (workflowErr) {
+          // Non-fatal — the action itself already completed successfully above.
+        }
 
         try {
           const notifParams = new URLSearchParams();
@@ -2644,8 +3132,46 @@ Keep the whole answer under 55 words.`;
       if (!_session) return json({ error: "Invalid or expired session. Please sign in again." }, 401);
       try {
         const formData = await req.formData();
-        const response = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: "Bearer " + env.OPENAI_API_KEY }, body: formData });
-        const data = await response.json();
+
+        async function attemptTranscription() {
+          try {
+            const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + env.OPENAI_API_KEY },
+              body: formData,
+              signal: AbortSignal.timeout(25000)
+            });
+            return { ok: true, response };
+          } catch (fetchErr) {
+            const isTimeout = fetchErr.name === "AbortError" || fetchErr.name === "TimeoutError";
+            return { ok: false, transient: true, isTimeout, error: fetchErr };
+          }
+        }
+
+        let attempt = await attemptTranscription();
+        if (!attempt.ok) {
+          // Network error or timeout — genuinely transient, retry once.
+          attempt = await attemptTranscription();
+          if (!attempt.ok) {
+            const reason = attempt.isTimeout ? "The transcription request timed out." : "Network error reaching the transcription service.";
+            return json({ error: reason + " Please try again.", detail: attempt.error.message }, 504);
+          }
+        } else if (attempt.response.status === 429 || attempt.response.status >= 500) {
+          // Transient on the OpenAI side — retry once. A permanent 4xx
+          // (invalid audio, bad auth, etc.) falls through untouched below.
+          // A 429 specifically gets a brief pause first — retrying a rate
+          // limit immediately is likely to just hit the same limit again.
+          if (attempt.response.status === 429) await new Promise(r => setTimeout(r, 800));
+          const retryAttempt = await attemptTranscription();
+          if (retryAttempt.ok) attempt = retryAttempt;
+        }
+
+        const response = attempt.response;
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const reason = (data.error && (data.error.message || data.error)) || `Transcription service returned an error (${response.status}).`;
+          return json({ error: reason, status: response.status, detail: data }, response.status);
+        }
         return json(data, response.status);
       } catch (err) { return json({ error: err.message }, 500); }
     }
@@ -2708,9 +3234,15 @@ Keep the whole answer under 55 words.`;
         let sourceVisitId = visitData["sourceVisitId"] || "";
         const sourceActionId = visitData["sourceActionId"] || "";
         const submissionId = visitData["submissionId"] || "";
+        const fieldWorkflowSourceVisitId = visitData["fieldWorkflowSourceVisitId"] || "";
+        const fieldWorkflowId = visitData["fieldWorkflowId"] || "";
         delete visitData["sourceVisitId"];
         delete visitData["sourceActionId"];
         delete visitData["submissionId"];
+        delete visitData["fieldWorkflowSourceVisitId"];
+        delete visitData["fieldWorkflowId"];
+        if (fieldWorkflowSourceVisitId) visitData["Source Visit"] = [fieldWorkflowSourceVisitId];
+        if (fieldWorkflowId) visitData["Field Workflow ID"] = fieldWorkflowId;
         // Fallback: if no direct source visit ID was resolved client-side
         // (the action's own Source Visit link was empty when Calendar
         // built the Log Update URL, so visitId was never included at
@@ -2812,6 +3344,7 @@ Keep the whole answer under 55 words.`;
             linkedFromSourceActionId: sourceActionId || null
           };
         }
+        if (!response.ok) return json({ error: (data.error && data.error.message) ? data.error.message : "Airtable error", detail: data }, response.status);
         return json(data, response.status);
       } catch (err) { return json({ error: err.message }, 500); }
     }
