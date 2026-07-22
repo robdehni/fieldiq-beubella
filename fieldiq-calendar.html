@@ -553,7 +553,7 @@ document.addEventListener('DOMContentLoaded',function(){
   if(rm!==null&&rm!=='')viewMonth=parseInt(rm,10);
   if(rd)selectedDayISO=rd;
   var _returnTo=rp.get('returnTo');
-  if(_returnTo==='./fieldiq-open-actions.html'){
+  if(/^\.\/fieldiq-open-actions\.html(\?actionId=[a-zA-Z0-9_-]+)?$/.test(_returnTo||'')){
     var _hb=document.querySelector('.home-btn');
     if(_hb){_hb.href=_returnTo;_hb.textContent='← Back';}
   }
