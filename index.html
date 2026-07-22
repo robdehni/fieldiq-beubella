@@ -312,6 +312,10 @@ function renderUserList(list){
 
 function showPinBox(u){
   pendingUser=u;
+  var searchBox=document.querySelector('.user-search-box');
+  var listBox=document.getElementById('userListBox');
+  if(searchBox)searchBox.style.display='none';
+  if(listBox)listBox.style.display='none';
   var pinSection=document.getElementById('pinSection');
   var metaLine=[u.role];
   if(u.territory)metaLine.push(u.territory);
@@ -332,6 +336,8 @@ function showPinBox(u){
   document.getElementById('pinCancel').addEventListener('click',function(){
     pendingUser=null;
     document.getElementById('pinSection').innerHTML='';
+    if(searchBox)searchBox.style.display='';
+    if(listBox)listBox.style.display='';
   });
   document.getElementById('pinInput').focus();
 
@@ -457,7 +463,6 @@ function loadUsers(){
         };
       });
       renderUserList(allUsers);
-      maybeAutoOpenLastUser();
     })
     .catch(function(err){
       clearTimeout(timer);
