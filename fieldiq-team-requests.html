@@ -152,6 +152,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   .sidebar-link.current [data-lucide]{color:#1f6fe0}
   .sidebar-badge{margin-left:auto;min-width:20px;height:20px;border-radius:999px;background:#e0344a;color:#fff;display:none;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;padding:0 6px;box-shadow:0 3px 8px rgba(224,52,74,0.25);flex-shrink:0}
   .sidebar-badge.visible{display:inline-flex}
+  .sidebar-badge.badge-blue{background:#2f8fff;box-shadow:0 3px 8px rgba(47,143,255,0.25)}
 
   .main{padding:32px 40px 60px;max-width:1120px}
   .header{margin-bottom:32px}
@@ -186,7 +187,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 
     <div class="sidebar-group-label">Intelligence</div>
     <a href="./fieldiq-insights.html" class="sidebar-link"><i data-lucide="brain-circuit"></i> AI Insights</a>
-    <a href="./fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map</a>
+    <a href="./fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map<span class="sidebar-badge badge-blue" id="sbVisitMapBadge"></span></a>
 
     <div class="sidebar-group-label">Field &amp; Help</div>
     <a href="./fieldiq-visit-history.html?source=manager-home" class="sidebar-link"><i data-lucide="clock"></i> Visit History</a>
@@ -464,6 +465,31 @@ function loadSidebarNavBadges(){
     .catch(function(err){ console.error('Could not load Open Actions/Calendar sidebar badges:', err); });
 }
 
+function loadVisitMapBadge(){
+  fetch(WORKER_URL_HOME + '/get-visits', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
+    .then(function(res){ return res.ok ? res.json() : null; })
+    .then(function(data){
+      if (!data) return;
+      var DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000; // UTC+4, fixed — Dubai has no DST
+      var GPS_ACCURACY_THRESHOLD_METERS = 500;   // same threshold as fieldiq-visits-map.html's own gate
+      var dubaiNow = new Date(Date.now() + DUBAI_OFFSET_MS);
+      var y = dubaiNow.getUTCFullYear(), m = dubaiNow.getUTCMonth(), d = dubaiNow.getUTCDate();
+      var startUTC = Date.UTC(y, m, d, 0, 0, 0) - DUBAI_OFFSET_MS;
+      var endUTC = startUTC + 24 * 60 * 60 * 1000;
+      var count = (data.records || []).filter(function(r){
+        var f = r.fields || {};
+        if (!f.Latitude || !f.Longitude) return false;
+        if (f.Accuracy != null && f.Accuracy > GPS_ACCURACY_THRESHOLD_METERS) return false;
+        if (!f['Visit Date']) return false;
+        var t = new Date(f['Visit Date']).getTime();
+        if (isNaN(t)) return false;
+        return t >= startUTC && t < endUTC;
+      }).length;
+      setSidebarBadge('sbVisitMapBadge', count);
+    })
+    .catch(function(err){ console.error('Could not load Visit Map sidebar badge:', err); });
+}
+
 async function loadFieldWorkflowQueue(){
   try{
     var res = await fetch(WORKER_URL_HOME + '/get-field-workflow-queue', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } });
@@ -545,6 +571,8 @@ async function loadFieldWorkflowQueue(){
 function initTeamRequests(){
   lucide.createIcons();
   loadSidebarNavBadges();
+  loadVisitMapBadge();
+  window.addEventListener('focus', loadVisitMapBadge);
   if (typeof FIELDIQ_BRAND !== 'undefined' && FIELDIQ_BRAND.fieldWorkflowEnabled) {
     loadFieldWorkflowQueue();
     loadFieldWorkflowInProgress();
