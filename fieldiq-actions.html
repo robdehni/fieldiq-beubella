@@ -188,7 +188,6 @@ var currentUserId=localStorage.getItem('fieldiq_user_id');
 var myOwnRecordId=localStorage.getItem('fieldiq_user_record_id')||null;
 var currentUserName=localStorage.getItem('fieldiq_user_name');
 var currentUserRole=localStorage.getItem('fieldiq_user_role')||'';
-// Required by /send-reminder, which now requires a verified manager session.
 var currentSessionToken=localStorage.getItem('fieldiq_session_token');
 
 var openActions=[];
@@ -210,15 +209,6 @@ if(currentUserRole!=='Manager'){
   throw new Error('Managers only');
 }
 
-// ── Origin-aware Home button + deep-link target ──────────────────────────────
-// Two distinct signals are read from the URL:
-//  - source=manager-calendar: we were sent here from a specific calendar
-//    action. Takes priority for the Home button ("Back to Calendar") and
-//    carries enough calendar state (calYear/calMonth/calDay/calRep, plus a
-//    forwarded from=operations if present) to rebuild that exact calendar
-//    view on the way back.
-//  - from=operations (no source param): the pre-existing direct
-//    Operations → Actions path (e.g. the Rep Activity feed). Unchanged.
 var targetActionId=null;
 var targetAccountCard=null;
 var calReturn=null;
@@ -247,11 +237,15 @@ var calReturn=null;
       btn.href='./fieldiq-manager-calendar.html'+(q.length?'?'+q.join('&'):'');
       btn.textContent='← Back to Calendar';
 
-      // Second, deliberately secondary exit — lets a manager who is done
-      // reviewing leave in one click, without removing or replacing the
-      // primary "Back to Calendar" button above. Only shown on this
-      // Calendar-origin path, since the from=operations-only path below
-      // already lands directly on Operations (already a one-click exit).
+      // The generic Calendar button is redundant once the contextual
+      // "Back to Calendar" button above is showing — both lead to the
+      // same destination. Hidden here, not removed, so no other logic
+      // referencing #calendarNavBtn (e.g. _goToCalendarWithContext) needs
+      // to change, and it reappears normally if this page is ever
+      // reached without source=manager-calendar.
+      var genericCalBtn=document.getElementById('calendarNavBtn');
+      if(genericCalBtn)genericCalBtn.style.display='none';
+
       var exitHref=(calReturn.from==='operations')?'./fieldiq-operations.html':'./fieldiq.html';
       var exitLabel=(calReturn.from==='operations')?'Exit to Operations':'Exit to Manager Home';
       var exitBtn=document.createElement('a');
@@ -462,7 +456,6 @@ async function submitNote(){
   }
 }
 
-// ─── STATE PERSISTENCE ──────────────────────────────────────────────────────
 function saveManagerActionState(){
   try{
     sessionStorage.setItem(SESSION_KEY,JSON.stringify({
@@ -500,7 +493,6 @@ function applyScrollAndClearFlag(scrollY){
     }
   }catch(e){}
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function loadUsersBestEffort(){
   try{
@@ -668,10 +660,6 @@ function nextDue(group){
   return dates[0]||'';
 }
 
-// Builds the URL Manager Actions should be returned to after View Visit,
-// preserving whatever navigation context this page itself arrived with
-// (Calendar origin + calendar state, or a direct Operations origin) so the
-// breadcrumb chain survives the round trip through Visit History.
 function buildReturnHref(actionId){
   var q=['actionId='+encodeURIComponent(actionId)];
   if(calReturn){
@@ -827,9 +815,6 @@ function render(){
   content.innerHTML=html;
   if(window.lucide)lucide.createIcons();
 
-  // Row-level note status — read-only, uses the existing /get-notes
-  // endpoint only. One independent fetch per eligible row so a slow or
-  // failing lookup never blocks rendering or any other row's status.
   list.forEach(function(r){
     var x=r.fields||{};
     var assignedRecId=(x['Assigned Rep']&&x['Assigned Rep'][0])?x['Assigned Rep'][0]:null;
@@ -850,17 +835,9 @@ async function loadNoteStatusForRow(actionId){
       ? '<span class="note-status-pill acked">🟢 Notes acknowledged</span>'
       : '<span class="note-status-pill not-acked">🟠 Note awaiting rep acknowledgement</span>';
   }catch(e){
-    // Non-fatal — leaves the badge blank rather than blocking the row.
   }
 }
 
-// Owner-only actions — the Worker's /complete-action and /dismiss-action
-// already enforce ownership server-side (Assigned Rep must include the
-// calling user's own record), so these are only ever rendered for actions
-// where the action's Assigned Rep record ID equals myOwnRecordId (read
-// directly from login storage) — i.e. actions The Manager created for
-// themselves by logging a visit. Never shown for actions belonging to
-// another rep — that existing restriction is untouched.
 async function completeOwnAction(actionId,btnEl){
   if(btnEl){btnEl.disabled=true;btnEl.textContent='Completing…';}
   try{
@@ -871,9 +848,6 @@ async function completeOwnAction(actionId,btnEl){
     });
     var data=await res.json();
     if(!res.ok)throw new Error(data.error||'Could not complete action');
-    // Immediate local removal — independent of any cache, browser or
-    // server-side. The reload afterward is only for full consistency
-    // (counts, tabs), not for making the action itself disappear.
     openActions=openActions.filter(function(r){return r.id!==actionId;});
     allActions=allActions.filter(function(r){return r.id!==actionId;});
     render();
@@ -913,10 +887,6 @@ function toggleExpandKey(sk){
   render();
 }
 
-// Expands the account/rep group containing a specific action, scrolls it
-// into view, and briefly highlights it. Used only for the incoming
-// ?actionId= deep link from Manager Calendar — does not alter completion
-// logic, counts, reminders, or filters.
 function focusOnAction(actionId){
   var rec=allActions.find(function(r){return r.id===actionId;});
   if(!rec)return;
@@ -1068,10 +1038,6 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 <script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
-// Back-to-top floating button — purely cosmetic, self-contained. Created
-// entirely via JS so no existing HTML/IDs/layout are touched. Appears only
-// after scrolling past 500px, scrolls smoothly to top on click. Does not
-// interact with navigation, actions, reminders, or any business logic.
 (function(){
   var btn=document.createElement('button');
   btn.type='button';
