@@ -517,7 +517,19 @@ async function completeAction(actionId){
     }
     var data=await res.json();
     if(!res.ok)throw new Error(data.error||'Could not complete action');
-    showToast('Action completed.');
+    // Primary check: the Worker now returns alreadyDone:true (still a
+    // 200/success) when the action was already in a terminal state,
+    // rather than an error to parse by wording.
+    if(data.alreadyDone){
+      showToast('Action already updated.');
+    }else{
+      showToast('Action completed.');
+    }
+    // Re-fetch the authoritative list from the server rather than relying
+    // only on the optimistic local removal above — this is what actually
+    // clears any other stale/duplicate entries the optimistic removal
+    // wouldn't know about.
+    await loadActions();
     var _rp=new URLSearchParams(window.location.search);
     if(_rp.get('returnTo')==='calendar'){
       var _cy=_rp.get('calYear')||'',_cm=_rp.get('calMonth')||'',_cd=_rp.get('calDay')||'';
@@ -530,17 +542,27 @@ async function completeAction(actionId){
       setTimeout(function(){window.location.href=_cu;},400);
     }
   }catch(err){
-    if(_removedRec){
-      actions.push(_removedRec);
-      render();
+    // Fallback only — the Worker's primary signal is now the alreadyDone
+    // success-path flag above. This substring match only matters if an
+    // older Worker version (or a genuine future error) still returns
+    // this as a thrown error rather than a success response.
+    var _alreadyDone=/already\s*(been\s*)?completed/i.test(err.message||'');
+    if(_alreadyDone){
+      showToast('Action already updated.');
+      await loadActions();
+    }else{
+      if(_removedRec){
+        actions.push(_removedRec);
+        render();
+      }
+      var _btnAfter=document.getElementById('btn-'+actionId);
+      if(_btnAfter){
+        _btnAfter.disabled=false;
+        _btnAfter.innerHTML='<i data-lucide="check"></i> Complete';
+        lucide.createIcons({el:_btnAfter});
+      }
+      alert('Could not complete action: '+err.message);
     }
-    var _btnAfter=document.getElementById('btn-'+actionId);
-    if(_btnAfter){
-      _btnAfter.disabled=false;
-      _btnAfter.innerHTML='<i data-lucide="check"></i> Complete';
-      lucide.createIcons({el:_btnAfter});
-    }
-    alert('Could not complete action: '+err.message);
   }
 }
 
@@ -572,7 +594,12 @@ async function dismissAction(actionId){
     }
     var data=await res.json();
     if(!res.ok)throw new Error(data.error||'Could not dismiss action');
-    showToast('Action dismissed.');
+    if(data.alreadyDone){
+      showToast('Action already updated.');
+    }else{
+      showToast('Action dismissed.');
+    }
+    await loadActions();
     var _rp=new URLSearchParams(window.location.search);
     if(_rp.get('returnTo')==='calendar'){
       var _cy=_rp.get('calYear')||'',_cm=_rp.get('calMonth')||'',_cd=_rp.get('calDay')||'';
@@ -585,16 +612,22 @@ async function dismissAction(actionId){
       setTimeout(function(){window.location.href=_cu;},400);
     }
   }catch(err){
-    if(_removedRec){
-      actions.push(_removedRec);
-      render();
+    var _alreadyDone=/already\s*(been\s*)?(completed|dismissed)/i.test(err.message||'');
+    if(_alreadyDone){
+      showToast('Action already updated.');
+      await loadActions();
+    }else{
+      if(_removedRec){
+        actions.push(_removedRec);
+        render();
+      }
+      var _btnAfter=document.getElementById('dbtn-'+actionId);
+      if(_btnAfter){
+        _btnAfter.disabled=false;
+        _btnAfter.innerHTML='Dismiss';
+      }
+      alert('Could not dismiss action: '+err.message);
     }
-    var _btnAfter=document.getElementById('dbtn-'+actionId);
-    if(_btnAfter){
-      _btnAfter.disabled=false;
-      _btnAfter.innerHTML='Dismiss';
-    }
-    alert('Could not dismiss action: '+err.message);
   }
 }
 
