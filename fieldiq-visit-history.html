@@ -1399,8 +1399,17 @@ document.querySelectorAll('.preset-btn').forEach(function(btn){
       applyFilters();
       return;
     }
-    // today / thisWeek / thisMonth — same values the period row already
-    // understands; reuse syncPeriodButtonsUI so both rows never disagree.
+    // today / thisWeek / thisMonth — these are per-manager shortcuts, not
+    // team-wide date filters: they must restrict to the current manager's
+    // own visits AND the selected period together, using the same
+    // display-name-based identity match myActivity already uses (the
+    // only rep-matching mechanism this page's filtering path actually
+    // supports — Visit records here carry User Name, not a linked User ID
+    // field to compare against, so reusing that existing match keeps this
+    // a single filtering system rather than introducing a second one).
+    var shortcutOwnName=(currentUser&&currentUser.name)?currentUser.name.trim():'';
+    if(shortcutOwnName){shortcutOwnName=shortcutOwnName.charAt(0).toUpperCase()+shortcutOwnName.slice(1).toLowerCase();}
+    document.getElementById('filterRep').value=shortcutOwnName;
     document.getElementById('filterPeriod').value=preset;
     syncPeriodButtonsUI(preset);
     applyFilters();
