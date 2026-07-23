@@ -144,18 +144,9 @@ var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
 var currentUserId=localStorage.getItem('fieldiq_user_id');
 var currentUserName=localStorage.getItem('fieldiq_user_name');
 var currentUserRole=localStorage.getItem('fieldiq_user_role')||'Sales Rep';
-// Required by /complete-action and /dismiss-action's server-side identity
-// check — actionId is still sent in the body, but userId is not; the
-// Worker now derives who is making the request entirely from this token,
-// never from a client-supplied field.
 var currentSessionToken=localStorage.getItem('fieldiq_session_token');
 var actions=[];
 
-// Clears everything that represents an authenticated session. Preserves
-// fieldiq_last_user_id — that key only controls which profile is
-// preselected on index.html's next visit, it has never authenticated
-// anyone, so clearing it here would just be worse UX for no security
-// benefit. Same helper, same behavior, as index.html and fieldiq.html.
 function clearActiveSession(){
   localStorage.removeItem('fieldiq_user_id');
   localStorage.removeItem('fieldiq_user_name');
@@ -191,10 +182,6 @@ function formatDateTime(v){
   catch(e){return v;}
 }
 
-// Reused verbatim from the manager Open Actions page — same field-name
-// candidates, same lookup order. The "Source Visit" linked-record field is
-// already written by the Worker's /save-actions endpoint on every action;
-// this just reads what was already there.
 function getField(f,names,fallback){
   for(var i=0;i<names.length;i++){
     if(f[names[i]]!==undefined&&f[names[i]]!==null&&f[names[i]]!=='')return f[names[i]];
@@ -209,9 +196,6 @@ function firstLinkedId(v){
 function getVisitId(f){
   return firstLinkedId(getField(f,['Visit','Field Visit','Visit Record','Visit ID','Visit Record ID','Source Visit','Source Visit ID'],''));
 }
-// Builds the URL back to THIS page after viewing the visit, preserving the
-// existing Calendar-origin context (returnTo/calYear/calMonth/calDay) if
-// this page itself was opened from Calendar, so that chain isn't broken.
 function buildReturnHref(actionId){
   var q=['actionId='+encodeURIComponent(actionId)];
   var params=new URLSearchParams(window.location.search);
@@ -267,13 +251,6 @@ function visitHref(r){
   var q=['visitId='+encodeURIComponent(visitId),'actionId='+encodeURIComponent(r.id)];
   if(account)q.push('account='+encodeURIComponent(account));
   q.push('returnTo='+encodeURIComponent(buildReturnHref(r.id)));
-  // NOTE: 'manager-actions' here is Visit History's existing internal flag
-  // name for "show a Back-to-Open-Actions button using the supplied
-  // returnTo URL" — it is not manager-specific and is never displayed. It
-  // is the only value that reliably triggers that branch (Visit History's
-  // other check is an exact-match on a bare, param-less URL, which our
-  // context-carrying returnTo above will never match). Reusing it avoids
-  // any change to fieldiq-visit-history.html.
   q.push('source='+encodeURIComponent('rep-actions'));
   return url+'?'+q.join('&');
 }
@@ -295,12 +272,6 @@ function reminderStrip(f){
   return '<div class="reminder-strip '+cls+'">'+label+'</div>';
 }
 
-// ─── Manager Notes (rep-side display) ──────────────────────────────────────
-// Reads from the existing /get-notes and /acknowledge-note endpoints only.
-// Does not touch Manager Notes saving, Visit History, Visit Threads, Log
-// Update, /save-visit, KPIs, Reputation, Calendar, or Dashboard. Notes are
-// fetched per action, after the action cards themselves have rendered, and
-// injected into the placeholder div already present in each card.
 async function loadNotesForAction(actionId){
   var box=document.getElementById('notes-'+actionId);
   if(!box)return;
@@ -310,9 +281,6 @@ async function loadNotesForAction(actionId){
     if(!res.ok)throw new Error(data.error||'Could not load notes');
     renderNotesForAction(actionId,data.records||[]);
   }catch(err){
-    // Non-fatal — a rep's ability to see/complete/dismiss their action must
-    // never depend on this call succeeding. Silently leaves the section
-    // empty rather than showing an error box on every card.
   }
 }
 
@@ -374,7 +342,6 @@ document.addEventListener('click',function(e){
     acknowledgeNote(ackBtn.getAttribute('data-ack-note-id'),ackBtn);
   }
 });
-// ─────────────────────────────────────────────────────────────────────────────
 
 function renderActionCard(r, account){
   var f=r.fields||{};
@@ -424,11 +391,6 @@ function render(){
     return;
   }
 
-  // Manager-reminded actions must appear at the very top of the page,
-  // regardless of account grouping or alphabetical order — visibility comes
-  // from position, not a new heading or counter. No reminder-timestamp field
-  // is loaded by this page, so Due Date (ascending, undated last) is used as
-  // the tiebreaker — the same tiebreak already used for the normal sort below.
   var remindedActions=actions.filter(function(r){
     return Number((r.fields||{})['Reminder Count']||0)>0;
   });
@@ -448,8 +410,6 @@ function render(){
     html+=renderActionCard(r,account);
   });
 
-  // Group the remaining (non-reminded) actions by Account Name — identical
-  // to the existing behaviour.
   var groups={};
   normalActions.forEach(function(r){
     var f=r.fields||{};
@@ -458,9 +418,6 @@ function render(){
     groups[account].push(r);
   });
 
-  // Sort each group: identical to existing logic. Reminded actions have
-  // already been pulled out above, so this tier check is now a no-op safety
-  // net rather than the primary mechanism — left in place unchanged.
   Object.keys(groups).forEach(function(account){
     groups[account].sort(function(a,b){
       var fa=a.fields||{},fb=b.fields||{};
@@ -473,7 +430,6 @@ function render(){
     });
   });
 
-  // Render groups alphabetically
   var sortedAccounts=Object.keys(groups).sort(function(a,b){
     return a.toLowerCase().localeCompare(b.toLowerCase());
   });
@@ -510,8 +466,6 @@ function render(){
       });
   });
 
-  // Fire off note lookups for every rendered action, independently — one
-  // failing or slow request never blocks or delays another card's actions.
   actions.forEach(function(r){
     loadNotesForAction(r.id);
   });
@@ -658,8 +612,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(_cm!=='')_cq.push('calMonth='+encodeURIComponent(_cm));
     if(_cd)_cq.push('calDay='+encodeURIComponent(_cd));
     if(_cq.length)_cu+='?'+_cq.join('&');
-    var _hb=document.querySelector('.home-btn');
-    if(_hb){_hb.href=_cu;_hb.textContent='← Calendar';}
+    var _hb=document.getElementById('calendarNavBtn');
+    if(_hb){_hb.href=_cu;}
   }
   loadActions().then(function(){
     if(targetAccount){
@@ -677,11 +631,6 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 <script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
-// Back-to-top floating button — purely cosmetic, self-contained. Created
-// entirely via JS so no existing HTML/IDs/layout are touched. Appears only
-// after scrolling past 500px, scrolls smoothly to top on click. Does not
-// interact with action cards, Complete, View Visit, reminders, or any
-// business logic.
 (function(){
   var btn=document.createElement('button');
   btn.type='button';
