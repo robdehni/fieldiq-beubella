@@ -22,13 +22,6 @@ export default {
     const BASE_ID = "appwHLTGnkS3uiywl";
     const OPEN_ACTIONS_TABLE = "tblH6hTkfUMB8KxXk";
     const NOTIFICATIONS_TABLE = "tblJ8B3jw5RM4zakV";
-    // Field Workflow is deliberately restricted to this one role for this
-    // deployment — a request can only ever be for a Trainer, enforced here
-    // server-side, not just filtered in the UI. Kept as a single named
-    // constant rather than the literal string scattered through the
-    // enforcement checks below, so a future white-label deployment needing
-    // a different role changes this one line, not the logic itself.
-    const FIELD_WORKFLOW_ALLOWED_ROLE = "Trainer";
     // Fields: Message, Sender (linked User), Sent At, Excluded Roles
     // (single line text, comma-separated role names), Active (checkbox,
     // default true), Expires At (date/time, optional).
@@ -1142,7 +1135,6 @@ export default {
         const role = _session.role || "";
         const visitId = url.searchParams.get("visitId") || "";
         const status = url.searchParams.get("status") || "Open";
-        const skipCache = url.searchParams.get("fresh") === "1";
 
         // Cache key includes the verified identity, not just the bare
         // request URL — two different users can otherwise construct an
@@ -1167,7 +1159,7 @@ export default {
         // all, and the Open-status query can also trigger a second,
         // sequential fetch of the entire Field Visits table (the
         // inference fallback below) when any action lacks a real link.
-        if (!visitId && !skipCache) {
+        if (!visitId) {
           const _hit = await cache.match(_cacheReq);
           if (_hit) return _hit;
         }
@@ -1287,7 +1279,7 @@ export default {
         }
         if (!visitId) {
           const _res = jsonCached({ records: allRecords }, 20);
-          if (!skipCache) ctx.waitUntil(cache.put(_cacheReq, _res.clone()));
+          ctx.waitUntil(cache.put(_cacheReq, _res.clone()));
           return _res;
         }
         return json({ records: allRecords });
@@ -2325,9 +2317,6 @@ Keep the whole answer under 55 words.`;
         if (!accountName || !targetRole) {
           return json({ error: "accountName and targetRole required" }, 400);
         }
-        if (String(targetRole).trim().toLowerCase() !== FIELD_WORKFLOW_ALLOWED_ROLE.toLowerCase()) {
-          return json({ error: `Field Workflow requests can only be created for ${FIELD_WORKFLOW_ALLOWED_ROLE}.` }, 400);
-        }
         if (!requiredDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(requiredDate).trim())) {
           return json({ error: `A required date is needed so the assigned ${targetRole} can see this on their Calendar.` }, 400);
         }
@@ -2368,7 +2357,6 @@ Keep the whole answer under 55 words.`;
     // Workflow request, so this cannot be used to reassign an ordinary
     // action created by any other existing flow.
     if (url.pathname === "/assign-field-workflow") {
-      const _tReceived = Date.now();
       if (!(await checkRateLimit("assign-field-workflow", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
       try {
         const _token = getBearerToken(req);
@@ -2387,33 +2375,23 @@ Keep the whole answer under 55 words.`;
           return json({ error: "This action is not an unclaimed Field Workflow request." }, 400);
         }
 
-        const neededRole = f["Requested Role"] || f["Assigned Role"] || "";
-        const specialistUserForCheck = await getUserByRecordId(specialistRecordId);
-        if (!specialistUserForCheck || !specialistUserForCheck.fields) {
-          return json({ error: "Specialist not found." }, 404);
-        }
-        const specialistActualRole = (specialistUserForCheck.fields["Role"] || "").trim().toLowerCase();
-        if (specialistActualRole !== String(neededRole).trim().toLowerCase()) {
-          return json({ error: `This request needs a ${neededRole}. The selected user's role does not match.` }, 400);
-        }
-        if (specialistUserForCheck.fields["Active?"] === false) {
-          return json({ error: "This user is not active and cannot be assigned." }, 400);
-        }
-
-        const _tPatchStart = Date.now();
         const response = await airtableFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}/${actionId}`,
           { method: "PATCH", headers: airtableHeaders(), body: JSON.stringify({ fields: { "Assigned Rep": [specialistRecordId], "Assigned Role": "" } }) }
         );
-        const _tPatchEnd = Date.now();
         const data = await response.json();
         if (!response.ok) return json({ error: (data.error && data.error.message) ? data.error.message : "Airtable error", detail: data }, response.status);
 
         actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
-        actionsCacheRequestsFor(req, specialistUserForCheck.fields["Role"] || "", specialistUserForCheck.fields["User ID"] || "").forEach(r => ctx.waitUntil(cache.delete(r)));
+        try {
+          const specialistUser = await getUserByRecordId(specialistRecordId);
+          if (specialistUser && specialistUser.fields) {
+            actionsCacheRequestsFor(req, specialistUser.fields["Role"] || "", specialistUser.fields["User ID"] || "").forEach(r => ctx.waitUntil(cache.delete(r)));
+          }
+        } catch (cacheErr) { /* non-fatal — assignment itself already succeeded above */ }
         ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
 
-        return json({ success: true, record: data, _timing: { receivedAt: _tReceived, patchStartAt: _tPatchStart, patchEndAt: _tPatchEnd, respondedAt: Date.now(), patchDurationMs: _tPatchEnd - _tPatchStart, totalWorkerMs: Date.now() - _tReceived } });
+        return json({ success: true, record: data });
       } catch (err) { return json({ error: err.message }, 500); }
     }
 
@@ -2444,8 +2422,8 @@ Keep the whole answer under 55 words.`;
 
         const assignedRep = f["Assigned Rep"] || [];
         if (assignedRep.length) {
-          if (_session.role !== "Manager" && !assignedRep.includes(_session.recordId)) {
-            return json({ error: "Only the assigned specialist or a Manager can reschedule this request once it has been assigned." }, 403);
+          if (!assignedRep.includes(_session.recordId)) {
+            return json({ error: "Only the assigned specialist can reschedule this request once it has been assigned." }, 403);
           }
         } else {
           if (_session.role !== "Manager") return json({ error: "Manager access required to reschedule an unassigned request." }, 403);
@@ -2460,14 +2438,6 @@ Keep the whole answer under 55 words.`;
 
         actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
         actionsCacheRequestsFor(req, _session.role, _session.userId).forEach(r => ctx.waitUntil(cache.delete(r)));
-        if (assignedRep.length) {
-          try {
-            const assignedUser = await getUserByRecordId(assignedRep[0]);
-            if (assignedUser && assignedUser.fields) {
-              actionsCacheRequestsFor(req, assignedUser.fields["Role"] || "", assignedUser.fields["User ID"] || "").forEach(r => ctx.waitUntil(cache.delete(r)));
-            }
-          } catch (cacheErr) { /* non-fatal — the reschedule itself already succeeded above */ }
-        }
         ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
 
         return json({ success: true, record: data });
@@ -2483,7 +2453,6 @@ Keep the whole answer under 55 words.`;
     // /assign-field-workflow. Never touches the original visit, Due Date,
     // notes, or Field Workflow ID.
     if (url.pathname === "/reassign-field-workflow") {
-      const _tReceived = Date.now();
       if (!(await checkRateLimit("reassign-field-workflow", req))) return json({ error: "Too many requests. Please wait a moment and try again." }, 429);
       try {
         const _token = getBearerToken(req);
@@ -2503,12 +2472,10 @@ Keep the whole answer under 55 words.`;
         const restoredRole = f["Requested Role"] || f["Assigned Role"] || "";
         if (!restoredRole) return json({ error: "This action has no recoverable role and cannot be released for reassignment." }, 400);
 
-        const _tPatchStart = Date.now();
         const response = await airtableFetch(
           `https://api.airtable.com/v0/${BASE_ID}/${OPEN_ACTIONS_TABLE}/${actionId}`,
           { method: "PATCH", headers: airtableHeaders(), body: JSON.stringify({ fields: { "Assigned Rep": [], "Assigned Role": restoredRole } }) }
         );
-        const _tPatchEnd = Date.now();
         const data = await response.json();
         if (!response.ok) return json({ error: (data.error && data.error.message) ? data.error.message : "Airtable error", detail: data }, response.status);
 
@@ -2521,7 +2488,7 @@ Keep the whole answer under 55 words.`;
         } catch (cacheErr) { /* non-fatal — release itself already succeeded above */ }
         ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
 
-        return json({ success: true, record: data, _timing: { receivedAt: _tReceived, patchStartAt: _tPatchStart, patchEndAt: _tPatchEnd, respondedAt: Date.now(), patchDurationMs: _tPatchEnd - _tPatchStart, totalWorkerMs: Date.now() - _tReceived } });
+        return json({ success: true, record: data });
       } catch (err) { return json({ error: err.message }, 500); }
     }
 
@@ -2615,8 +2582,19 @@ Keep the whole answer under 55 words.`;
           return json({ error: "Only the assigned rep can complete this action" }, 403);
         }
 
-        if (action.fields["Status"] === "Completed") {
-          return json({ error: "This action has already been completed." }, 409);
+        // Idempotent: calling Complete on an action that's already in a
+        // terminal state is not an error — it's the same net effect
+        // already achieved. Returns success with alreadyDone:true so the
+        // frontend can distinguish "just completed" from "already was."
+        // Cache is cleared here too, awaited, before returning — this
+        // branch is itself a valid place for a stale cache entry to have
+        // caused the caller to see this action as still Open in the first
+        // place, so it must not skip the same invalidation the normal
+        // completion path below performs.
+        if (action.fields["Status"] === "Completed" || action.fields["Status"] === "Dismissed") {
+          await Promise.all(actionsCacheRequestsFor(req, "Manager", "").map(r => cache.delete(r)));
+          await Promise.all(actionsCacheRequestsFor(req, session.role, userId).map(r => cache.delete(r)));
+          return json({ success: true, alreadyDone: true, id: action.id, status: action.fields["Status"] }, 200);
         }
 
         // Field Workflow enforcement: this action cannot be completed via
@@ -2643,8 +2621,8 @@ Keep the whole answer under 55 words.`;
         const completeData = await completeRes.json();
         if (!completeRes.ok) return json(completeData, completeRes.status);
 
-        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
-        actionsCacheRequestsFor(req, session.role, userId).forEach(r => ctx.waitUntil(cache.delete(r)));
+        await Promise.all(actionsCacheRequestsFor(req, "Manager", "").map(r => cache.delete(r)));
+        await Promise.all(actionsCacheRequestsFor(req, session.role, userId).map(r => cache.delete(r)));
         ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
 
         // Field Workflow auto-return: only activates if this specific
@@ -2761,6 +2739,16 @@ Keep the whole answer under 55 words.`;
           return json({ error: "Only the assigned rep can dismiss this action" }, 403);
         }
 
+        // Idempotent — same reasoning as /complete-action above. Cache is
+        // cleared here too, awaited, before returning — see that
+        // endpoint's comment for why this early-return branch needs the
+        // same invalidation as the normal path.
+        if (action.fields["Status"] === "Dismissed" || action.fields["Status"] === "Completed") {
+          await Promise.all(actionsCacheRequestsFor(req, "Manager", "").map(r => cache.delete(r)));
+          await Promise.all(actionsCacheRequestsFor(req, session.role, userId).map(r => cache.delete(r)));
+          return json({ success: true, alreadyDone: true, id: action.id, status: action.fields["Status"] }, 200);
+        }
+
         const dismissingUser = await getUserByRecordId(userRecordId);
         const dismissedByName = (dismissingUser && dismissingUser.fields && dismissingUser.fields["Display Name"]) || userId;
 
@@ -2785,8 +2773,8 @@ Keep the whole answer under 55 words.`;
           return json({ error: airtableMsg, airtableDetail: dismissData }, dismissRes.status);
         }
 
-        actionsCacheRequestsFor(req, "Manager", "").forEach(r => ctx.waitUntil(cache.delete(r)));
-        actionsCacheRequestsFor(req, session.role, userId).forEach(r => ctx.waitUntil(cache.delete(r)));
+        await Promise.all(actionsCacheRequestsFor(req, "Manager", "").map(r => cache.delete(r)));
+        await Promise.all(actionsCacheRequestsFor(req, session.role, userId).map(r => cache.delete(r)));
         ctx.waitUntil(cache.delete(new Request(new URL("/get-dashboard", req.url).toString())));
 
         try {
