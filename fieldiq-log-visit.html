@@ -207,7 +207,7 @@ audio{width:100%;border-radius:8px;margin:8px 0;display:none}
 <button class="btn btn-primary" id="submitBtn">Process Visit Log</button>
 <button class="btn btn-secondary" id="clearBtn">Clear</button>
 <div class="processing-overlay" id="processingOverlay"><div class="spinner"></div><p id="processingText">Analysing your visit...</p></div>
-<div class="success-card" id="successCard"><div class="tick"><i data-lucide="check-circle"></i></div><h3>Visit Logged Successfully</h3><div id="reportContent"></div><button class="btn btn-primary" style="margin-top:16px" onclick="location.reload()">Log Another Visit</button></div>
+<div class="success-card" id="successCard"><div class="tick"><i data-lucide="check-circle"></i></div><h3>Visit Logged Successfully</h3><div id="reportContent"></div><button class="btn btn-primary" id="doneBtn" type="button" style="width:100%;margin-top:16px;font-size:16px;padding:16px">Done</button><button class="btn btn-secondary" style="margin-top:10px" onclick="location.reload()">Log Another Visit</button></div>
 
 <div class="footer">FieldIQ v2.1 · 2026</div>
 </div>
@@ -218,8 +218,6 @@ window.onerror=function(msg){document.getElementById('status').textContent='Erro
 var currentUserId=localStorage.getItem('fieldiq_user_id');
 var currentUserName=localStorage.getItem('fieldiq_user_name');
 var currentUserRole=localStorage.getItem('fieldiq_user_role');
-// Required by /get-accounts and /get-visits, which now reject any request
-// without a verified session token.
 var currentSessionToken=localStorage.getItem('fieldiq_session_token');
 if(!currentUserId||!currentUserName){
   window.location.href='./index.html';
@@ -237,12 +235,6 @@ var notListedCheck=document.getElementById('notListedCheck');var newAccountField
     accountBlock.style.cursor='not-allowed';
   }
 })();
-// GPS accuracy gate — visits must not save coordinates that are missing or
-// worse than this threshold. 500m chosen as a reasonable field-visit
-// precision floor (single constant, easy to adjust if a different value is
-// agreed later). Does not block the visit save itself — only the
-// coordinates are omitted when accuracy fails this check, matching this
-// file's existing pattern for other optional/best-effort data (photos).
 var GPS_ACCURACY_THRESHOLD_METERS=500;
 notListedCheck.addEventListener('change',function(){if(this.checked){newAccountFields.classList.add('visible');hospitalInput.value='';selectedAccountId=null;hospitalList.classList.remove('open');hospitalInput.style.display='none';}else{newAccountFields.classList.remove('visible');hospitalInput.style.display='';duplicateWarningEl.style.display='none';}updateMicAvailability();});
 
@@ -256,16 +248,6 @@ territorySelect.addEventListener('change',function(){
   if(accountsLoaded)showList(hospitalInput.value);
   updateMicAvailability();
 });
-
-// Reps are locked to their own assigned territory — the account list below
-// already filters by whatever this dropdown is set to, so locking it here
-// is the entire change needed. This is a display filter for the pilot, not
-// a security boundary — it relies on the same client-supplied identity the
-// rest of this page already used before today. Managers are entirely
-// unaffected: this block does nothing unless the signed-in role is a rep.
-// (Moved further down in this file — see near updateMicAvailability — so
-// the dispatched 'change' event fires only after everything it touches is
-// actually defined.)
 
 var ACCOUNTS=[];var accountsLoaded=false;var selectedAccountId=null;
 
@@ -348,17 +330,6 @@ function resetRecordingOnly(){
 }
 tryAgainRecordingBtn.addEventListener('click',resetRecordingOnly);
 
-// Reps are locked to their own assigned territory — the account list below
-// already filters by whatever this dropdown is set to, so locking it here
-// is the entire change needed. This is a display filter for the pilot, not
-// a security boundary — it relies on the same client-supplied identity the
-// rest of this page already used before today. Managers are entirely
-// unaffected: this block does nothing unless the signed-in role is a rep.
-// Placed here specifically — after micBtn and updateMicAvailability are
-// both defined — because the dispatched 'change' event below calls into
-// updateMicAvailability synchronously, and doing this earlier in the file
-// crashed with "Cannot set properties of undefined (setting 'disabled')"
-// since micBtn didn't exist yet at that point.
 if(currentUserRole!=='Manager'){
   var repTerritory=localStorage.getItem('fieldiq_user_territory')||'';
   var VALID_TERRITORIES=['Abu Dhabi','Dubai','Sharjah','Ajman','Umm Al Quwain','Ras Al Khaimah','Fujairah'];
@@ -366,9 +337,6 @@ if(currentUserRole!=='Manager'){
     territorySelect.value=repTerritory;
     territorySelect.dispatchEvent(new Event('change'));
   }
-  // else: unassigned, unrecognized, or not-yet-populated territory — leave
-  // the dropdown exactly as it works today rather than risk locking the
-  // rep out of logging a visit at all.
 }
 micBtn.addEventListener('click',function(){if(!isRecording)startRecording();else stopRecording();});
 function proceedToTranscribe(blob){
@@ -408,21 +376,9 @@ function discardRecordingOnly(){
   if(streamRef)streamRef.getTracks().forEach(function(t){t.stop();});streamRef=null;mediaRecorder=null;
   updateMicAvailability();
 }
-// Fix: disable the mic button the instant Stop is triggered — before
-// mediaRecorder.stop() is even called — so a rep cannot tap again during
-// the async gap between tapping Stop and the recorder's onstop event
-// actually firing (which can take 1-2 seconds on some devices), nor during
-// the transcription request itself. Native button disabling also blocks
-// the click event at the browser level, not just via the isRecording flag.
-// Re-enabling is handled at each of the existing, already-intended points:
-// transcript ready (already explicitly disabled mic permanently, unchanged),
-// transcription failure/error (now calls updateMicAvailability(), matching
-// the pre-existing behaviour where the mic was never disabled on failure),
-// and Discard/Clear (already called updateMicAvailability(), unchanged).
 function stopRecording(){micBtn.disabled=true;clearTimeout(autoStopTimeout);clearInterval(timerInterval);document.getElementById('recordingIndicator').className='recording-indicator';if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();}
 
-// ── Visit Evidence / Photo capture ──────────────────────────────────────────
-var pendingPhotos = [];   // [{blob, previewUrl}, ...] — max 2
+var pendingPhotos = [];
 var MAX_PHOTOS = 2;
 var PHOTO_MAX_WIDTH = 1600;
 var PHOTO_QUALITY = 0.8;
@@ -538,7 +494,6 @@ document.getElementById('photoGalleryInput').addEventListener('change', function
   if (this.files && this.files[0]) handlePhotoFile(this.files[0]);
   this.value = '';
 });
-// ────────────────────────────────────────────────────────────────────────────
 
 document.getElementById('clearBtn').addEventListener('click',function(){
   transcriptText.disabled=false;
@@ -575,12 +530,7 @@ var fwSourceVisitId='';
   }
 })();
 var prefillAccountTerritory='';
-var prefillVisitThreadId=''; // holds the raw source visit id when arriving from a Log Update — sent as sourceVisitId; the Worker resolves the actual thread id at save time
-// Matches the dropdown's exact option values (Abu Dhabi/Dubai/Sharjah/
-// Ajman/Umm Al Quwain/Ras Al Khaimah/Fujairah) against a raw Airtable
-// territory value that may be differently cased or formatted.
-// Same canonical mapping already used in worker-beubella.js and
-// fieldiq-accounts.html.
+var prefillVisitThreadId='';
 function normalizeTerritoryForDropdown(raw){
   var value=raw;
   if(Array.isArray(value))value=value.length?value[0]:'';
@@ -635,11 +585,6 @@ async function applyPrefillFromURL(){
         selectedAccountId=match.id;
         hospitalInput.value=match.name;
         var resolvedTerritory=match.territory||'';
-        // The visit's own Territory is more authoritative than the
-        // Account record's — an Account can have Territory blank even
-        // when every one of its visits correctly recorded one. Only
-        // attempted when arriving from Calendar's Log Update link with a
-        // resolvable visitId.
         if(visitIdParam||fwSourceVisitId){
           try{
             var vRes=await fetch(WORKER+'/get-visit-territory?visitId='+encodeURIComponent(visitIdParam||fwSourceVisitId));
@@ -648,9 +593,6 @@ async function applyPrefillFromURL(){
           }catch(e){}
         }
         if(resolvedTerritory){
-          // Normalize the raw Airtable value to the dropdown's canonical
-          // form — same mapping used consistently in the Worker and
-          // Account Directory.
           var normalizedTerritory=normalizeTerritoryForDropdown(resolvedTerritory);
           var tSelect=document.getElementById('territory');
           for(var j=0;j<tSelect.options.length;j++){
@@ -658,13 +600,6 @@ async function applyPrefillFromURL(){
           }
           if(tSelect.value)prefillAccountTerritory=tSelect.value;
         }
-        // Update Mode — arrived from Calendar's "Log Update" link for a
-        // specific existing follow-up (sourceRef present). Lock only when
-        // the dropdown itself actually holds a selected value — checking
-        // the raw resolvedTerritory string here was the actual bug: a
-        // value that failed to match any option (e.g. unnormalized raw
-        // Airtable text) still passed this check as truthy, locking an
-        // empty, unusable dropdown.
         if((prefillSourceRef||fwActionId)&&territorySelect.value){
           territorySelect.disabled=true;
           hospitalInput.disabled=true;
@@ -672,12 +607,6 @@ async function applyPrefillFromURL(){
           accountBlock.style.opacity='1';
           accountBlock.style.pointerEvents='none';
           accountBlock.style.cursor='not-allowed';
-          // Clear must never be available here — it unconditionally
-          // resets Territory/Account (see clearBtn's own handler), which
-          // would detach this Log Update from its locked scheduled
-          // account. Hiding the button is the complete fix: it's the
-          // only element that triggers that reset, confirmed by checking
-          // every reference to clearBtn in this file.
           document.getElementById('clearBtn').style.display='none';
         }
       }
@@ -718,13 +647,6 @@ submitBtn.addEventListener('click',async function(){
   transcriptText.disabled=true;
   var latitude=null,longitude=null,accuracy=null;
   await new Promise(function(resolve){if(!navigator.geolocation){resolve();return;}navigator.geolocation.getCurrentPosition(function(pos){latitude=pos.coords.latitude;longitude=pos.coords.longitude;accuracy=Math.round(pos.coords.accuracy);resolve();},function(){resolve();},{timeout:12000,enableHighAccuracy:true,maximumAge:0});});
-  // GPS accuracy gate — coordinates are only kept when accuracy was
-  // actually captured and is at or better than the threshold. Missing or
-  // degraded accuracy clears latitude/longitude/accuracy back to null so
-  // they are omitted from the save payload below (see savePayload
-  // construction) rather than saving a misleading pin location. This does
-  // not block the visit itself from saving — same non-blocking pattern
-  // already used for photo upload failures elsewhere in this file.
   var gpsWarningEl=document.getElementById('gpsWarningMessage');
   if(accuracy===null||accuracy>GPS_ACCURACY_THRESHOLD_METERS){
     latitude=null;longitude=null;accuracy=null;
@@ -886,8 +808,8 @@ submitBtn.addEventListener('click',async function(){
     if(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.fieldWorkflowEnabled&&!_fwActionIdForCompletion&&!prefillSourceRef)(function(){
       var fwBtn=document.createElement('button');
       fwBtn.type='button';
-      fwBtn.className='btn btn-primary';
-      fwBtn.style.cssText='margin-top:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0)';
+      fwBtn.className='btn btn-secondary';
+      fwBtn.style.cssText='margin-top:10px';
       fwBtn.textContent='Request Team Member for this Account';
       fwBtn.addEventListener('click',function(){
         var targetRole=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Team Member';
@@ -954,7 +876,7 @@ submitBtn.addEventListener('click',async function(){
         cancelBtnFw.addEventListener('click',onCancel);
         submitBtnFw.addEventListener('click',onSubmit);
       });
-      document.getElementById('reportContent').insertAdjacentElement('afterend',fwBtn);
+      document.getElementById('doneBtn').insertAdjacentElement('afterend',fwBtn);
     })();
     var suggestedDateText=(parsed.suggestedDate||'').trim();
     if(suggestedDateText&&suggestedDateText.toLowerCase()!=='none'){
@@ -967,6 +889,17 @@ submitBtn.addEventListener('click',async function(){
   }catch(err){processingOverlay.style.display='none';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';transcriptText.disabled=false;alert('Error: '+err.message);}
 });
 document.addEventListener('DOMContentLoaded',function(){lucide.createIcons();});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var doneBtn=document.getElementById('doneBtn');
+  if(doneBtn){
+    doneBtn.addEventListener('click',function(){
+      var homeBtn=document.getElementById('homeBtn');
+      window.location.href=homeBtn?homeBtn.getAttribute('href'):'./index.html';
+    });
+  }
+});
 </script>
 <script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
