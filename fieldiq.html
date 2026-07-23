@@ -166,6 +166,8 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   .sidebar-link.current{background:#eaf3ff;color:#1f6fe0;pointer-events:none;cursor:default}
   .sidebar-link [data-lucide]{width:17px;height:17px;stroke-width:1.9;flex-shrink:0;color:#2f8fff}
   .sidebar-link.current [data-lucide]{color:#1f6fe0}
+  .sidebar-badge{margin-left:auto;min-width:20px;height:20px;border-radius:999px;background:#e0344a;color:#fff;display:none;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;padding:0 6px;box-shadow:0 3px 8px rgba(224,52,74,0.25);flex-shrink:0}
+  .sidebar-badge.visible{display:inline-flex}
 
   .main{padding:26px 40px 60px;max-width:1120px}
   .header{margin-bottom:20px}
@@ -200,11 +202,11 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     <a href="./fieldiq.html" class="sidebar-link current"><i data-lucide="home"></i> Manager Home</a>
 
     <div class="sidebar-group-label">Management</div>
-    <a href="./dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a href="./dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard<span class="sidebar-badge" id="sbDashboardBadge"></span></a>
     <a href="./fieldiq-operations.html" class="sidebar-link"><i data-lucide="activity"></i> Operations</a>
-    <a href="./fieldiq-actions.html" class="sidebar-link"><i data-lucide="check-square"></i> Open Actions</a>
-    <a href="./fieldiq-manager-calendar.html" class="sidebar-link"><i data-lucide="calendar-days"></i> Manager Calendar</a>
-    <a href="./fieldiq-team-requests.html" class="sidebar-link"><i data-lucide="users"></i> Team Requests</a>
+    <a href="./fieldiq-actions.html" class="sidebar-link"><i data-lucide="check-square"></i> Open Actions<span class="sidebar-badge" id="sbOpenActionsBadge"></span></a>
+    <a href="./fieldiq-manager-calendar.html" class="sidebar-link"><i data-lucide="calendar-days"></i> Manager Calendar<span class="sidebar-badge" id="sbCalendarBadge"></span></a>
+    <a href="./fieldiq-team-requests.html" class="sidebar-link"><i data-lucide="users"></i> Team Requests<span class="sidebar-badge" id="sbTeamRequestsBadge"></span></a>
     <a href="./fieldiq-accounts.html" class="sidebar-link"><i data-lucide="building-2"></i> Account Directory</a>
 
     <div class="sidebar-group-label">Intelligence</div>
@@ -348,11 +350,6 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 <script>
 var currentSessionToken = localStorage.getItem('fieldiq_session_token');
 
-// Clears everything that represents an authenticated session. Deliberately
-// preserves fieldiq_last_user_id — that key only controls which profile is
-// preselected on index.html's next visit, it has never authenticated
-// anyone, so clearing it here would just be worse UX for no security
-// benefit.
 function clearActiveSession(){
   localStorage.removeItem('fieldiq_user_id');
   localStorage.removeItem('fieldiq_user_name');
@@ -374,11 +371,6 @@ function renderSignInAgainState(targetElId){
   el.innerHTML = '<div class="ask-error">Your session needs to be refreshed. <a href="./index.html" style="color:#2f8fff;font-weight:800">Sign in again</a> to load this.</div>';
 }
 
-// ── Manager Home summary — small, purpose-built rendering only. ──────────
-// Uses the same /get-dashboard endpoint dashboard.html relies on, so there
-// is exactly one source of truth for these numbers, but renders its own
-// compact view here rather than reusing dashboard.html's widget markup or
-// functions. This page never becomes a second copy of the Dashboard.
 var WORKER_URL_HOME = 'https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
 
 function truncateActionSnippet(text){
@@ -437,6 +429,7 @@ function renderHomeSummary(agg){
   });
   var top = actionable.slice(0, 3);
   _renderExecutiveStatus(actionable.length, priorityCount, agg.kpi.newAccountsPending);
+  setSidebarBadge('sbDashboardBadge', priorityCount);
   if (!top.length && priorityCount === 0) {
     panel.classList.add('all-clear');
     panelHead.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> All Clear';
@@ -444,13 +437,6 @@ function renderHomeSummary(agg){
     return;
   }
   if (!top.length && priorityCount > 0) {
-    // Management Radar has nothing flagged, but unreviewed visits still
-    // exist — these are two genuinely different signals (account-level
-    // evidence vs. a raw visit count), and showing "All Clear" right next
-    // to a nonzero Priority number in the strip above was the actual bug:
-    // the same screen telling the manager two different things at once.
-    // This state is honest about which signal is nonzero instead of
-    // picking one to silently hide.
     panel.classList.remove('all-clear');
     panelHead.innerHTML = priorityCount + ' visit' + (priorityCount !== 1 ? 's' : '') + ' awaiting review';
     body.innerHTML = '<a class="summary-empty" style="padding:0 14px 14px;display:block;text-decoration:none;color:#2f8fff;font-weight:700" href="./dashboard.html" onclick="try{sessionStorage.setItem(\'fieldiq_dashboard_openPriorityShortcut\',\'1\');}catch(e){}">No accounts are individually flagged, but ' + priorityCount + ' visit' + (priorityCount !== 1 ? 's are' : ' is') + ' still awaiting your review. View Dashboard \u203a</a>';
@@ -496,23 +482,7 @@ function renderHomeSummary(agg){
   }).join('');
 }
 
-// ── Manager Agent: proactive daily briefing ──────────────────────────────
-// Fires automatically on load, reusing the exact same /ask-fieldiq
-// endpoint the tap-to-ask chips already use — no new Worker route. Kept
-// as its own small function rather than folded into askFieldIQ() so the
-// already-verified chip flow is never touched by this addition.
-//
-// Deliberately does NOT ask "what changed since yesterday" — the context
-// digest /ask-fieldiq builds has no prior-day snapshot to compare against,
-// so asking that question would invite a guess instead of an honest "I
-// don't have that." Left out until real day-over-day data exists, rather
-// than asked and hoped the model declines correctly.
 var MANAGER_BRIEFING_QUESTION = "Give me a short daily briefing: top priorities today, accounts needing immediate attention, overdue follow-ups, high-risk customers, new business opportunities, and any reps who may need coaching based on their activity.";
-// Renders the typed sources array [{type,id,label,url}] as clickable
-// buttons beneath an answer. Shared by both the auto-briefing and the
-// chip-tap flow, so a source only ever renders one way. Every URL here
-// came from the Worker's own deterministic construction — nothing in
-// this function invents a link, it only displays what was returned.
 function renderSourcesHtml(sources){
   if (!sources || !sources.length) return '';
   var typeFallback = { visit: 'Open Visit', action: 'Open Action', account: 'View Account' };
@@ -526,13 +496,6 @@ function renderSourcesHtml(sources){
   html += '</div></div></div>';
   return html;
 }
-// Renders the structured {greeting, topLine, sections, sources} shape —
-// same philosophy as the rep briefing: real data in short scannable
-// sections, each item with its own specific destination where one exists.
-// Maps the emoji characters returned by the Worker's briefing sections to
-// the equivalent lucide line-icon name already used throughout the rest
-// of the app, so these cards visually match — the Worker's response data
-// itself is untouched; only how sec.icon is rendered here changes.
 function mgrIconName(emoji){
   var map = {'\ud83c\udfaf':'target','\ud83d\udcc5':'calendar','\u2705':'check-circle','\u26a0\ufe0f':'alert-triangle','\ud83d\udc65':'users','\ud83d\udccd':'map-pin'};
   return map[emoji] || 'circle';
@@ -556,12 +519,6 @@ function renderManagerBriefingContent(data){
   });
   return html;
 }
-// Purely visual, additive post-processing on the already-rendered
-// briefing — never touches the AI's data or renderManagerBriefingContent
-// itself. Keeps the topline plus the first 2 sections visible by
-// default; anything beyond that is moved into a collapsible container.
-// Nothing is deleted — every section and item the AI returned is still
-// in the DOM, just not all competing for attention on first glance.
 function _collapseExtraBriefingSections(){
   var area = document.getElementById('briefingArea');
   if (!area) return;
@@ -612,9 +569,6 @@ function loadManagerBriefing(){
         if (window.lucide) lucide.createIcons();
         return;
       }
-      // Falls back to the original prose rendering if the Worker ever
-      // returns the older shape — keeps this page working even if the
-      // two sides of a deploy briefly disagree.
       if (!result.data.answer) { renderBriefingError(); return; }
       area.innerHTML = '<div class="ask-answer-box"><div class="ask-answer-text">' + escapeHtmlHome(result.data.answer) + '</div>' + renderSourcesHtml(result.data.sources) + '</div>';
     })
@@ -626,6 +580,53 @@ function renderBriefingError(){
   area.innerHTML = '<div class="ask-error">Could not generate today\u2019s briefing.<br><button type="button" class="ask-retry-btn" id="briefingRetryBtn">Retry</button></div>';
   var retryBtn = document.getElementById('briefingRetryBtn');
   if (retryBtn) retryBtn.addEventListener('click', loadManagerBriefing);
+}
+
+// ── Sidebar nav badges (Dashboard/Open Actions/Manager Calendar/Team
+// Requests only — Operations and Ask FieldIQ intentionally excluded).
+// Each count comes from the same endpoint and same filter the destination
+// page itself uses for its own primary counter — no separately computed
+// or estimated numbers. Load-time only, matching this page's existing
+// refresh model (no polling anywhere else on this page either).
+function setSidebarBadge(id, count){
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!count || count <= 0) { el.textContent = ''; el.classList.remove('visible'); return; }
+  el.textContent = count > 99 ? '99+' : String(count);
+  el.classList.add('visible');
+}
+function loadSidebarNavBadges(){
+  // Open Actions + Manager Calendar share one fetch: the same
+  // /get-actions?role=Manager&status=Open response fieldiq-actions.html's
+  // own "Open" count and fieldiq-manager-calendar.html's own event list
+  // are each independently built from.
+  fetch(WORKER_URL_HOME + '/get-actions?role=Manager&status=Open', { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
+    .then(function(res){ return res.ok ? res.json() : null; })
+    .then(function(data){
+      if (!data) return;
+      var records = data.records || [];
+      setSidebarBadge('sbOpenActionsBadge', records.length);
+      var withDueDate = records.filter(function(r){
+        var due = r.fields && r.fields['Due Date'];
+        return due !== undefined && due !== null && String(due).trim() !== '';
+      });
+      setSidebarBadge('sbCalendarBadge', withDueDate.length);
+    })
+    .catch(function(err){ console.error('Could not load Open Actions/Calendar sidebar badges:', err); });
+
+  // Team Requests — same /get-field-workflow-queue endpoint that page's
+  // own "Pending Requests" counter reads, gated behind the same
+  // FIELDIQ_BRAND.fieldWorkflowEnabled check that page already uses, so
+  // this never fires for a brand where the feature is off.
+  if (typeof FIELDIQ_BRAND !== 'undefined' && FIELDIQ_BRAND.fieldWorkflowEnabled) {
+    fetch(WORKER_URL_HOME + '/get-field-workflow-queue', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
+      .then(function(res){ return res.ok ? res.json() : null; })
+      .then(function(data){
+        if (!data) return;
+        setSidebarBadge('sbTeamRequestsBadge', (data.records || []).length);
+      })
+      .catch(function(err){ console.error('Could not load Team Requests sidebar badge:', err); });
+  }
 }
 
 function loadHomeSummary(){
@@ -645,10 +646,6 @@ function loadHomeSummary(){
     });
 }
 
-// ── Ask FieldIQ — Phase 1 Deal Intelligence Agent ────────────────────────
-// Single-shot only: one question in, one short answer back. No
-// conversation history is kept or sent. The five suggested questions are
-// the only intended entry point for this MVP — no free-text input.
 var askInFlight = false;
 function renderAskError(question){
   var area = document.getElementById('askAnswerArea');
@@ -702,20 +699,6 @@ function askFieldIQ(question){
     });
 }
 
-// Real access gate: a saved fieldiq_user_role of 'Manager' is never
-// trusted on its own — it's editable in browser dev tools. This page only
-// renders after the Worker has actually verified the signed session
-// token via GET /validate-session. No token at all skips the network
-// call entirely (nothing to validate, straight back to sign-in); a token
-// that fails verification is cleared before redirecting, exactly like any
-// other expired or invalid session elsewhere in this app.
-// ── Company Broadcast (Manager side) ────────────────────────────────────────
-// Managers can both send and receive broadcasts — a broadcast sent by one
-// manager is still visible to every other manager unless explicitly
-// excluded. One-way, no acknowledgement, no reply, no per-viewer state —
-// it simply displays until it expires or a manager removes it from
-// fieldiq-broadcast.html. Fails silently — a broadcast card is never
-// allowed to block or break the rest of Manager Home loading.
 function escapeHtmlBroadcast(str){
   return String(str||'').replace(/[&<>"']/g,function(m){
     return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
@@ -744,9 +727,6 @@ async function loadBroadcasts(){
     section.innerHTML=html;
     if(window.lucide)lucide.createIcons({el:section});
   }catch(e){
-    // Non-fatal — Manager Home must still load if this fails. Logged so a
-    // real failure is still diagnosable from the console instead of
-    // vanishing entirely.
     console.error('Could not load broadcasts:',e);
   }
 }
@@ -756,6 +736,7 @@ function initManagerHome(){
   loadHomeSummary();
   loadManagerBriefing();
   loadBroadcasts();
+  loadSidebarNavBadges();
   var toggle = document.getElementById('moreToggle');
   var body = document.getElementById('moreToolsBody');
   if (toggle && body) {
@@ -783,9 +764,6 @@ function validateAndInit(){
         window.location.href = './index.html';
         return;
       }
-      // Confirmed by the Worker, not assumed from whatever was already in
-      // localStorage — refresh the stored identity fields to match
-      // exactly what the verified token says.
       localStorage.setItem('fieldiq_user_id', result.data.userId);
       localStorage.setItem('fieldiq_user_name', result.data.name);
       localStorage.setItem('fieldiq_user_role', result.data.role);
@@ -793,20 +771,11 @@ function validateAndInit(){
       initManagerHome();
     })
     .catch(function(){
-      // Network failure during validation — never proceed as if
-      // authenticated on a guess. Back to sign-in, not a silent bypass.
       window.location.href = './index.html';
     });
 }
 document.addEventListener('DOMContentLoaded', validateAndInit);
 
-// Ensures a fresh /get-dashboard fetch happens if this page is restored
-// from the browser's back-forward cache (e.g. the manager marks a visit
-// Reviewed on Visit History, then taps the browser Back button to return
-// here) — bfcache restoration does not re-fire DOMContentLoaded, so
-// without this the page would keep showing whatever it rendered before
-// navigating away. Same pattern already used elsewhere in this app
-// (fieldiq-visit-history.html) for the same reason.
 window.addEventListener('pageshow', function(event){
   if (event.persisted) {
     window.location.reload();
