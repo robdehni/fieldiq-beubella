@@ -140,7 +140,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
     <div class="summary-card"><div class="summary-num" id="openCount">0</div><div class="summary-label">Open</div></div>
     <div class="summary-card"><div class="summary-num" id="overdueCount">0</div><div class="summary-label">Overdue</div></div>
     <div class="summary-card"><div class="summary-num" id="todayCount">0</div><div class="summary-label">Due Today</div></div>
-    <div class="summary-card"><div class="summary-num" id="completedCount">0</div><div class="summary-label">Completed</div></div>
+    <div class="summary-card"><div class="summary-num" id="completedCount">0</div><div class="summary-label">Closed</div></div>
   </div>
 
   <div class="control-panel">
@@ -156,7 +156,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
       <button class="tab-btn" data-tab="overdue">Overdue</button>
       <button class="tab-btn" data-tab="today">Due Today</button>
       <button class="tab-btn" data-tab="upcoming">Upcoming</button>
-      <button class="tab-btn" data-tab="completed">Completed</button>
+      <button class="tab-btn" data-tab="completed">Closed</button>
       <button class="tab-btn" data-tab="all">All</button>
     </div>
   </div>
@@ -295,7 +295,14 @@ function readableError(x){
 }
 function fetchJson(url,ms,headers){
   return Promise.race([
-    fetch(url,headers?{headers:headers}:undefined).then(function(r){
+    // cache:'no-store' stops THIS BROWSER's own local HTTP cache from
+    // serving a stale response to this request. That is the entire scope
+    // of what this setting does — it has no effect on the Worker's own
+    // server-side cache, and it does not by itself prevent a record from
+    // appearing as open when it's actually terminal. That reconciliation
+    // (deduplicating by record ID and giving terminal state precedence
+    // over a stale Open copy) is handled separately, in loadActions().
+    fetch(url,Object.assign({cache:'no-store'},headers?{headers:headers}:{})).then(function(r){
       if(r.status===401||r.status===403){
         localStorage.removeItem('fieldiq_user_id');localStorage.removeItem('fieldiq_user_name');localStorage.removeItem('fieldiq_user_role');localStorage.removeItem('fieldiq_user_record_id');localStorage.removeItem('fieldiq_session_token');
         window.location.href='./index.html';
@@ -349,10 +356,17 @@ function getDismissedAt(f){
 function isDismissed(f){
   return String(getStatus(f)).toLowerCase()==='dismissed'||!!getDismissedAt(f);
 }
+function isCancelled(f){
+  return String(getStatus(f)).toLowerCase()==='cancelled';
+}
+function isTerminalState(f){
+  return isCompleted(f)||isDismissed(f)||isCancelled(f);
+}
 function getDueState(f){
-  if(isDismissed(f))return 'completed';
-  var due=getDueDate(f);
   if(isCompleted(f))return 'completed';
+  if(isDismissed(f))return 'dismissed';
+  if(isCancelled(f))return 'cancelled';
+  var due=getDueDate(f);
   if(!due)return 'open';
   if(due<todayISO())return 'overdue';
   if(due===todayISO())return 'today';
@@ -363,6 +377,8 @@ function prettyState(state){
   if(state==='today')return 'Due Today';
   if(state==='upcoming')return 'Upcoming';
   if(state==='completed')return 'Completed';
+  if(state==='dismissed')return 'Dismissed';
+  if(state==='cancelled')return 'Cancelled';
   return 'Open';
 }
 function getAssignedRepName(f){
@@ -497,6 +513,7 @@ function applyScrollAndClearFlag(scrollY){
 async function loadUsersBestEffort(){
   try{
     var d=await fetchJson(WORKER+'/get-users',4000);
+    activeRepRoster=[];
     (d.records||[]).forEach(function(x){
       var f=x.fields||{};
       usersByRecordId[x.id]={
@@ -517,26 +534,75 @@ async function loadActions(pendingScroll){
       fetchJson(WORKER+'/get-actions?role=Manager&status=Open',15000,{'Authorization':'Bearer '+currentSessionToken}),
       fetchJson(WORKER+'/get-actions?role=Manager&status=Completed',5000,{'Authorization':'Bearer '+currentSessionToken}).catch(function(){return {records:[]};}),
       fetchJson(WORKER+'/get-actions?role=Manager&status=Dismissed',5000,{'Authorization':'Bearer '+currentSessionToken}).catch(function(e){console.error('Failed to load Dismissed actions:',e);return {records:[]};}),
+      // Cancelled actions were never fetched by this page at all before —
+      // the Worker filters status-fetches strictly by exact match, so a
+      // Cancelled action was structurally invisible here, not merely
+      // mis-labeled. Mirrors the Dismissed fetch above exactly.
+      fetchJson(WORKER+'/get-actions?role=Manager&status=Cancelled',5000,{'Authorization':'Bearer '+currentSessionToken}).catch(function(e){console.error('Failed to load Cancelled actions:',e);return {records:[]};}),
       loadUsersBestEffort()
     ]);
-    var openData=results[0],compData=results[1],dismissData=results[2];
+    var openData=results[0],compData=results[1],dismissData=results[2],cancelData=results[3];
 
-    openActions=openData.records||[];
+    var openRaw=openData.records||[];
+    var completedAll=compData.records||[];
+    var dismissedAll=dismissData.records||[];
+    // Field name assumed as "Cancelled Date" to match the existing
+    // "Completed Date"/"Dismissed Date" naming convention — I could not
+    // confirm this exact field name against the live Airtable schema. If
+    // it doesn't exist, getField() falls back to '' (falsy) wherever it's
+    // used below.
+    var cancelledAll=cancelData.records||[];
 
-    completedActions=(compData.records||[]).filter(function(r){
+    // Reconcile against ALL terminal records, regardless of age — terminal
+    // truth must beat a stale Open copy no matter how old the terminal
+    // record is. Deliberately built from the unfiltered arrays above, not
+    // the 7-day-windowed ones: an action completed 3 months ago must still
+    // be excluded from Open if the Open fetch (incorrectly) still returns
+    // it, even though it's far too old to belong on the visible Closed
+    // list. This is a reconciliation concern, not a display concern.
+    var terminalById={};
+    completedAll.concat(dismissedAll).concat(cancelledAll).forEach(function(r){
+      terminalById[r.id]=r;
+    });
+
+    // Terminal state takes precedence over a stale Open copy: if the same
+    // record ID was returned by BOTH the Open fetch and a terminal fetch,
+    // the terminal version wins outright and the record is dropped from
+    // openActions entirely — it must never be treated as still-open when
+    // the Worker's own terminal-status fetch says otherwise.
+    openActions=openRaw.filter(function(r){return !terminalById[r.id];});
+
+    // Now apply the 7-day recency window — this is purely a display
+    // concern for the Closed tab / mini-stats, and only runs after
+    // reconciliation above has already used the full, unfiltered set.
+    var completedRecent=completedAll.filter(function(r){
       var c=getCompletedAt(r.fields||{});
       if(!c)return true;
       return((Date.now()-new Date(c).getTime())/86400000)<=7;
     });
-
-    var recentDismissed=(dismissData.records||[]).filter(function(r){
+    var dismissedRecent=dismissedAll.filter(function(r){
       var d=getDismissedAt(r.fields||{});
       if(!d)return true;
       return((Date.now()-new Date(d).getTime())/86400000)<=7;
     });
-    completedActions=completedActions.concat(recentDismissed);
+    var cancelledRecent=cancelledAll.filter(function(r){
+      var c=getField(r.fields||{},['Cancelled Date'],'');
+      if(!c)return true;
+      return((Date.now()-new Date(c).getTime())/86400000)<=7;
+    });
+    var recentById={};
+    completedRecent.concat(dismissedRecent).concat(cancelledRecent).forEach(function(r){
+      recentById[r.id]=r;
+    });
+    completedActions=Object.keys(recentById).map(function(id){return recentById[id];});
 
-    allActions=openActions.concat(completedActions);
+    var combined=openActions.concat(completedActions);
+    var seenIds={};
+    allActions=combined.filter(function(r){
+      if(seenIds[r.id])return false;
+      seenIds[r.id]=true;
+      return true;
+    });
     buildRepFilter();
     applyCurrentRepToSelect();
     syncTabButtons();
@@ -589,7 +655,7 @@ function applyRepFilter(list){
 }
 function listForTab(){
   var l;
-  if(activeTab==='open')l=openActions;
+  if(activeTab==='open')l=openActions.filter(function(r){return !isTerminalState(r.fields||{});});
   else if(activeTab==='completed')l=completedActions;
   else if(activeTab==='all')l=allActions;
   else l=openActions.filter(function(r){return getDueState(r.fields||{})===activeTab;});
@@ -608,7 +674,7 @@ function groupActions(list){
   return g;
 }
 function updateCounts(){
-  var visibleOpen=applyRepFilter(openActions);
+  var visibleOpen=applyRepFilter(openActions).filter(function(r){return !isTerminalState(r.fields||{});});
   var visibleCompleted=applyRepFilter(completedActions);
   document.getElementById('openCount').textContent=visibleOpen.length;
   document.getElementById('overdueCount').textContent=visibleOpen.filter(function(r){return getDueState(r.fields||{})==='overdue';}).length;
@@ -656,7 +722,10 @@ function countState(group,state){
   return group.filter(function(r){return getDueState(r.fields||{})===state;}).length;
 }
 function nextDue(group){
-  var dates=group.map(function(r){return getDueDate(r.fields||{});}).filter(Boolean).sort();
+  var dates=group
+    .filter(function(r){return !isTerminalState(r.fields||{});})
+    .map(function(r){return getDueDate(r.fields||{});})
+    .filter(Boolean).sort();
   return dates[0]||'';
 }
 
@@ -723,11 +792,14 @@ function render(){
     var overdue=countState(group,'overdue');
     var today=countState(group,'today');
     var completed=countState(group,'completed');
-    var openCount=group.length-completed;
+    var dismissedCount=countState(group,'dismissed');
+    var cancelledCount=countState(group,'cancelled');
+    var closedCount=completed+dismissedCount+cancelledCount;
+    var openCount=group.length-closedCount;
 
     var allDone=openCount===0;
     var pillClass=allDone?'status-completed':(overdue?'status-overdue':(today?'status-today':'status-open'));
-    var pillText=allDone?'Completed':(overdue?'Overdue':(today?'Due Today':'Open'));
+    var pillText=allDone?'Closed':(overdue?'Overdue':(today?'Due Today':'Open'));
 
     var due=nextDue(group);
     var sk=safeKeyFor(key);
@@ -745,7 +817,7 @@ function render(){
     html+='<div class="mini-stat"><div class="mini-num">'+openCount+'</div><div class="mini-label">Open</div></div>';
     html+='<div class="mini-stat"><div class="mini-num">'+overdue+'</div><div class="mini-label">Overdue</div></div>';
     html+='<div class="mini-stat"><div class="mini-num">'+today+'</div><div class="mini-label">Today</div></div>';
-    html+='<div class="mini-stat"><div class="mini-num">'+completed+'</div><div class="mini-label">Done</div></div>';
+    html+='<div class="mini-stat"><div class="mini-num">'+closedCount+'</div><div class="mini-label">Done</div></div>';
     html+='</div>';
 
     html+='<div class="card-actions">';
@@ -760,16 +832,18 @@ function render(){
       var lock=reminderLockText(r);
       var complete=isCompleted(x);
       var dismissed=isDismissed(x);
+      var cancelled=isCancelled(x);
       var assignedRecId=(x['Assigned Rep']&&x['Assigned Rep'][0])?x['Assigned Rep'][0]:null;
       var isOwner=(assignedRecId!==null&&assignedRecId===myOwnRecordId);
 
-      html+='<div class="action-row'+(complete?' completed-action':'')+(dismissed?' dismissed-action':'')+'" id="action-'+r.id+'">';
+      html+='<div class="action-row'+(complete?' completed-action':'')+(dismissed?' dismissed-action':'')+(cancelled?' dismissed-action':'')+'" id="action-'+r.id+'">';
       html+='<div class="action-text">'+escapeHtml(getActionText(x))+'</div>';
       html+='<div class="meta-row">';
-      if(dismissed)html+='<span class="dismissed-stamp">Dismissed</span>';
+      if(cancelled)html+='<span class="dismissed-stamp">Cancelled</span>';
+      else if(dismissed)html+='<span class="dismissed-stamp">Dismissed</span>';
       else if(complete)html+='<span class="completed-stamp">✓ Completed</span>';
       html+='<span class="meta">Rep: '+escapeHtml(getAssignedRepName(x))+'</span>';
-      html+='<span class="meta">Status: '+escapeHtml(dismissed?'Dismissed':prettyState(state))+'</span>';
+      html+='<span class="meta">Status: '+escapeHtml(prettyState(state))+'</span>';
       if(getDueDate(x))html+='<span class="meta">Due: '+escapeHtml(formatDate(getDueDate(x)))+'</span>';
       if(x['Due Time'])html+='<span class="meta">Time: '+escapeHtml(x['Due Time'])+'</span>';
       html+='<span class="meta">Reminders: '+escapeHtml(x['Reminder Count']||0)+'</span>';
@@ -781,19 +855,16 @@ function render(){
         html+='<div class="note-row-status" id="note-status-'+r.id+'"></div>';
       }
 
+      var terminal=complete||dismissed||cancelled;
       html+='<div class="row-actions">';
       html+='<a class="visit-btn" data-visit-link="1" href="'+escapeHtml(visitHref(r))+'"><i data-lucide="file-text"></i> View Visit</a>';
-      if(isOwner){
-        html+='<a class="visit-btn" href="'+escapeHtml(logUpdateHref(r))+'">🎙️ Log Update</a>';
-      }else if(!complete&&!dismissed){
-        html+='<button type="button" class="visit-btn" data-note-action-id="'+escapeHtml(r.id)+'">💬 Add Note</button>';
-      }else{
-        html+='<button type="button" class="visit-btn" disabled>💬 Notes closed</button>';
-      }
-      if(dismissed){
-        html+='<button class="reminder-btn" disabled><i data-lucide="x"></i> Dismissed</button>';
-      }else if(!complete){
-        if(!isOwner){
+      if(!terminal){
+        if(isOwner){
+          html+='<a class="visit-btn" href="'+escapeHtml(logUpdateHref(r))+'">🎙️ Log Update</a>';
+        }else{
+          html+='<button type="button" class="visit-btn" data-note-action-id="'+escapeHtml(r.id)+'">💬 Add Note</button>';
+        }
+        if(assignedRecId&&!isOwner){
           html+='<button class="reminder-btn" data-reminder-id="'+escapeHtml(r.id)+'" '+(lock?'disabled':'')+'>';
           html+='<i data-lucide="send"></i> '+(lock?'Reminder sent · '+lock:'Send Reminder')+'</button>';
         }
@@ -801,8 +872,6 @@ function render(){
           html+='<button class="owner-complete-btn" onclick="completeOwnAction(\''+r.id+'\',this)"><i data-lucide="check"></i> Complete</button>';
           html+='<button class="owner-dismiss-btn" onclick="dismissOwnAction(\''+r.id+'\',this)">Dismiss</button>';
         }
-      }else{
-        html+='<button class="reminder-btn" disabled><i data-lucide="check-circle"></i> Completed</button>';
       }
       html+='</div>';
 
@@ -838,24 +907,105 @@ async function loadNoteStatusForRow(actionId){
   }
 }
 
+// ── Shared response parsing and stale-closed detection ───────────────────
+// Used identically by completeOwnAction, dismissOwnAction, and
+// sendReminder — previously each had its own inline parsing logic and
+// completeOwnAction/dismissOwnAction each had their own separately-typed
+// regex, which is exactly how they drifted out of sync with each other.
+
+// Reads the response body as text exactly once, then attempts JSON.parse.
+// Reading text first (rather than res.json() with a res.text() fallback)
+// avoids "body already read" — res.json() internally consumes the stream
+// even when parsing fails, so a text-based fallback after a failed
+// res.json() call would throw. A non-JSON body (HTML error page, plain
+// text) becomes the error message itself rather than being silently lost.
+async function parseWorkerResponse(res){
+  var rawText='';
+  try{rawText=await res.text();}catch(e){}
+  var data;
+  try{
+    data=rawText?JSON.parse(rawText):{};
+  }catch(parseErr){
+    data={error:rawText||('HTTP '+res.status)};
+  }
+  return data;
+}
+// True if the given text indicates the action was already in a terminal
+// state before this request — covers every wording variant this Worker
+// (or a differently-worded future version of it) might use, whether that
+// arrives as a success-path flag or an error message.
+function isStaleClosedMessage(msg){
+  msg=String(msg||'');
+  return /already\s*(been\s*)?(completed|dismissed|updated|closed)/i.test(msg)
+      || /has\s*been\s*(completed|dismissed|closed)/i.test(msg);
+}
+
 async function completeOwnAction(actionId,btnEl){
   if(btnEl){btnEl.disabled=true;btnEl.textContent='Completing…';}
   try{
-    var res=await fetch(WORKER+'/complete-action',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
-      body:JSON.stringify({actionId:actionId,userId:currentUserId})
-    });
-    var data=await res.json();
-    if(!res.ok)throw new Error(data.error||'Could not complete action');
-    openActions=openActions.filter(function(r){return r.id!==actionId;});
-    allActions=allActions.filter(function(r){return r.id!==actionId;});
-    render();
-    saveManagerActionState();
-    setTimeout(function(){window.location.reload();},300);
+    var res=await Promise.race([
+      fetch(WORKER+'/complete-action',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+        body:JSON.stringify({actionId:actionId,userId:currentUserId})
+      }),
+      timeoutPromise(15000,'Request timed out')
+    ]);
+    var data=await parseWorkerResponse(res);
+    if(!res.ok){
+      var errMsg=data.error||'Could not complete action';
+      if(isStaleClosedMessage(errMsg)){
+        showToast('This action was already closed. The list has been refreshed.');
+        await loadActions(window.scrollY||0);
+        return;
+      }
+      throw new Error(errMsg);
+    }
+    if(data.alreadyDone){
+      // Server truth: this action was already in a terminal state before
+      // this click. Not an error — but distinct from a fresh completion,
+      // and worth saying so rather than silently treating it the same.
+      showToast('This action was already closed. The list has been refreshed.');
+    }else{
+      showToast('Action completed.');
+    }
+    // Authoritative refresh: re-fetch Open/Completed/Dismissed/Cancelled.
+    //
+    // What actually guarantees this data is fresh from the Worker's side:
+    // the Worker reads this action's live status directly from Airtable
+    // (never from its own cache) before deciding whether this is a fresh
+    // completion or an already-done case, and it awaits deletion of the
+    // relevant cached list entries before its response returns.
+    //
+    // What cache:'no-store' (used by fetchJson, below) actually does:
+    // it stops THIS BROWSER's own local HTTP cache from serving a stale
+    // response to the fetch this function is about to make. It has no
+    // effect on the Worker's own server-side cache — that staleness
+    // question is answered entirely by the paragraph above, not by this
+    // browser-side setting.
+    //
+    // Current scroll position is captured and passed through so the
+    // refresh doesn't jump the user back to the top of the page.
+    // expanded{} (which account card is open) is untouched by loadActions
+    // itself — it's only ever reset by an explicit tab/filter change —
+    // so the currently-open account card stays open across this refresh.
+    await loadActions(window.scrollY||0);
   }catch(err){
+    // 'Already completed' can arrive as an error (non-2xx with a matching
+    // message, already checked above) or, in principle, via some other
+    // rejection path (e.g. a timeout whose message happens to match) —
+    // this second check is defense-in-depth for that case.
+    var msg=(err&&err.message)||'';
+    if(isStaleClosedMessage(msg)){
+      showToast('This action was already closed. The list has been refreshed.');
+      await loadActions(window.scrollY||0);
+      return;
+    }
+    // Genuine failure — restore the button, show a truthful error, and do
+    // not alter any local action state, since nothing is known to have
+    // actually changed on the server.
     if(btnEl){btnEl.disabled=false;btnEl.textContent='Complete';}
-    alert('Could not complete action: '+err.message);
+    alert('Could not complete action: '+msg);
   }
 }
 async function dismissOwnAction(actionId,btnEl){
@@ -863,21 +1013,46 @@ async function dismissOwnAction(actionId,btnEl){
   if(!confirmed)return;
   if(btnEl){btnEl.disabled=true;btnEl.textContent='Dismissing…';}
   try{
-    var res=await fetch(WORKER+'/dismiss-action',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
-      body:JSON.stringify({actionId:actionId,userId:currentUserId})
-    });
-    var data=await res.json();
-    if(!res.ok)throw new Error(data.error||'Could not dismiss action');
-    openActions=openActions.filter(function(r){return r.id!==actionId;});
-    allActions=allActions.filter(function(r){return r.id!==actionId;});
-    render();
-    saveManagerActionState();
-    setTimeout(function(){window.location.reload();},300);
+    var res=await Promise.race([
+      fetch(WORKER+'/dismiss-action',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+        body:JSON.stringify({actionId:actionId,userId:currentUserId})
+      }),
+      timeoutPromise(15000,'Request timed out')
+    ]);
+    var data=await parseWorkerResponse(res);
+    if(!res.ok){
+      var errMsg=data.error||'Could not dismiss action';
+      if(isStaleClosedMessage(errMsg)){
+        showToast('This action was already closed. The list has been refreshed.');
+        await loadActions(window.scrollY||0);
+        return;
+      }
+      throw new Error(errMsg);
+    }
+    if(data.alreadyDone){
+      showToast('This action was already closed. The list has been refreshed.');
+    }else{
+      showToast('Action dismissed.');
+    }
+    // Same Worker-side freshness guarantee as completeOwnAction: the
+    // Worker reads this action's live status directly from Airtable
+    // (never from its own cache) and awaits deletion of the relevant
+    // cached list entries before responding. cache:'no-store' (used by
+    // fetchJson, below) is a separate, browser-only setting — it stops
+    // this browser's local HTTP cache from serving a stale response, and
+    // has no effect on the Worker's own server-side cache whatsoever.
+    await loadActions(window.scrollY||0);
   }catch(err){
+    var msg=(err&&err.message)||'';
+    if(isStaleClosedMessage(msg)){
+      showToast('This action was already closed. The list has been refreshed.');
+      await loadActions(window.scrollY||0);
+      return;
+    }
     if(btnEl){btnEl.disabled=false;btnEl.textContent='Dismiss';}
-    alert('Could not dismiss action: '+err.message);
+    alert('Could not dismiss action: '+msg);
   }
 }
 function toggleExpandKey(sk){
@@ -931,26 +1106,38 @@ async function sendReminder(actionId){
       managerName:currentUserName
     };
 
-    var res=await fetch(WORKER+'/send-reminder',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
-      body:JSON.stringify(payload)
-    });
+    var res=await Promise.race([
+      fetch(WORKER+'/send-reminder',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},
+        body:JSON.stringify(payload)
+      }),
+      timeoutPromise(15000,'Request timed out')
+    ]);
     if(res.status===401||res.status===403){
       localStorage.removeItem('fieldiq_user_id');localStorage.removeItem('fieldiq_user_name');localStorage.removeItem('fieldiq_user_role');localStorage.removeItem('fieldiq_user_record_id');localStorage.removeItem('fieldiq_session_token');
       window.location.href='./index.html';
       return;
     }
 
-    var text=await res.text();
-    var data={};
-    try{data=text?JSON.parse(text):{};}catch(e){data={raw:text};}
+    var data=await parseWorkerResponse(res);
 
     if(!res.ok||data.ok===false||data.success===false){
       if(data.locked){
-        throw new Error('Reminder already sent. Available again in '+(data.hoursRemaining||24)+'h.');
+        // Genuine, expected rate-limit — not a failure, and the action
+        // itself hasn't changed state, so no refresh is needed. Just
+        // restore the button and say exactly what's true.
+        if(btn){btn.disabled=false;btn.innerHTML='<i data-lucide="send"></i> Send Reminder';if(window.lucide)lucide.createIcons({el:btn});}
+        alert('Reminder already sent. Available again in '+(data.hoursRemaining||24)+'h.');
+        return;
       }
-      throw new Error(readableError(data.error)||readableError(data.message)||readableError(data)||('Reminder failed. HTTP '+res.status));
+      var errMsg=readableError(data.error)||readableError(data.message)||readableError(data)||('Reminder failed. HTTP '+res.status);
+      if(isStaleClosedMessage(errMsg)){
+        showToast('This action was already closed. The list has been refreshed.');
+        await loadActions(window.scrollY||0);
+        return;
+      }
+      throw new Error(errMsg);
     }
 
     showToast('Reminder sent to '+getAssignedRepName(actionFields)+'.');
@@ -961,8 +1148,18 @@ async function sendReminder(actionId){
     render();
 
   }catch(err){
-    alert('Reminder failed: '+readableError(err.message||err));
-    await loadActions(null);
+    var msg=(err&&err.message)||readableError(err)||'';
+    if(isStaleClosedMessage(msg)){
+      showToast('This action was already closed. The list has been refreshed.');
+      await loadActions(window.scrollY||0);
+      return;
+    }
+    // Genuine failure (network error, timeout, unexpected error) — restore
+    // the button and show a truthful message. Do not alter local action
+    // state, and do not force a refresh: nothing is known to have
+    // actually changed on the server for a network-level failure.
+    if(btn){btn.disabled=false;btn.innerHTML='<i data-lucide="send"></i> Send Reminder';if(window.lucide)lucide.createIcons({el:btn});}
+    alert('Reminder failed: '+msg);
   }
 }
 
