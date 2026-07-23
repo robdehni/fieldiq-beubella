@@ -607,8 +607,13 @@ function loadActionsForVisit(detailEl,visitRecordId){
   container.className='report-section';
   container.innerHTML='<h4>Actions from this Visit</h4><p style="color:#8a9bb3;font-size:12px;margin:0">Loading actions...</p>';
   detailEl.appendChild(container);
-  fetch(WORKER+'/get-actions?visitId='+encodeURIComponent(visitRecordId),{headers:{'Authorization':'Bearer '+currentSessionToken}})
-    .then(function(res){return res.json();})
+  fetch(WORKER+'/get-actions?visitId='+encodeURIComponent(visitRecordId),{cache:'no-store',headers:{'Authorization':'Bearer '+currentSessionToken}})
+    .then(function(res){
+      return res.json().then(function(data){
+        if(!res.ok)throw new Error((data&&data.error)?data.error:('HTTP '+res.status));
+        return data;
+      });
+    })
     .then(function(data){
       var records=data.records||[];
       container.innerHTML='<h4>Actions from this Visit</h4>'+renderActionsFromVisitList(records);
@@ -875,6 +880,7 @@ function toggleThreadList(toggleId){
 }
   
 var sortedRecords=[];  
+var _currentHighlight={visitId:null,cssClass:null};
 var allRecordsRaw=[];  
 var watchedAccountIds={};
 var accountIdByName={};
@@ -967,6 +973,14 @@ function renderVisits(records){
   });  
   document.getElementById('visitList').innerHTML=html;lucide.createIcons();  
   document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();  
+  // Reapply the current source highlight (if any) after this rebuild —
+  // renderVisits() always replaces visitList's innerHTML wholesale, which
+  // would otherwise silently drop any highlight applied by
+  // expandAndScrollToVisit() the moment a filter, search, or reset runs.
+  if(_currentHighlight.visitId&&_currentHighlight.cssClass){
+    var _hCard=document.querySelector('.visit-card[data-id="'+_currentHighlight.visitId+'"]');
+    if(_hCard)_hCard.classList.add(_currentHighlight.cssClass);
+  }
 }  
   
 function toggleWatch(accountId,btnEl){
@@ -1217,12 +1231,28 @@ function expandAndScrollToVisit(recordId,memberRecord){
   if(!card)return;  
   var idx=card.getAttribute('data-idx');var detail=document.getElementById('detail-'+idx);var toggle=card.querySelector('.visit-toggle');  
   var _srcParams=new URLSearchParams(window.location.search);
+  // Clear any highlight from every card before applying a new one. Without
+  // this, navigating to a different visit (Jump to Latest, a thread-card
+  // Open button, etc.) left the previously-highlighted card's class in
+  // place while adding a new one to the newly-opened card — producing
+  // more than one "Opened from Command Centre" card at once, and an
+  // increasingly inconsistent set of highlighted cards over a session.
+  document.querySelectorAll('.visit-card.command-centre-highlight,.visit-card.rep-actions-highlight,.visit-card.map-highlight').forEach(function(c){
+    c.classList.remove('command-centre-highlight','rep-actions-highlight','map-highlight');
+  });
+  var _highlightClass=null;
   if(_srcParams.get('source')==='manager-home'||_srcParams.get('source')==='manager-actions'){
-    card.classList.add('command-centre-highlight');
+    _highlightClass='command-centre-highlight';
   }else if(_srcParams.get('source')==='rep-actions'){
-    card.classList.add('rep-actions-highlight');
+    _highlightClass='rep-actions-highlight';
   }else if(_srcParams.get('source')==='map'){
-    card.classList.add('map-highlight');
+    _highlightClass='map-highlight';
+  }
+  if(_highlightClass){
+    card.classList.add(_highlightClass);
+    _currentHighlight={visitId:recordId,cssClass:_highlightClass};
+  }else{
+    _currentHighlight={visitId:null,cssClass:null};
   }
   if(idx!==null&&sortedRecords[idx]){
     var hf=sortedRecords[idx].fields||{};
@@ -1231,8 +1261,8 @@ function expandAndScrollToVisit(recordId,memberRecord){
       var hNormalizedName=String(hf['Customer Name']||'').trim().toLowerCase();
       if(hNormalizedName&&accountIdByName[hNormalizedName])hLinkedAccountId=accountIdByName[hNormalizedName];
     }
-    var header=card.querySelector('.visit-header');
-    if(header&&currentUser.role==='Manager'&&!header.querySelector('.watch-star')){
+    var personRow=card.querySelector('.visit-person-row');
+    if(personRow&&currentUser.role==='Manager'&&!personRow.querySelector('.watch-star')){
       var hStarHtml;
       if(hLinkedAccountId){
         var hIsWatched=!!watchedAccountIds[hLinkedAccountId];
@@ -1240,7 +1270,7 @@ function expandAndScrollToVisit(recordId,memberRecord){
       }else{
         hStarHtml='<button class="watch-star watch-star-unresolved" disabled aria-label="Account not linked — cannot watch" title="This visit is not linked to an account record yet, so it cannot be watched.">☆</button>';
       }
-      header.insertAdjacentHTML('afterbegin',hStarHtml);
+      personRow.insertAdjacentHTML('afterbegin',hStarHtml);
     }
   }
   if(detail&&!detail.classList.contains('open')){  
