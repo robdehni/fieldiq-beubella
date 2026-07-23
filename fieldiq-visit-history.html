@@ -568,7 +568,6 @@ function loadNotesForAvfAction(actionId){
       console.error('Could not load manager notes for action:',actionId,err);
     });
 }
-var _actionGroupToggleCounter=0;
 function renderActionsFromVisitList(records){
   if(!records.length)return '<p style="color:#8a9bb3;font-size:12px;margin:0">No actions linked to this visit.</p>';
   function itemHtml(r){
@@ -596,27 +595,12 @@ function renderActionsFromVisitList(records){
     (active.length?'<div class="avf-list">'+active.map(itemHtml).join('')+'</div>':'<p style="color:#8a9bb3;font-size:12px;margin:0">No active actions.</p>')+
     '</div>';
   if(closed.length){
-    _actionGroupToggleCounter++;
-    var toggleId='action-group-toggle-'+_actionGroupToggleCounter;
     html+='<div class="action-group">'+
-      '<button type="button" class="action-group-toggle" id="'+toggleId+'-btn" onclick="event.stopPropagation();toggleActionGroup(\''+toggleId+'\');">'+
-        '▸ Closed history ('+closed.length+')'+
-      '</button>'+
-      '<div class="avf-list" id="'+toggleId+'-list" style="display:none">'+closed.map(itemHtml).join('')+'</div>'+
+      '<div class="action-group-header">Completed / Cancelled / Dismissed ('+closed.length+')</div>'+
+      '<div class="avf-list">'+closed.map(itemHtml).join('')+'</div>'+
     '</div>';
   }
   return html;
-}
-function toggleActionGroup(toggleId){
-  var list=document.getElementById(toggleId+'-list');
-  var btn=document.getElementById(toggleId+'-btn');
-  if(!list)return;
-  var isOpen=list.style.display!=='none';
-  list.style.display=isOpen?'none':'block';
-  if(btn){
-    var count=list.querySelectorAll('.avf-item-wrap').length;
-    btn.textContent=(isOpen?'▸':'▾')+' Closed history ('+count+')';
-  }
 }
 function loadActionsForVisit(detailEl,visitRecordId){
   var container=document.createElement('div');
