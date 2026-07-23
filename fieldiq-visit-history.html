@@ -37,6 +37,18 @@ font-size:12.5px;outline:none;font-weight:600;
 .fbtn-apply{flex:1;padding:11px;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;border:none;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(47,143,255,0.3)}
 .fbtn-reset{flex:1;padding:11px;background:#fff;color:#7a8aa3;border:1.5px solid #e3ebf5;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer}
 .filter-active{font-size:10.5px;color:#2f8fff;margin-top:8px;text-align:center;min-height:14px;font-weight:700}
+.period-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.preset-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.preset-btn{background:#eaf3ff;border:1.5px solid #cfe3ff;color:#1f6fe0;font-size:11.5px;font-weight:800;padding:8px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.preset-btn:hover{background:#d5eaff}
+.preset-btn.active{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border-color:transparent;color:#fff;box-shadow:0 4px 10px rgba(47,143,255,0.28)}
+.period-btn{background:#f4f8fc;border:1.5px solid #dde8f5;color:#5b6b85;font-size:11.5px;font-weight:800;padding:8px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.period-btn:hover{border-color:#bcd8ff}
+.period-btn.active{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border-color:transparent;color:#fff;box-shadow:0 4px 10px rgba(47,143,255,0.28)}
+.period-custom-panel{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.period-custom-panel .filter-select{width:auto;flex:1;min-width:120px}
+.period-custom-sep{font-size:11.5px;color:#8a9bb3;font-weight:700}
+.period-custom-apply{flex-shrink:0;padding:9px 14px}
 
 .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
 .stat-pill{
@@ -68,8 +80,16 @@ box-shadow:0 4px 14px rgba(11,31,58,0.05);cursor:pointer;transition:border-color
   content:'Opened from Territory Map';position:absolute;top:-9px;left:14px;background:#2f8fff;color:#fff;
   font-size:9.5px;font-weight:800;letter-spacing:0.3px;text-transform:uppercase;padding:2px 9px;border-radius:999px;
 }
-.visit-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px}
-.visit-account{font-size:15px;font-weight:800;color:#0b1f3a;flex:1}
+.visit-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px}
+.visit-header-main{flex:1;min-width:0}
+.visit-subject{font-size:15px;font-weight:800;color:#0b1f3a;line-height:1.3;overflow-wrap:break-word;word-break:break-word}
+.visit-account{font-size:12px;font-weight:700;color:#7a8aa3;margin-top:2px;overflow-wrap:break-word;word-break:break-word}
+.visit-datetime{flex-shrink:0;text-align:right}
+.visit-date-main{font-size:12px;font-weight:800;color:#0b1f3a;white-space:nowrap}
+.visit-time-sub{font-size:10.5px;font-weight:700;color:#aab8cc;white-space:nowrap;margin-top:1px}
+.visit-person-row{display:flex;align-items:center;gap:6px;margin-bottom:9px}
+.visit-person-name{font-size:12px;font-weight:700;color:#3d4f6b}
+.visit-person-unknown{color:#aab8cc;font-style:italic}
 .visit-date{font-size:11.5px;color:#aab8cc;white-space:nowrap;font-weight:700}
 .visit-meta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
 .badge{font-size:10.5px;padding:4px 11px;border-radius:8px;font-weight:700}
@@ -125,6 +145,14 @@ box-shadow:0 4px 14px rgba(11,31,58,0.05);cursor:pointer;transition:border-color
 .thread-action-btn [data-lucide]{width:14px;height:14px}
 .thread-action-btn-small{width:auto;padding:6px 12px;font-size:11.5px}
 .thread-nav-highlight{box-shadow:0 0 0 3px rgba(47,143,255,0.35);transition:box-shadow 0.3s ease}
+.thread-summary-card{background:#f8fbff;border:1px solid #cfe3ff;border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:6px}
+.thread-summary-row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+.thread-summary-label{color:#8a9bb3;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-size:10px;flex-shrink:0;white-space:nowrap}
+.thread-summary-value{color:#0b1f3a;font-weight:700;text-align:right}
+.thread-summary-jump{display:inline-block;margin-top:4px;font-size:12px;color:#2f8fff;font-weight:800;text-decoration:none}
+.action-group{margin:10px 0}
+.action-group-header{font-size:11px;font-weight:800;color:#1f6fe0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.action-group-toggle{display:block;width:100%;text-align:left;background:none;border:none;color:#7a8aa3;font-size:11.5px;font-weight:800;cursor:pointer;padding:4px 0;margin-bottom:6px}
 
 .loading{text-align:center;padding:60px 20px;color:#aab8cc;font-weight:600}
 .spinner{width:36px;height:36px;border:4px solid #eaf3ff;border-top:4px solid #2f8fff;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px}
@@ -207,6 +235,29 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
 
 <div id="filterBar" class="filter-bar" style="display:none">  
   <h3>Manager Filters</h3>  
+  <div class="preset-row" id="presetRow">
+    <button type="button" class="preset-btn" data-preset="today">My Visits Today</button>
+    <button type="button" class="preset-btn" data-preset="thisWeek">My Visits This Week</button>
+    <button type="button" class="preset-btn" data-preset="thisMonth">My Visits This Month</button>
+    <button type="button" class="preset-btn preset-btn-manager-only" data-preset="teamActivity" style="display:none">Team Activity</button>
+    <button type="button" class="preset-btn preset-btn-manager-only" data-preset="myActivity" style="display:none">My Activity</button>
+  </div>
+  <div class="period-row" id="periodRow">
+    <button type="button" class="period-btn" data-period="today">Today</button>
+    <button type="button" class="period-btn" data-period="thisWeek">This Week</button>
+    <button type="button" class="period-btn" data-period="thisMonth">This Month</button>
+    <button type="button" class="period-btn" data-period="30">30 Days</button>
+    <button type="button" class="period-btn" data-period="90">90 Days</button>
+    <button type="button" class="period-btn" data-period="180">180 Days</button>
+    <button type="button" class="period-btn" data-period="custom">Custom</button>
+    <button type="button" class="period-btn active" data-period="">All Time</button>
+  </div>
+  <div class="period-custom-panel" id="periodCustomPanel" style="display:none">
+    <input type="date" class="filter-select" id="periodCustomStart" aria-label="Custom range start date">
+    <span class="period-custom-sep">to</span>
+    <input type="date" class="filter-select" id="periodCustomEnd" aria-label="Custom range end date">
+    <button type="button" class="fbtn-apply period-custom-apply" id="periodCustomApplyBtn">Apply Range</button>
+  </div>
   <div class="filter-row">  
     <select class="filter-select" id="filterRep">  
       <option value="">All Reps</option>  
@@ -222,14 +273,17 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
       <option value="">All Priorities</option>  
       <option>High</option><option>Medium</option><option>Low</option>  
     </select>  
-    <select class="filter-select" id="filterPeriod">  
+    <select class="filter-select" id="filterPeriod" style="display:none">  
       <option value="">All Time</option>  
+      <option value="today">Today</option>
       <option value="thisWeek">This Week</option>  
       <option value="lastWeek">Last Week</option>  
       <option value="thisMonth">This Month</option>  
       <option value="lastMonth">Last Month</option>  
-      <option value="30">Last 30 Days</option>  
-      <option value="90">Last 90 Days</option>  
+      <option value="30">30 Days</option>  
+      <option value="90">90 Days</option>  
+      <option value="180">180 Days</option>
+      <option value="custom">Custom</option>
     </select>  
   </div>  
   <div class="filter-btns">  
@@ -241,7 +295,7 @@ p.page-subtitle{color:#7a8aa3;font-size:13px;margin-top:6px;font-weight:600;text
   <div class="stat-pill"><span id="statTotal">—</span>My Visits</div>  
   <div class="stat-pill"><span id="statThisWeek">—</span>This Week</div>  
   <div class="stat-pill"><span id="statNewAccounts">—</span>New Accounts</div>  
-</div>  <div id="repSearchBox" style="display:none;margin-bottom:10px"><input type="search" id="repSearch" placeholder="Search accounts…" autocomplete="off" autocorrect="off" autocapitalize="off" style="width:100%;padding:11px 14px;background:#fff;border:1.5px solid #e3ebf5;border-radius:12px;color:#0b1f3a;font-size:14px;outline:none;font-weight:600;box-shadow:0 2px 8px rgba(11,31,58,0.04)"></div>  <div id="countLabel" class="count-label"></div>  
+</div>  <div id="repSearchBox" style="display:none;margin-bottom:10px"><input type="search" id="repSearch" placeholder="Search visits, accounts or people…" autocomplete="off" autocorrect="off" autocapitalize="off" style="width:100%;padding:11px 14px;background:#fff;border:1.5px solid #e3ebf5;border-radius:12px;color:#0b1f3a;font-size:14px;outline:none;font-weight:600;box-shadow:0 2px 8px rgba(11,31,58,0.04)"></div>  <div id="countLabel" class="count-label"></div>  
 <div id="visitList"><div class="loading"><div class="spinner"></div>Loading visits...</div></div>  <div class="footer">FieldIQ v2.1 · 2026</div>  
 </div>  <div class="photo-modal-overlay" id="photoModalOverlay" onclick="if(event.target===this)closePhotoModal()">
   <button class="photo-modal-close" onclick="closePhotoModal()" aria-label="Close photo">&times;</button>
@@ -259,7 +313,7 @@ var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
     homeBtn.textContent='← Back to Open Actions';
   }else if(source==='manager-home'){
     homeBtn.href='./fieldiq.html';
-    homeBtn.textContent='← Back to Manager Home';
+    homeBtn.textContent='← Back to Command Centre';
   }else if(source==='operations'){
     homeBtn.href='./fieldiq-operations.html';
     homeBtn.textContent='← Back to Operations';
@@ -298,10 +352,6 @@ var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
       prevBtn.style.visibility=curIdx>0?'visible':'hidden';
       nextBtn.style.visibility=curIdx<mapVisitList.length-1?'visible':'hidden';
     }
-    // Switches to another already-rendered card in place — no network
-    // request, no page reload. Collapses whichever card this same flow
-    // previously opened (if any) so exactly one is ever expanded at a
-    // time, matching the original one-page-per-visit behaviour.
     var _mapCurrentOpenId=mapVisitList&&curIdx>-1?mapVisitList[curIdx]:null;
     function _goToMapVisit(newIdx){
       if(!mapVisitList||newIdx<0||newIdx>=mapVisitList.length)return;
@@ -461,13 +511,6 @@ function markVisitReviewed(recordId,btnEl){
     body:JSON.stringify({recordId:recordId,reviewed:true})
   }).then(function(res){
     if(!res.ok)throw new Error('Request failed');
-    // sortedRecords is rebuilt fresh from allRecordsRaw every time
-    // renderVisits() runs (applyFilters/resetFilters/search) — updating
-    // only sortedRecords here means that rebuild would silently revert
-    // this visit back to unreviewed, since it re-derives from the
-    // still-stale allRecordsRaw entry. Both must be updated so the
-    // Reviewed state survives any future re-render, not just the current
-    // one already on screen.
     var rec=sortedRecords.find(function(r){return r.id===recordId;});
     if(rec)rec.fields['Reviewed']=true;
     var rawRec=allRecordsRaw.find(function(r){return r.id===recordId;});
@@ -493,24 +536,11 @@ function renderFullReport(text){
   return html||'<div class="report-section"><p>'+escapeHtmlLocal(text)+'</p></div>';  
 }  
 
-// ── Actions from this Visit ──────────────────────────────────────────────
-// New, additive block shown beneath the existing AI Summary / Next Steps —
-// that content is never modified. Shows each action linked to this specific
-// visit (via the Source Visit field) with its true current status. No
-// inline matching or guessing against the AI-generated text — this is a
-// separate, honest list sourced directly from Open Actions records.
 function escapeHtmlLocal(str){
   return String(str||'').replace(/[&<>"']/g,function(m){
     return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
   });
 }
-// Manager Notes archive display — locked business rule: Manager Notes
-// belong to an Action for its lifetime. Once an Action reaches an end
-// state (Completed or Dismissed), Visit History displays it together with
-// its Manager Notes and acknowledgement history, read via the existing
-// /get-notes?actionId=X endpoint. Read-only here — nothing is written,
-// moved, duplicated, or re-parented. An action with no notes renders
-// nothing additional, exactly as before.
 function renderAvfNoteItems(records){
   if(!records.length)return'';
   var html='<div class="avf-notes">';
@@ -526,11 +556,6 @@ function renderAvfNoteItems(records){
   html+='</div>';
   return html;
 }
-// Fetches notes for a single completed/dismissed action and, if any exist,
-// appends them directly beneath that action's row in the already-rendered
-// Actions-from-this-Visit list. Fails silently — a note-lookup error never
-// disturbs the action list itself, which has already rendered successfully
-// by the time this runs.
 function loadNotesForAvfAction(actionId){
   var box=document.getElementById('avf-notes-'+actionId);
   if(!box)return;
@@ -541,12 +566,12 @@ function loadNotesForAvfAction(actionId){
     })
     .catch(function(err){
       console.error('Could not load manager notes for action:',actionId,err);
-      // Leaves the placeholder empty — matches "if no notes, render nothing additional".
     });
 }
+var _actionGroupToggleCounter=0;
 function renderActionsFromVisitList(records){
   if(!records.length)return '<p style="color:#8a9bb3;font-size:12px;margin:0">No actions linked to this visit.</p>';
-  return '<div class="avf-list">'+records.map(function(r){
+  function itemHtml(r){
     var f=r.fields||{};
     var text=f['Action Text']||'';
     var status=String(f['Status']||'Open').toLowerCase();
@@ -560,13 +585,39 @@ function renderActionsFromVisitList(records){
         '<div class="avf-item"><span class="avf-text">'+escapeHtmlLocal(text)+'</span><span class="avf-badge '+badgeClass+'">'+badgeText+'</span></div>'+
         (isEndState?'<div class="avf-notes" id="avf-notes-'+r.id+'"></div>':'')+
       '</div>';
-  }).join('')+'</div>';
+  }
+  var active=[],closed=[];
+  records.forEach(function(r){
+    var status=String((r.fields||{})['Status']||'Open').toLowerCase();
+    if(status==='completed'||status==='dismissed'||status==='cancelled')closed.push(r);
+    else active.push(r);
+  });
+  var html='<div class="action-group"><div class="action-group-header">Active now ('+active.length+')</div>'+
+    (active.length?'<div class="avf-list">'+active.map(itemHtml).join('')+'</div>':'<p style="color:#8a9bb3;font-size:12px;margin:0">No active actions.</p>')+
+    '</div>';
+  if(closed.length){
+    _actionGroupToggleCounter++;
+    var toggleId='action-group-toggle-'+_actionGroupToggleCounter;
+    html+='<div class="action-group">'+
+      '<button type="button" class="action-group-toggle" id="'+toggleId+'-btn" onclick="event.stopPropagation();toggleActionGroup(\''+toggleId+'\');">'+
+        '▸ Closed history ('+closed.length+')'+
+      '</button>'+
+      '<div class="avf-list" id="'+toggleId+'-list" style="display:none">'+closed.map(itemHtml).join('')+'</div>'+
+    '</div>';
+  }
+  return html;
 }
-// Fetches and appends the Actions-from-this-Visit block to an already-
-// rendered detail panel. Called after the existing synchronous AI report
-// content, so it never delays or blocks that rendering. Fails gracefully —
-// a fetch error or an empty result both produce a calm, honest message,
-// never a raw error shown to the user.
+function toggleActionGroup(toggleId){
+  var list=document.getElementById(toggleId+'-list');
+  var btn=document.getElementById(toggleId+'-btn');
+  if(!list)return;
+  var isOpen=list.style.display!=='none';
+  list.style.display=isOpen?'none':'block';
+  if(btn){
+    var count=list.querySelectorAll('.avf-item-wrap').length;
+    btn.textContent=(isOpen?'▸':'▾')+' Closed history ('+count+')';
+  }
+}
 function loadActionsForVisit(detailEl,visitRecordId){
   var container=document.createElement('div');
   container.className='report-section';
@@ -587,23 +638,176 @@ function loadActionsForVisit(detailEl,visitRecordId){
       container.innerHTML='<h4>Actions from this Visit</h4><p style="color:#8a9bb3;font-size:12px;margin:0">Could not load actions for this visit.</p>';
     });
 }  
-// Visit Thread — every visit in the same thread (original and every
-// follow-up alike) shows the identical full list: every member, in
-// chronological order, the current one marked "(currently viewing)",
-// every other one a clickable button calling the existing
-// expandAndScrollToVisit() — no new navigation, same one used everywhere
-// else in this app. Renders nothing if the thread has only one member (a
-// normal visit no Log Update has joined yet).
+// ── Owner-name resolution (thread summary only) ──────────────────────────
+// Single shared cache for the life of the page. Managers reuse the exact
+// same /get-users call populateRepFilter() already makes (see that
+// function below, now routed through ensureUsersLoaded()) — no second
+// manager-side request. Reps never call populateRepFilter() at all, so
+// for them this is one new, non-blocking request, made only when a
+// thread summary first needs a name. A failure here is swallowed inside
+// the promise itself, so it can never block or break the rest of Visit
+// History — callers always get a resolved (possibly still-empty) map.
+var usersByRecordId={};
+var _usersRawRecords=[];
+var _usersLoadPromise=null;
+function ensureUsersLoaded(){
+  if(_usersLoadPromise)return _usersLoadPromise;
+  _usersLoadPromise=fetch(WORKER+'/get-users',{headers:{'Authorization':'Bearer '+currentSessionToken}})
+    .then(function(res){return res.json();})
+    .then(function(data){
+      _usersRawRecords=data.records||[];
+      usersByRecordId={};
+      _usersRawRecords.forEach(function(u){
+        var f=u.fields||{};
+        usersByRecordId[u.id]=(f['Display Name']||f['User ID']||'').trim();
+      });
+    })
+    .catch(function(err){
+      console.error('Could not load users for owner-name resolution:',err);
+      // Deliberately does not rethrow — ensureUsersLoaded() must always
+      // resolve, never reject, so a caller's .then() always runs.
+    });
+  return _usersLoadPromise;
+}
+function ownerNameFor(recordId){
+  if(!recordId)return'Owner not assigned';
+  var name=usersByRecordId[recordId];
+  return name?name:'Owner unavailable';
+}
+
+// ── Thread-wide next-step action cache (thread summary only) ─────────────
+// Page-level, keyed by visit ID. Prevents re-fetching the same visit's
+// actions if the same thread summary is rebuilt (e.g. a visit is closed
+// and reopened) or if the same visit happens to appear in more than one
+// summary computation. Deliberately scoped to this new code path only —
+// loadActionsForVisit()'s own existing fetch is untouched and does not
+// share this cache.
+var _actionsForVisitCache={};
+function fetchActionsForVisitCached(visitId){
+  if(_actionsForVisitCache[visitId])return _actionsForVisitCache[visitId];
+  var p=fetch(WORKER+'/get-actions?visitId='+encodeURIComponent(visitId),{headers:{'Authorization':'Bearer '+currentSessionToken}})
+    .then(function(res){
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      return res.json();
+    })
+    .then(function(data){return data.records||[];})
+    .catch(function(err){
+      console.error('Could not load actions for visit',visitId,'(thread summary):',err);
+      // A failed request must never look identical to "this visit
+      // genuinely has zero actions" — resolving to [] here would let a
+      // network error silently masquerade as "no active next step."
+      // Delete the cache entry so this visit isn't permanently stuck on
+      // a failed, resolved promise — a later retry can succeed.
+      delete _actionsForVisitCache[visitId];
+      throw err;
+    });
+  _actionsForVisitCache[visitId]=p;
+  return p;
+}
+// Resolves the single earliest-due active (non-closed) action across every
+// member of a thread. Promise.allSettled means one failed per-visit fetch
+// never breaks the others or the summary itself — but a failure must still
+// be visible to the caller rather than silently treated as "no actions."
+// Returns {action, hadFailure} — action is null if none found OR if a
+// failure means the result can't be trusted as complete; hadFailure is
+// true if any thread-member's actions could not be loaded.
+function resolveThreadNextStep(members){
+  var fetches=members.map(function(m){return fetchActionsForVisitCached(m.id);});
+  return Promise.allSettled(fetches).then(function(results){
+    var allActions=[];
+    var hadFailure=false;
+    results.forEach(function(r){
+      if(r.status==='fulfilled'&&Array.isArray(r.value)){allActions=allActions.concat(r.value);}
+      else{hadFailure=true;}
+    });
+    var active=allActions.filter(function(a){
+      var status=String((a.fields||{})['Status']||'Open').toLowerCase();
+      return status!=='completed'&&status!=='dismissed'&&status!=='cancelled';
+    });
+    if(!active.length)return {action:null,hadFailure:hadFailure};
+    active.sort(function(a,b){
+      var da=(a.fields||{})['Due Date']||'';
+      var db=(b.fields||{})['Due Date']||'';
+      if(da&&db)return da<db?-1:(da>db?1:0);
+      if(da&&!db)return -1;
+      if(!da&&db)return 1;
+      return 0;
+    });
+    return {action:active[0],hadFailure:hadFailure};
+  });
+}
+// Builds the compact thread-summary card. Only ever called when a thread
+// has 2+ members (see loadThreadForVisit's existing members.length<=1
+// early return, unchanged). Renders synchronously with what's already
+// known (member count, latest visit), then fills in Next Step/Owner/Due
+// asynchronously once resolveThreadNextStep() and ensureUsersLoaded()
+// both resolve — never blocks the rest of the detail panel.
+function buildThreadSummary(members,threadId,currentId){
+  _threadToggleCounter++;
+  var summaryId='thread-summary-'+_threadToggleCounter;
+  var container=document.createElement('div');
+  container.className='thread-summary-card';
+  container.id=summaryId;
+  var latest=members.slice().sort(function(a,b){
+    var da=a.fields['Visit Date']?new Date(a.fields['Visit Date']):new Date(0);
+    var db=b.fields['Visit Date']?new Date(b.fields['Visit Date']):new Date(0);
+    return db-da;
+  })[0];
+  var latestDate=latest.fields['Visit Date']?formatVisitDateTime(latest.fields['Visit Date']):'—';
+  var latestRep=latest.fields['User Name']||'—';
+  var jumpHtml=(latest.id!==currentId)
+    ? '<a href="#" class="thread-summary-jump" data-visit-id="'+escapeHtmlLocal(latest.id)+'">Jump to latest visit →</a>'
+    : '';
+  container.innerHTML=
+    '<div class="thread-summary-row"><span class="thread-summary-label">Linked visits</span><span class="thread-summary-value">'+members.length+'</span></div>'+
+    '<div class="thread-summary-row"><span class="thread-summary-label">Latest</span><span class="thread-summary-value">'+escapeHtmlLocal(latestDate)+' — '+escapeHtmlLocal(latestRep)+'</span></div>'+
+    '<div class="thread-summary-row" id="'+summaryId+'-nextstep"><span class="thread-summary-label">Next step</span><span class="thread-summary-value">Loading…</span></div>'+
+    jumpHtml;
+  resolveThreadNextStep(members).then(function(result){
+    ensureUsersLoaded().then(function(){
+      var row=document.getElementById(summaryId+'-nextstep');
+      if(!row)return; // panel may have been collapsed/re-rendered by the time this resolves
+      if(result.hadFailure){
+        // At least one thread member's actions could not be loaded, so
+        // this result is incomplete — never claim "no active next step"
+        // when that claim can't actually be trusted.
+        row.innerHTML='<span class="thread-summary-label">Next step</span><span class="thread-summary-value">Could not fully verify the next step</span>';
+        return;
+      }
+      if(!result.action){
+        row.innerHTML='<span class="thread-summary-label">Next step</span><span class="thread-summary-value">No active next step</span>';
+        return;
+      }
+      var rf=result.action.fields||{};
+      var ownerText=ownerNameFor((rf['Assigned Rep']||[])[0]);
+      var dueText=rf['Due Date']?formatDate(rf['Due Date']):'No due date';
+      row.innerHTML='<span class="thread-summary-label">Next step</span><span class="thread-summary-value">'+escapeHtmlLocal(rf['Action Text']||'')+'</span>';
+      row.insertAdjacentHTML('afterend',
+        '<div class="thread-summary-row"><span class="thread-summary-label">Owner</span><span class="thread-summary-value">'+escapeHtmlLocal(ownerText)+'</span></div>'+
+        '<div class="thread-summary-row"><span class="thread-summary-label">Due</span><span class="thread-summary-value">'+escapeHtmlLocal(dueText)+'</span></div>'
+      );
+    });
+  });
+  return container;
+}
+
 var _threadToggleCounter=0;
 var _threadMemberCache={};
 function renderThreadCards(members,threadId,currentId){
   var html='';var followUpNum=0;
+  var latestId=members.slice().sort(function(a,b){
+    var da=a.fields['Visit Date']?new Date(a.fields['Visit Date']):new Date(0);
+    var db=b.fields['Visit Date']?new Date(b.fields['Visit Date']):new Date(0);
+    return db-da;
+  })[0].id;
   members.forEach(function(m){
     _threadMemberCache[m.id]=m;
     var mf=m.fields||{};
     var isCurrent=m.id===currentId;
     var isOrig=m.id===threadId;
+    var isLatest=m.id===latestId;
     var label=isOrig?'Original Visit':('Follow-up '+(++followUpNum));
+    if(isLatest)label+=' · Latest';
     var dateStr=mf['Visit Date']?formatVisitDateTime(mf['Visit Date']):'';
     var snippet=truncateSummary(mf['AI Summary']||mf['Meeting Notes']||'',70).replace(/^[:\s]+/,'');
     var actionHtml=isCurrent
@@ -618,12 +822,28 @@ function renderThreadCards(members,threadId,currentId){
   return html;
 }
 function loadThreadForVisit(detailEl,record){
+  // Generation token guard against the duplicate-thread race: if this
+  // function is called again for the same detailEl (card closed and
+  // reopened, or reopened before a prior fetch resolved), only the most
+  // recent call is ever allowed to write to the DOM. A stale call's
+  // result is silently discarded rather than appended, regardless of
+  // when its network request happens to resolve.
+  detailEl._threadLoadToken=(detailEl._threadLoadToken||0)+1;
+  var myToken=detailEl._threadLoadToken;
+  detailEl._threadRecordId=record.id;
+  // Guard used both by the async .then/.catch below AND is itself the
+  // single source of truth for "is this specific call still the
+  // authoritative one for this card, on this visit, while still open."
+  function stillAuthoritative(){
+    return detailEl._threadLoadToken===myToken &&
+           detailEl.classList.contains('open') &&
+           detailEl._threadRecordId===record.id;
+  }
   var existing=detailEl.querySelector('.visit-thread-section');
   if(existing)existing.remove();
+  var existingSummary=detailEl.querySelector('.thread-summary-card');
+  if(existingSummary)existingSummary.remove();
   var threadId=(record.fields||{})['Visit Thread ID']||record.id;
-  // Guaranteed, immediate fallback — shown before the fetch below
-  // resolves, so the section never depends entirely on a network call
-  // succeeding. Upgraded to the full thread list once the fetch returns.
   var fallback=document.createElement('div');
   fallback.className='report-section visit-thread-section';
   fallback.innerHTML='<div class="thread-card thread-card-current"><div class="thread-card-label">'+(threadId===record.id?'Original Visit':'This Visit')+'</div><div class="thread-card-action"><span class="thread-card-status">Currently viewing</span></div></div>';
@@ -631,10 +851,19 @@ function loadThreadForVisit(detailEl,record){
   fetch(WORKER+'/get-visit-thread?threadId='+encodeURIComponent(threadId),{headers:{'Authorization':'Bearer '+currentSessionToken}})
     .then(function(res){return res.json();})
     .then(function(data){
+      if(!stillAuthoritative())return; // a newer call, a close, or a different visit has superseded this one — write nothing
       var members=data.records||[];
+      // Remove any existing thread summary/section immediately before
+      // appending the authoritative replacement — guarantees at most one
+      // of each ever exists, even if the fallback above was already
+      // removed by a different code path in the meantime.
+      var priorSection=detailEl.querySelector('.visit-thread-section');
+      if(priorSection)priorSection.remove();
+      var priorSummary=detailEl.querySelector('.thread-summary-card');
+      if(priorSummary)priorSummary.remove();
       if(members.length<=1)return;
-      var stillPresent=detailEl.contains(fallback);
-      if(stillPresent)fallback.remove();
+      var summaryEl=buildThreadSummary(members,threadId,record.id);
+      detailEl.appendChild(summaryEl);
       _threadToggleCounter++;
       var toggleId='thread-toggle-'+_threadToggleCounter;
       var container=document.createElement('div');
@@ -648,8 +877,8 @@ function loadThreadForVisit(detailEl,record){
       detailEl.appendChild(container);
     })
     .catch(function(err){
+      if(!stillAuthoritative())return;
       console.error('Could not load visit thread:',err);
-      // fallback (already appended above) remains visible — never nothing.
     });
 }
 function toggleThreadList(toggleId){
@@ -667,6 +896,28 @@ var watchedAccountIds={};
 var accountIdByName={};
 var targetVisitId=null;  
   
+// Deterministic subject rule, documented fallback order (no schema
+// change — Field Visits has no subject/title field today, so level 1
+// never fires; kept here honestly rather than silently skipped):
+// 1. Explicit subject/title field — does not exist in the data model.
+// 2. Visit Type + account context — the level that actually fires.
+// 3. Short deterministic summary excerpt — only if Visit Type is blank.
+function deriveVisitSubject(f){
+  var visitType=String(f['Visit Type']||'').trim();
+  var account=String(f['Customer Name']||'').trim();
+  if(visitType)return visitType+(account?' — '+account:'');
+  var excerpt=truncateSummary(f['AI Summary']||f['Meeting Notes']||'',60);
+  return excerpt||'Visit';
+}
+function splitVisitDateTime(d){
+  if(!d)return{date:'—',time:''};
+  var dt=new Date(d);
+  if(isNaN(dt))return{date:'—',time:''};
+  var datePart=dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  if(String(d).indexOf('T')===-1)return{date:datePart,time:''};
+  var timePart=dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+  return{date:datePart,time:timePart};
+}
 function renderVisits(records){  
   var today=new Date();today.setHours(0,0,0,0);  
   var weekAgo=new Date(today);weekAgo.setDate(today.getDate()-7);  
@@ -706,21 +957,26 @@ function renderVisits(records){
         starHtml='<button class="watch-star watch-star-unresolved" disabled aria-label="Account not linked — cannot watch" title="This visit is not linked to an account record yet, so it cannot be watched.">☆</button>';
       }
     }
+    var dt=splitVisitDateTime(f['Visit Date']);
+    var subject=deriveVisitSubject(f);
     html+=  
       '<div class="visit-card'+(isNew?' new-account':'')+'" data-idx="'+idx+'" data-id="'+r.id+'">'+  
         '<div class="visit-header">'+  
-          starHtml+
-          '<div class="visit-account">'+(f['Customer Name']||'Unknown Account')+'</div>'+  
-          '<div class="visit-date">'+formatVisitDateTime(f['Visit Date'])+'</div>'+  
+          '<div class="visit-header-main">'+
+            '<div class="visit-subject">'+escapeHtmlLocal(subject)+'</div>'+
+            '<div class="visit-account">'+escapeHtmlLocal(f['Customer Name']||'Unknown Account')+'</div>'+
+          '</div>'+
+          '<div class="visit-datetime"><div class="visit-date-main">'+escapeHtmlLocal(dt.date)+'</div>'+(dt.time?'<div class="visit-time-sub">'+escapeHtmlLocal(dt.time)+'</div>':'')+'</div>'+
         '</div>'+  
+        '<div class="visit-person-row">'+starHtml+(f['User Name']?'<span class="visit-person-name">'+escapeHtmlLocal(f['User Name'])+'</span>':'<span class="visit-person-name visit-person-unknown">Rep not recorded</span>')+'</div>'+
         '<div class="visit-meta">'+  
           (f['Territory']?'<span class="badge badge-territory">'+escapeHtmlLocal(normalizeTerritoryForFilter(f['Territory']))+'</span>':'')+  
-          (f['Visit Type']?'<span class="badge badge-type">'+f['Visit Type']+'</span>':'')+  
-          '<span class="badge '+getPriorityClass(priority)+'">'+priority+'</span>'+  
-          (f['User Name']?'<span class="badge badge-territory">'+f['User Name']+'</span>':'')+  
+          (f['Visit Type']?'<span class="badge badge-type">'+escapeHtmlLocal(f['Visit Type'])+'</span>':'')+  
+          '<span class="badge '+getPriorityClass(priority)+'">'+escapeHtmlLocal(priority)+'</span>'+  
+          (f['Outcome']?'<span class="badge badge-territory">'+escapeHtmlLocal(f['Outcome'])+'</span>':'')+
           (isNew?'<span class="badge badge-new">New Account</span>':'')+  
         '</div>'+  
-        (summary?'<div class="visit-summary">'+summary+'</div>':'')+  
+        (summary?'<div class="visit-summary">'+escapeHtmlLocal(summary)+'</div>':'')+  
         '<div class="visit-toggle"><i data-lucide="chevron-down"></i> Tap to view full report</div>'+  
         '<div class="visit-detail" id="detail-'+idx+'"></div>'+  
       '</div>';  
@@ -729,12 +985,6 @@ function renderVisits(records){
   document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();  
 }  
   
-// ── Watch / Unwatch Account ──────────────────────────────────────────────
-// Instant, optimistic toggle — same pattern already proven for Dismiss and
-// Mark Reviewed elsewhere in this app. Watching is Account-level, resolved
-// via the visit's linked Account field; every other card for the same
-// Account updates too, so the toggle state never contradicts itself across
-// cards for the same account on screen at once.
 function toggleWatch(accountId,btnEl){
   var isWatching=btnEl.classList.contains('watching');
   btnEl.disabled=true;
@@ -783,21 +1033,12 @@ document.getElementById('visitList').addEventListener('click',function(e){
   }  
 });  
   
-// Populates the rep filter dropdown from the authoritative /get-users
-// roster — active, non-manager users only — not from whichever reps
-// happen to appear in the currently loaded visit records. Same title-case
-// normalization applied here as the filter comparison further down uses
-// on each visit's own User Name field, so dropdown values and filtered
-// records always match regardless of how a name happens to be cased in
-// Airtable.
 async function populateRepFilter(){
   var sel=document.getElementById('filterRep');while(sel.options.length>1)sel.remove(1);
   try{
-    var res=await fetch(WORKER+'/get-users');
-    var data=await res.json();
-    if(!res.ok)throw new Error(data.error||'Could not load reps');
+    await ensureUsersLoaded();
     var names={};
-    (data.records||[])
+    _usersRawRecords
       .filter(function(u){return u.fields['Active?']!==false;})
       .forEach(function(u){
         var n=(u.fields['Display Name']||u.fields['User ID']||'').trim();
@@ -811,12 +1052,29 @@ async function populateRepFilter(){
   
 function getPeriodRange(period){  
   var now=new Date();var today=new Date(now.getFullYear(),now.getMonth(),now.getDate());var dayOfWeek=today.getDay();var diffToMonday=(dayOfWeek===0?6:dayOfWeek-1);var thisMonday=new Date(today);thisMonday.setDate(today.getDate()-diffToMonday);  
+  if(period==='today'){var todayEnd=new Date(today);todayEnd.setHours(23,59,59,999);return {start:today,end:todayEnd};}
   if(period==='thisWeek'){return {start:thisMonday,end:null};}  
   if(period==='lastWeek'){var lastMonday=new Date(thisMonday);lastMonday.setDate(thisMonday.getDate()-7);var lastSunday=new Date(thisMonday);lastSunday.setDate(thisMonday.getDate()-1);lastSunday.setHours(23,59,59,999);return {start:lastMonday,end:lastSunday};}  
   if(period==='thisMonth'){return {start:new Date(now.getFullYear(),now.getMonth(),1),end:null};}  
   if(period==='lastMonth'){var lm=new Date(now.getFullYear(),now.getMonth()-1,1);var lmEnd=new Date(now.getFullYear(),now.getMonth(),0);lmEnd.setHours(23,59,59,999);return {start:lm,end:lmEnd};}  
   return {start:null,end:null};  
 }  
+
+// YYYY-MM-DD for populating <input type="date"> — used only by the
+// legacy-period compatibility mapping (lastWeek/lastMonth → Custom).
+function isoDateOnly(d){
+  if(!d)return'';
+  var dt=(d instanceof Date)?d:new Date(d);
+  if(isNaN(dt))return'';
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+function getCustomPeriodRange(){
+  var startVal=document.getElementById('periodCustomStart').value;
+  var endVal=document.getElementById('periodCustomEnd').value;
+  var start=startVal?new Date(startVal+'T00:00:00'):null;
+  var end=endVal?new Date(endVal+'T23:59:59.999'):null;
+  return {start:start,end:end};
+}
   
 function normalizeTerritoryForFilter(raw){
   var value=raw;
@@ -836,7 +1094,9 @@ function normalizeTerritoryForFilter(raw){
 function getFilteredRecords(){  
   var rep=document.getElementById('filterRep').value;var terr=document.getElementById('filterTerritory').value;var priority=document.getElementById('filterPriority').value;var period=document.getElementById('filterPeriod').value;  
   var cutoff=null;var range={start:null,end:null};  
-  if(period==='30'||period==='90'){cutoff=new Date(Date.now()-parseInt(period)*24*60*60*1000);}else if(period){range=getPeriodRange(period);}  
+  if(period==='30'||period==='90'||period==='180'){cutoff=new Date(Date.now()-parseInt(period)*24*60*60*1000);}
+  else if(period==='custom'){range=getCustomPeriodRange();}
+  else if(period){range=getPeriodRange(period);}  
   return allRecordsRaw.filter(function(r){  
     var f=r.fields;var repName=(f['User Name']||'').trim();repName=repName.charAt(0).toUpperCase()+repName.slice(1).toLowerCase();  
     if(rep&&repName!==rep)return false;if(terr&&normalizeTerritoryForFilter(f['Territory'])!==terr)return false;if(priority&&f['Priority']!==priority)return false;  
@@ -845,19 +1105,71 @@ function getFilteredRecords(){
     return true;  
   });  
 }  
+
+// Reflects the active period value onto the visible button row (adds/
+// removes .active) and shows/hides the custom-range panel. Called after
+// any period change — button click or URL/deep-link restore — so the UI
+// never silently disagrees with the underlying (hidden) filterPeriod
+// select that all existing filtering logic already reads from.
+function syncPeriodButtonsUI(value){
+  document.querySelectorAll('.period-btn').forEach(function(btn){
+    btn.classList.toggle('active',btn.getAttribute('data-period')===value);
+  });
+  var panel=document.getElementById('periodCustomPanel');
+  if(panel)panel.style.display=(value==='custom')?'flex':'none';
+}
+// Legacy period query-param values (lastWeek, lastMonth) predate the new
+// button set and have no direct equivalent button. Rather than silently
+// discarding them or jumping to All Time, their exact original date range
+// is computed once via the existing getPeriodRange() logic and used to
+// populate the Custom range inputs — so an old bookmarked or shared link
+// still shows precisely the same visits it always did, just represented
+// as an active Custom range instead of a dedicated button.
+function mapLegacyPeriodParam(period){
+  var known=['today','thisWeek','thisMonth','30','90','180','custom'];
+  if(known.indexOf(period)>-1)return {selectValue:period};
+  if(period==='lastWeek'||period==='lastMonth'){
+    var r=getPeriodRange(period);
+    return {selectValue:'custom',customStart:isoDateOnly(r.start),customEnd:isoDateOnly(r.end)};
+  }
+  // Any other/unrecognized legacy value: keep it as-is rather than
+  // silently overriding to All Time. getPeriodRange() returns an empty
+  // range for anything it doesn't recognize, which getFilteredRecords()
+  // already handles safely (no filtering applied) — never a hard failure.
+  return {selectValue:period};
+}
   
+// Single shared search matcher — previously this exact logic was
+// duplicated in applyFilters() (manager path) and the separate rep
+// quick-search listener, both only checking 4 fields. Unified here and
+// extended to actually cover what the UI now says is searchable:
+// account, subject/summary, person, role, date, time, territory, visit
+// type, priority, and outcome. Both call sites below now use this one
+// function so they can no longer drift out of sync with each other.
+function recordMatchesSearch(r,q){
+  if(!q)return true;
+  var f=r.fields||{};
+  var textFields=['Customer Name','AI Summary','Meeting Notes','Action Items','User Name','User Role','Territory','Visit Type','Priority','Outcome'];
+  if(textFields.some(function(key){var v=f[key];return v&&String(v).toLowerCase().indexOf(q)>-1;}))return true;
+  // Date/time: match against the same human-readable format the card
+  // itself displays, since a typed query like "23 jul" or "14:20" won't
+  // match a raw ISO string.
+  if(f['Visit Date']){
+    var formatted=formatVisitDateTime(f['Visit Date']).toLowerCase();
+    if(formatted.indexOf(q)>-1)return true;
+  }
+  // Exact visit-record-ID lookup, for pasted/linked IDs.
+  if(r.id&&r.id.toLowerCase().indexOf(q)>-1)return true;
+  return false;
+}
+
 function applyFilters(){  
   var filtered=getFilteredRecords();var rep=document.getElementById('filterRep').value;var terr=document.getElementById('filterTerritory').value;var priority=document.getElementById('filterPriority').value;var period=document.getElementById('filterPeriod').value;  
   var searchBox=document.getElementById('repSearch');var q=searchBox?searchBox.value.trim().toLowerCase():'';
   if(q){
-    filtered=filtered.filter(function(r){
-      var f=r.fields;
-      return ['Customer Name','AI Summary','Meeting Notes','Action Items'].some(function(key){
-        var v=f[key];return v&&String(v).toLowerCase().indexOf(q)>-1;
-      });
-    });
+    filtered=filtered.filter(function(r){return recordMatchesSearch(r,q);});
   }
-  var periodLabels={thisWeek:'This Week',lastWeek:'Last Week',thisMonth:'This Month',lastMonth:'Last Month','30':'Last 30 Days','90':'Last 90 Days'};  
+  var periodLabels={today:'Today',thisWeek:'This Week',lastWeek:'Last Week',thisMonth:'This Month',lastMonth:'Last Month','30':'30 Days','90':'90 Days','180':'180 Days',custom:'Custom Range'};  
   var parts=[];if(rep)parts.push('Rep: '+rep);if(terr)parts.push('Territory: '+terr);if(priority)parts.push('Priority: '+priority);if(period)parts.push(periodLabels[period]||period);if(q)parts.push('Search: "'+q+'"');
   document.getElementById('filterStatus').textContent=parts.length?'Filtering: '+parts.join(' · ')+' ('+filtered.length+' visits)':'';  
   renderVisits(filtered);  
@@ -865,6 +1177,8 @@ function applyFilters(){
   
 function resetFilters(){  
   document.getElementById('filterRep').value='';document.getElementById('filterTerritory').value='';document.getElementById('filterPriority').value='';document.getElementById('filterPeriod').value='';document.getElementById('filterStatus').textContent='';  
+  document.getElementById('periodCustomStart').value='';document.getElementById('periodCustomEnd').value='';
+  syncPeriodButtonsUI('');
   renderVisits(allRecordsRaw);  
 }  
   
@@ -878,7 +1192,15 @@ function applyUrlParams(){
   }
   if(terr)document.getElementById('filterTerritory').value=terr;  
   if(priority)document.getElementById('filterPriority').value=priority;  
-  if(period)document.getElementById('filterPeriod').value=period;  
+  if(period){
+    var mapped=mapLegacyPeriodParam(period);
+    document.getElementById('filterPeriod').value=mapped.selectValue;
+    if(mapped.selectValue==='custom'){
+      document.getElementById('periodCustomStart').value=mapped.customStart||'';
+      document.getElementById('periodCustomEnd').value=mapped.customEnd||'';
+    }
+    syncPeriodButtonsUI(mapped.selectValue);
+  }
 }  
   
 document.addEventListener('click',function(e){
@@ -889,17 +1211,19 @@ document.addEventListener('click',function(e){
   if(vid)expandAndScrollToVisit(vid,_threadMemberCache[vid]);
 });
 
+document.addEventListener('click',function(e){
+  var jumpBtn=e.target.closest?e.target.closest('.thread-summary-jump'):null;
+  if(!jumpBtn)return;
+  e.preventDefault();
+  e.stopPropagation();
+  var vid=jumpBtn.getAttribute('data-visit-id');
+  if(vid)expandAndScrollToVisit(vid,_threadMemberCache[vid]);
+});
+
 function expandAndScrollToVisit(recordId,memberRecord){  
   if(!recordId)return;  
   var card=document.querySelector('.visit-card[data-id="'+recordId+'"]');
   if(!card&&memberRecord){
-    // This specific thread member has no rendered card at all — it
-    // belongs to a different rep and was never part of this viewer's own
-    // /get-visits results. The full record is already in hand from
-    // /get-visit-thread (via the shared cache above), so it's injected
-    // directly into the existing list and re-rendered through the same,
-    // unmodified renderVisits() every other card already goes through —
-    // no second fetch, no new rendering path.
     if(!allRecordsRaw.some(function(r){return r.id===recordId;})){
       allRecordsRaw=[memberRecord].concat(allRecordsRaw);
     }
@@ -908,13 +1232,6 @@ function expandAndScrollToVisit(recordId,memberRecord){
   }
   if(!card)return;  
   var idx=card.getAttribute('data-idx');var detail=document.getElementById('detail-'+idx);var toggle=card.querySelector('.visit-toggle');  
-  // Command Centre / Open Actions context marker — purely in-memory, a
-  // plain DOM class with no storage backing it at all. Manager sources
-  // (manager-home, manager-actions) keep the original "Opened from
-  // Command Centre" treatment, unchanged. The Rep's own Open Actions
-  // source gets its own correct wording instead of incorrectly reusing
-  // the Manager's ribbon text. Loading Visit History normally, or from
-  // any other source, never applies either.
   var _srcParams=new URLSearchParams(window.location.search);
   if(_srcParams.get('source')==='manager-home'||_srcParams.get('source')==='manager-actions'){
     card.classList.add('command-centre-highlight');
@@ -923,10 +1240,6 @@ function expandAndScrollToVisit(recordId,memberRecord){
   }else if(_srcParams.get('source')==='map'){
     card.classList.add('map-highlight');
   }
-  // Defensive correction: ensure this specific card's header has the same
-  // watch star every other card gets, using the identical construction as
-  // the main render loop — not a variant. Self-healing, idempotent: only
-  // acts if the star is actually missing and should be present.
   if(idx!==null&&sortedRecords[idx]){
     var hf=sortedRecords[idx].fields||{};
     var hLinkedAccountId=(hf['Account']&&hf['Account'][0])?hf['Account'][0]:null;
@@ -964,8 +1277,6 @@ function expandAndScrollToVisit(recordId,memberRecord){
 }  
   
 var currentUser=null;
-// Required by /get-visits, /get-watchlist, /get-accounts, which now reject
-// any request without a verified session token.
 var currentSessionToken=localStorage.getItem('fieldiq_session_token');  
   
 async function loadCurrentUser(){  
@@ -984,15 +1295,6 @@ async function loadHistory(){
     if(currentUser.role!=='Manager'){
       endpoint=WORKER+'/get-visits?filterByUser='+encodeURIComponent(currentUser.userId);
     }
-    // Manager: always fetch the complete dataset, unfiltered by any URL
-    // param. Territory used to be server-filtered here, which permanently
-    // limited allRecordsRaw to whatever the arriving URL specified — no
-    // amount of client-side Reset/Apply could ever recover records that
-    // were never fetched in the first place. Rep was already correctly
-    // left as fetch-everything-then-filter-locally, for the same reason
-    // this now applies to territory too: applyUrlParams() + applyFilters()
-    // below already handle the initial drill-down state client-side,
-    // exactly as they already do for rep.
     var res=await fetch(endpoint,{cache:'no-store',headers:{'Authorization':'Bearer '+currentSessionToken}});
     if(res.status===401||res.status===403){
       localStorage.removeItem('fieldiq_user_id');localStorage.removeItem('fieldiq_user_name');localStorage.removeItem('fieldiq_user_role');localStorage.removeItem('fieldiq_user_record_id');localStorage.removeItem('fieldiq_session_token');
@@ -1033,7 +1335,8 @@ async function loadHistory(){
     }
     if(currentUser.role==='Manager'){  
       await populateRepFilter();document.getElementById('filterBar').style.display='block';  
-      document.getElementById('repSearchBox').style.display='block';document.getElementById('repSearch').setAttribute('placeholder','Search accounts…');
+      document.querySelectorAll('.preset-btn-manager-only').forEach(function(b){b.style.display='inline-block';});
+      document.getElementById('repSearchBox').style.display='block';document.getElementById('repSearch').setAttribute('placeholder','Search visits, accounts or people…');
       applyUrlParams();applyFilters();  
       if(targetVisitId){expandAndScrollToVisit(targetVisitId);}else{restoreReturnStateIfAny();}  
     }else{  
@@ -1045,6 +1348,51 @@ async function loadHistory(){
   }catch(err){console.error('Visit History failed to load:',err);document.getElementById('visitList').innerHTML='<div class="empty">Could not load your visits. Please try again.</div>';}  
 }  
   
+document.querySelectorAll('.period-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var val=btn.getAttribute('data-period');
+    document.getElementById('filterPeriod').value=val;
+    syncPeriodButtonsUI(val);
+    if(val==='custom')return; // wait for explicit Apply Range before filtering
+    applyFilters();
+  });
+});
+document.getElementById('periodCustomApplyBtn').addEventListener('click',function(){
+  applyFilters();
+});
+
+// One-touch presets — deliberately limited to what maps cleanly onto the
+// existing period/rep filter state already wired above. "My Follow-ups",
+// "My Completed", and "Needs Action" are NOT included here: Field Visit
+// records carry no follow-up/completed/needs-action status themselves —
+// that lives only on linked Action records, and accurately computing it
+// per visit would require a new bulk actions fetch across every visit in
+// the list, not a restyle. Flagged as a real gap, not silently omitted.
+document.querySelectorAll('.preset-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.preset-btn').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    var preset=btn.getAttribute('data-preset');
+    if(preset==='teamActivity'){
+      document.getElementById('filterRep').value='';
+      applyFilters();
+      return;
+    }
+    if(preset==='myActivity'){
+      var ownName=(currentUser&&currentUser.name)?currentUser.name.trim():'';
+      if(ownName){ownName=ownName.charAt(0).toUpperCase()+ownName.slice(1).toLowerCase();}
+      document.getElementById('filterRep').value=ownName;
+      applyFilters();
+      return;
+    }
+    // today / thisWeek / thisMonth — same values the period row already
+    // understands; reuse syncPeriodButtonsUI so both rows never disagree.
+    document.getElementById('filterPeriod').value=preset;
+    syncPeriodButtonsUI(preset);
+    applyFilters();
+  });
+});
+
 loadCurrentUser().then(function(){loadHistory();});  
 </script>  <script>
 var _repSearchTimer;
@@ -1054,23 +1402,13 @@ document.getElementById('repSearch').addEventListener('input',function(){
     if(currentUser&&currentUser.role==='Manager'){applyFilters();return;}
     var q=document.getElementById('repSearch').value.trim().toLowerCase();
     if(!q){renderVisits(allRecordsRaw);return;}
-    var filtered=allRecordsRaw.filter(function(r){
-      var f=r.fields;
-      return ['Customer Name','AI Summary','Meeting Notes','Action Items'].some(function(key){
-        var v=f[key];return v&&String(v).toLowerCase().indexOf(q)>-1;
-      });
-    });
+    var filtered=allRecordsRaw.filter(function(r){return recordMatchesSearch(r,q);});
     renderVisits(filtered);
   },150);
 });
 </script>
 <script>if("serviceWorker"in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});}</script>
 <script>
-// Back-to-top floating button — purely cosmetic, self-contained. Created
-// entirely via JS so no existing HTML/IDs/layout are touched. Appears only
-// after scrolling past 500px, scrolls smoothly to top on click. Does not
-// interact with navigation, actions, reminders, photo modal, or any
-// business logic.
 (function(){
   var btn=document.createElement('button');
   btn.type='button';
