@@ -209,17 +209,11 @@ audio{width:100%;border-radius:8px;margin:8px 0;display:none}
 <div class="processing-overlay" id="processingOverlay"><div class="spinner"></div><p id="processingText">Analysing your visit...</p></div>
 <div class="success-card" id="successCard"><div class="tick"><i data-lucide="check-circle"></i></div><h3>Visit Logged Successfully</h3><div id="reportContent"></div><button class="btn btn-primary" id="doneBtn" type="button" style="width:100%;margin-top:16px;font-size:16px;padding:16px">Done</button><button class="btn btn-secondary" style="margin-top:10px" onclick="location.reload()">Log Another Visit</button></div>
 
-<div class="footer">FieldIQ v2.1 · 2026 <span id="workerBuildDisplay" style="opacity:0.6"></span></div>
+<div class="footer">FieldIQ v2.1 · 2026</div>
 </div>
 
 <script>
 var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
-(function(){
-  fetch(WORKER+'/build').then(function(r){return r.json();}).then(function(d){
-    var el=document.getElementById('workerBuildDisplay');
-    if(el&&d&&d.workerBuild)el.textContent='· '+d.workerBuild;
-  }).catch(function(){});
-})();
 window.onerror=function(msg){document.getElementById('status').textContent='Error: '+msg;};
 var currentUserId=localStorage.getItem('fieldiq_user_id');
 var currentUserName=localStorage.getItem('fieldiq_user_name');
@@ -628,106 +622,6 @@ function parseReport(text){var sections={summary:'',contacts:'',outcomes:'',next
 function getOutcome(sentiment){sentiment=(sentiment||'').toLowerCase();if(sentiment.includes('positive'))return'Positive';if(sentiment.includes('negative'))return'Negative';return'Neutral';}
 function extractPriority(text){text=(text||'').toLowerCase();if(text.includes('high'))return'High';if(text.includes('medium'))return'Medium';if(text.includes('low'))return'Low';return'Medium';}
 function getPriorityClass(t){t=t.toLowerCase();if(t.indexOf('high')>-1)return'priority-high';if(t.indexOf('medium')>-1)return'priority-medium';return'priority-low';}
-// ── Phase 1: structured visit-intelligence extraction ────────────────────
-// Read-only, non-operational metadata only — never creates, modifies,
-// routes, assigns, escalates, closes, or dismisses any Open Action. See
-// AI_EXTRACTION_VERSION below; bump this string, never mutate the schema
-// under the same version string, if the contract ever changes.
-var AI_EXTRACTION_VERSION='visit-intelligence-v1';
-var AI_EXTRACTION_MAX_ITEMS_PER_ARRAY=20;
-var AI_EXTRACTION_MAX_TOTAL_CHARS=10000;
-
-function _normalizeExtractionItem(item,allowOwnerHint){
-  if(!item||typeof item!=='object'||Array.isArray(item))return null;
-  var text=(typeof item.text==='string')?item.text.trim():'';
-  if(!text)return null;
-  if(text.length>500)text=text.slice(0,500);
-  var confidence=(typeof item.confidence==='string')?item.confidence.toLowerCase().trim():'';
-  if(confidence!=='high'&&confidence!=='medium'&&confidence!=='low')confidence='low';
-  var evidence=(typeof item.evidence==='string')?item.evidence.slice(0,300):'';
-  var out={text:text,confidence:confidence,evidence:evidence};
-  if(allowOwnerHint){
-    var ownerHint=(typeof item.owner_hint==='string')?item.owner_hint.toLowerCase().trim():'';
-    if(ownerHint!=='sales'&&ownerHint!=='specialist'&&ownerHint!=='unclear')ownerHint='unclear';
-    out.owner_hint=ownerHint;
-  }
-  return out;
-}
-function _normalizeMissingInfoItem(item){
-  if(typeof item!=='string')return null;
-  var text=item.trim();
-  if(!text)return null;
-  if(text.length>300)text=text.slice(0,300);
-  return text;
-}
-// Builds a brand-new object from only recognized keys/types — the parsed
-// model output is never stored or passed through directly. Returns
-// {data, status} where status is one of success|partial|failed, matching
-// the agreed AI Extraction Status enum exactly.
-function normalizeStructuredExtraction(raw){
-  if(!raw||typeof raw!=='object'||Array.isArray(raw))return{data:null,status:'failed'};
-  var anyMissingOrWrongType=false;
-  function processArray(key,allowOwnerHint){
-    var rawVal=raw[key];
-    if(!Array.isArray(rawVal)){anyMissingOrWrongType=true;return[];}
-    var out=[];
-    for(var i=0;i<rawVal.length&&out.length<AI_EXTRACTION_MAX_ITEMS_PER_ARRAY;i++){
-      var n=_normalizeExtractionItem(rawVal[i],allowOwnerHint);
-      if(n)out.push(n);
-    }
-    return out;
-  }
-  var facts=processArray('facts',false);
-  var risks=processArray('risks',false);
-  var opportunities=processArray('opportunities',false);
-  var commitments=processArray('commitments',true);
-  var missingRaw=raw['missing_information'];
-  var missing_information=[];
-  if(!Array.isArray(missingRaw)){
-    anyMissingOrWrongType=true;
-  }else{
-    for(var j=0;j<missingRaw.length&&missing_information.length<AI_EXTRACTION_MAX_ITEMS_PER_ARRAY;j++){
-      var m=_normalizeMissingInfoItem(missingRaw[j]);
-      if(m)missing_information.push(m);
-    }
-  }
-  var normalized={facts:facts,risks:risks,opportunities:opportunities,commitments:commitments,missing_information:missing_information};
-  var status=anyMissingOrWrongType?'partial':'success';
-  var order=['facts','risks','opportunities','commitments','missing_information'];
-  var guard=0;
-  while(JSON.stringify(normalized).length>AI_EXTRACTION_MAX_TOTAL_CHARS&&guard<200){
-    guard++;
-    var longestKey=null,longestLen=-1;
-    order.forEach(function(k){if(normalized[k].length>longestLen){longestLen=normalized[k].length;longestKey=k;}});
-    if(!longestKey||normalized[longestKey].length===0)break;
-    normalized[longestKey].pop();
-    status='partial';
-  }
-  return{data:normalized,status:status};
-}
-// Splits the raw model response on the structured-data delimiter. The
-// pre-delimiter text is what every existing code path (parseReport,
-// renderReport, Action Items extraction) receives — structurally
-// unchanged from today, since this split happens before any of that
-// existing logic runs. Never throws — any failure here degrades to
-// {reportText: rawText, extraction: null, status: 'unsupported'/'failed'}
-// so a visit can never fail to save because of this new logic.
-function extractStructuredData(rawModelText){
-  var DELIM='---STRUCTURED DATA---';
-  var idx=rawModelText.indexOf(DELIM);
-  if(idx===-1)return{reportText:rawModelText,extraction:null,status:'unsupported'};
-  var reportText=rawModelText.slice(0,idx).trim();
-  var jsonPart=rawModelText.slice(idx+DELIM.length).trim();
-  try{
-    var parsed=JSON.parse(jsonPart);
-    var result=normalizeStructuredExtraction(parsed);
-    if(!result.data)return{reportText:reportText,extraction:null,status:'failed'};
-    return{reportText:reportText,extraction:result.data,status:result.status};
-  }catch(e){
-    return{reportText:reportText,extraction:null,status:'failed'};
-  }
-}
-
 function escapeHtml(str){
   return String(str||'').replace(/[&<>"']/g,function(m){
     return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
@@ -788,13 +682,11 @@ submitBtn.addEventListener('click',async function(){
       var _ownerRoleLabel=(typeof FIELDIQ_BRAND!=='undefined'&&FIELDIQ_BRAND.specialistRoleLabel)||'Team Member';
       ownershipInstruction='\n\nThis visit is a follow-up within an existing thread — the person speaking may not be the one who owns every resulting commitment. For EACH line in NEXT STEPS, prefix it with who genuinely owns doing it: write "['+_ownerRoleLabel+'] " if it is something the speaker themselves committed to do (for example, returning to finish a task, delivering something they personally handle), or write "[Sales] " if it is a commercial or account-relationship matter that belongs with the salesperson who owns that account (for example, pricing, quotation, contract, or continuing the sales conversation). Base this on what the commitment actually is, not on who is speaking. Every NEXT STEPS line must carry exactly one such prefix.';
     }
-    var promptInstructions='You are an executive leadership panel reviewing a field interaction report — not a sales report, a field intelligence report. FieldIQ is a Field Intelligence Platform used across many industries and many field-based roles: Sales Representatives, Trainers, Product Specialists, Technical Engineers, Customer Success Managers, Service Engineers, Consultants, Project Managers, Territory Managers, and other field-based roles not yet named. Do not assume a sales role or a specific industry — read the transcript first and let it tell you who was speaking and what kind of interaction this was. The transcript below may be in English, Arabic, mixed Arabic-English, or a regional dialect. Understand the full meaning regardless of language or dialect used.\n\nAnalyse the conversation through every relevant business lens, including but not limited to: Sales and Commercial, Customer Success, Training and Education, Technical Support, Operations, Logistics and Supply Chain, Marketing, Finance, Procurement, Legal, Regulatory and Compliance, Service, Project Delivery, Territory Management, Executive Risk, and Business Growth. You are detecting business signals, not keywords. Report only what is genuinely present in the transcript — do not force a lens onto a visit just because it is on this list, and do not pad the report with categories that have no real signal. A purely technical visit should produce a technical report. A purely training visit should produce a training report. If pricing, logistics, regulatory, finance, legal, or other concerns are mentioned even briefly inside an otherwise single-purpose visit, capture that signal too — never let the dominant theme of a visit cause a real but minor detail to be dropped.\n\nNever replace a specific request with a generic phrase. If the transcript mentions a quotation, list price, price, proposal, demo, sample, registration, delivery date, stock or capacity issue, contract, purchase order, discount, training, technical specification, or any other concrete deliverable, name that exact item clearly. For example, if training was requested, write "Arrange training," not "Follow up." If samples were requested, write "Send samples," not "Provide information." Never substitute a specific, concrete request with a vague phrase like "follow up" or "provide information."\n\nReport evidence, not inference. Never infer customer intent, buying intent, procurement intent, urgency, decision readiness, budget, authority, or any other business conclusion unless it was explicitly stated or is directly supported by the transcript. Prefer factual wording over interpretive wording — for example, write "Customer requested a quotation, list price, and samples," not "Customer is showing strong buying intent." When uncertain whether something was implied, report only the fact that was actually said rather than the conclusion you might draw from it. This applies across the entire report, regardless of whether the visit is sales, training, technical, service, operations, regulatory, legal, finance, logistics, marketing, or any other field role.\n\nStructure the intelligence into a concise English report with these exact sections:\n\nVISIT SUMMARY\nKEY CONTACTS MET\nOUTCOMES & DECISIONS\nNEXT STEPS\nOPPORTUNITY SIGNALS\nSENTIMENT\nPRIORITY LEVEL (respond with exactly one word: High, Medium, or Low)\nSUGGESTED NEXT DATE (respond with a specific date if the speaker clearly mentioned a new meeting date, otherwise respond with exactly: None)\n\nYour response must begin with the exact text "VISIT SUMMARY" as its very first line — no title, no heading, no markdown symbol, and no other text before it. Every one of the eight section headers listed above must appear in your response, in that exact wording, even when a section has nothing to report — write the header followed by "None" or "Not applicable" rather than omitting the header entirely. A section header must never be skipped, merged into another section, or renamed.\n\nVISIT SUMMARY should open by naming the primary nature of the interaction in one phrase — for example a sales visit, a technical support call, a training session, or a service escalation — so a manager scanning the report instantly understands what kind of interaction this was, before reading the detail.\n\nNEXT STEPS must list only the actual agreed actions stated in the transcript, written as specific, named commitments — for example "Send quotation to [name/role]" and "Arrange training for [name/role]" as separate lines, never merged or softened into "Follow up with customer." Do not invent actions that were not discussed. Do not exaggerate the outcome of the visit. Preserve the meaning exactly as the field user described it — if nothing concrete was agreed, say so plainly rather than manufacturing a next step.'+ownershipInstruction+'\n\nOUTCOMES & DECISIONS should capture whatever genuinely matters from this specific interaction — commercial, technical, training, operational, regulatory, financial, legal, or service-relevant — never restricted to only one business function.\n\nFor PRIORITY LEVEL, classify based on:\n- High: a concrete deliverable was requested (quotation, proposal, contract, technical evaluation, training), a decision maker committed to a next step, or a risk, complaint, competency gap, or escalation needs management attention before the next visit\n- Medium: a next step is needed, the interaction was constructive, a return visit was requested, or the relationship or capability is developing\n- Low: informational interaction, no concrete request or risk identified, long-term monitoring only\n\nOutput the report in professional English only.\n\nAfter the eight sections above, output the exact line ---STRUCTURED DATA--- on its own line, followed by exactly one JSON object with this structure: {"facts":[{"text":"...","confidence":"high|medium|low","evidence":"..."}],"risks":[{"text":"...","confidence":"high|medium|low","evidence":"..."}],"opportunities":[{"text":"...","confidence":"high|medium|low","evidence":"..."}],"commitments":[{"text":"...","owner_hint":"sales|specialist|unclear","confidence":"high|medium|low","evidence":"..."}],"missing_information":["..."]}. All five keys must be present even if their array is empty. Do not include any text after the JSON object.'+priorContext+'\n\nTranscript:\n'+transcript;
+    var promptInstructions='You are an executive leadership panel reviewing a field interaction report — not a sales report, a field intelligence report. FieldIQ is a Field Intelligence Platform used across many industries and many field-based roles: Sales Representatives, Trainers, Product Specialists, Technical Engineers, Customer Success Managers, Service Engineers, Consultants, Project Managers, Territory Managers, and other field-based roles not yet named. Do not assume a sales role or a specific industry — read the transcript first and let it tell you who was speaking and what kind of interaction this was. The transcript below may be in English, Arabic, mixed Arabic-English, or a regional dialect. Understand the full meaning regardless of language or dialect used.\n\nAnalyse the conversation through every relevant business lens, including but not limited to: Sales and Commercial, Customer Success, Training and Education, Technical Support, Operations, Logistics and Supply Chain, Marketing, Finance, Procurement, Legal, Regulatory and Compliance, Service, Project Delivery, Territory Management, Executive Risk, and Business Growth. You are detecting business signals, not keywords. Report only what is genuinely present in the transcript — do not force a lens onto a visit just because it is on this list, and do not pad the report with categories that have no real signal. A purely technical visit should produce a technical report. A purely training visit should produce a training report. If pricing, logistics, regulatory, finance, legal, or other concerns are mentioned even briefly inside an otherwise single-purpose visit, capture that signal too — never let the dominant theme of a visit cause a real but minor detail to be dropped.\n\nNever replace a specific request with a generic phrase. If the transcript mentions a quotation, list price, price, proposal, demo, sample, registration, delivery date, stock or capacity issue, contract, purchase order, discount, training, technical specification, or any other concrete deliverable, name that exact item clearly. For example, if training was requested, write "Arrange training," not "Follow up." If samples were requested, write "Send samples," not "Provide information." Never substitute a specific, concrete request with a vague phrase like "follow up" or "provide information."\n\nReport evidence, not inference. Never infer customer intent, buying intent, procurement intent, urgency, decision readiness, budget, authority, or any other business conclusion unless it was explicitly stated or is directly supported by the transcript. Prefer factual wording over interpretive wording — for example, write "Customer requested a quotation, list price, and samples," not "Customer is showing strong buying intent." When uncertain whether something was implied, report only the fact that was actually said rather than the conclusion you might draw from it. This applies across the entire report, regardless of whether the visit is sales, training, technical, service, operations, regulatory, legal, finance, logistics, marketing, or any other field role.\n\nStructure the intelligence into a concise English report with these exact sections:\n\nVISIT SUMMARY\nKEY CONTACTS MET\nOUTCOMES & DECISIONS\nNEXT STEPS\nOPPORTUNITY SIGNALS\nSENTIMENT\nPRIORITY LEVEL (respond with exactly one word: High, Medium, or Low)\nSUGGESTED NEXT DATE (respond with a specific date if the speaker clearly mentioned a new meeting date, otherwise respond with exactly: None)\n\nYour response must begin with the exact text "VISIT SUMMARY" as its very first line — no title, no heading, no markdown symbol, and no other text before it. Every one of the eight section headers listed above must appear in your response, in that exact wording, even when a section has nothing to report — write the header followed by "None" or "Not applicable" rather than omitting the header entirely. A section header must never be skipped, merged into another section, or renamed.\n\nVISIT SUMMARY should open by naming the primary nature of the interaction in one phrase — for example a sales visit, a technical support call, a training session, or a service escalation — so a manager scanning the report instantly understands what kind of interaction this was, before reading the detail.\n\nNEXT STEPS must list only the actual agreed actions stated in the transcript, written as specific, named commitments — for example "Send quotation to [name/role]" and "Arrange training for [name/role]" as separate lines, never merged or softened into "Follow up with customer." Do not invent actions that were not discussed. Do not exaggerate the outcome of the visit. Preserve the meaning exactly as the field user described it — if nothing concrete was agreed, say so plainly rather than manufacturing a next step.'+ownershipInstruction+'\n\nOUTCOMES & DECISIONS should capture whatever genuinely matters from this specific interaction — commercial, technical, training, operational, regulatory, financial, legal, or service-relevant — never restricted to only one business function.\n\nFor PRIORITY LEVEL, classify based on:\n- High: a concrete deliverable was requested (quotation, proposal, contract, technical evaluation, training), a decision maker committed to a next step, or a risk, complaint, competency gap, or escalation needs management attention before the next visit\n- Medium: a next step is needed, the interaction was constructive, a return visit was requested, or the relationship or capability is developing\n- Low: informational interaction, no concrete request or risk identified, long-term monitoring only\n\nOutput the report in professional English only.'+priorContext+'\n\nTranscript:\n'+transcript;
     var aiRes=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,messages:[{role:'user',content:promptInstructions}]})});
     var aiData=await aiRes.json();
     if(!aiRes.ok||!aiData.content||!aiData.content[0]||!aiData.content[0].text){processingOverlay.style.display='none';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';transcriptText.disabled=false;alert('AI processing failed, so nothing was saved — no account, no contact, no visit.\n\nPlease try again.');return;}
-    var rawModelText=aiData.content[0].text;
-    var extractionResult=extractStructuredData(rawModelText);
-    var result=extractionResult.reportText;var parsed=parseReport(result);var priority=extractPriority(parsed.priority);
+    var result=aiData.content[0].text;var parsed=parseReport(result);var priority=extractPriority(parsed.priority);
     var OWNERSHIP_TAG_RE=/^\[([^\]]+)\]\s*/gm;
     var resultForDisplay=result.replace(OWNERSHIP_TAG_RE,'');
     var nextStepsForDisplay=(parsed.nextSteps||'').replace(OWNERSHIP_TAG_RE,'');
@@ -828,8 +720,7 @@ submitBtn.addEventListener('click',async function(){
       document.getElementById('processingText').textContent = 'Saving visit...';
     }
 
-    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDateTimeISO,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':resultForDisplay,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':nextStepsForDisplay,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId,'AI Extraction Version':AI_EXTRACTION_VERSION,'AI Extraction Status':extractionResult.status};
-    if(extractionResult.extraction){savePayload['AI Structured Data']=JSON.stringify(extractionResult.extraction);}
+    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDateTimeISO,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':resultForDisplay,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':nextStepsForDisplay,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId};
     var _fwUrlParamsForSave=new URLSearchParams(window.location.search);
     var _fwSourceVisitIdForSave=fwSourceVisitId||_fwUrlParamsForSave.get('fwSourceVisitId')||'';
     var _fwWorkflowIdForSave=fwWorkflowId||_fwUrlParamsForSave.get('fwWorkflowId')||'';
@@ -846,27 +737,7 @@ submitBtn.addEventListener('click',async function(){
 
     var saveRes=await fetch(WORKER+'/save-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify(savePayload)});
     var saveData=await saveRes.json();
-    if(!saveRes.ok){processingOverlay.style.display='none';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';transcriptText.disabled=false;
-      // Safe extraction only — specific named fields (type/message), never
-      // the raw detail/retryFailureDetail object dumped wholesale, and
-      // nothing from headers, tokens, or request bodies is touched here.
-      function _safeErrText(errObj){
-        if(!errObj||typeof errObj!=='object')return'';
-        var t=(typeof errObj.type==='string')?errObj.type:'';
-        var m=(typeof errObj.message==='string')?errObj.message:'';
-        if(t&&m)return t+': '+m;
-        return t||m||'';
-      }
-      var _lines=[];
-      _lines.push('HTTP status: '+saveRes.status);
-      _lines.push('workerBuild: '+((saveData&&typeof saveData.workerBuild==='string')?saveData.workerBuild:'(not present in response)'));
-      _lines.push('retryAttempted: '+(!!(saveData&&saveData.retryAttempted)));
-      var _origDetail=(saveData&&saveData.detail&&saveData.detail.error)?_safeErrText(saveData.detail.error):((saveData&&saveData.error)?saveData.error:'(none)');
-      _lines.push('Original Airtable error: '+_origDetail);
-      var _retryDetail=(saveData&&saveData.retryFailureDetail&&saveData.retryFailureDetail.error)?_safeErrText(saveData.retryFailureDetail.error):'(none)';
-      _lines.push('Retry Airtable error: '+_retryDetail);
-      var _saveErrDetail=_lines.join('\n');
-      if(isNewAccount){alert('The account'+(newContactName?' and contact were':' was')+' created successfully, but the visit itself failed to save.\n\nSubmit again — this time search for "'+hospitalName+'" instead of using "Account not listed," since it already exists now.\n\n'+_saveErrDetail);}else{alert('Save error:\n\n'+_saveErrDetail+'\n\nPlease try again.');}return;}
+    if(!saveRes.ok){processingOverlay.style.display='none';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';transcriptText.disabled=false;if(isNewAccount){alert('The account'+(newContactName?' and contact were':' was')+' created successfully, but the visit itself failed to save.\n\nSubmit again — this time search for "'+hospitalName+'" instead of using "Account not listed," since it already exists now.\n\nSave error '+saveRes.status+'.');}else{alert('Save error '+saveRes.status+'. Please try again.');}return;}
     if(!saveData._isDuplicateSubmission){
     try{
       await fetch(WORKER+'/save-actions',{
