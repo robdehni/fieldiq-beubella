@@ -857,17 +857,16 @@ submitBtn.addEventListener('click',async function(){
         if(t&&m)return t+': '+m;
         return t||m||'';
       }
-      var _saveErrDetail=(saveData&&saveData.error)?saveData.error:('HTTP '+saveRes.status);
-      var _origDetail=(saveData&&saveData.detail&&saveData.detail.error)?_safeErrText(saveData.detail.error):'';
-      var _airtableType=(saveData&&typeof saveData.airtableErrorType==='string')?saveData.airtableErrorType:'';
-      if(_origDetail)_saveErrDetail=_origDetail;
-      else if(_airtableType)_saveErrDetail+=' ('+_airtableType+')';
-      if(saveData&&saveData.retryAttempted){
-        var _retryDetail=(saveData.retryFailureDetail&&saveData.retryFailureDetail.error)?_safeErrText(saveData.retryFailureDetail.error):'';
-        _saveErrDetail+='\n\nA retry without the optional AI fields was also attempted and failed.';
-        if(_retryDetail)_saveErrDetail+='\nRetry error: '+_retryDetail;
-      }
-      if(isNewAccount){alert('The account'+(newContactName?' and contact were':' was')+' created successfully, but the visit itself failed to save.\n\nSubmit again — this time search for "'+hospitalName+'" instead of using "Account not listed," since it already exists now.\n\nSave error: '+_saveErrDetail);}else{alert('Save error: '+_saveErrDetail+'\n\nPlease try again.');}return;}
+      var _lines=[];
+      _lines.push('HTTP status: '+saveRes.status);
+      _lines.push('workerBuild: '+((saveData&&typeof saveData.workerBuild==='string')?saveData.workerBuild:'(not present in response)'));
+      _lines.push('retryAttempted: '+(!!(saveData&&saveData.retryAttempted)));
+      var _origDetail=(saveData&&saveData.detail&&saveData.detail.error)?_safeErrText(saveData.detail.error):((saveData&&saveData.error)?saveData.error:'(none)');
+      _lines.push('Original Airtable error: '+_origDetail);
+      var _retryDetail=(saveData&&saveData.retryFailureDetail&&saveData.retryFailureDetail.error)?_safeErrText(saveData.retryFailureDetail.error):'(none)';
+      _lines.push('Retry Airtable error: '+_retryDetail);
+      var _saveErrDetail=_lines.join('\n');
+      if(isNewAccount){alert('The account'+(newContactName?' and contact were':' was')+' created successfully, but the visit itself failed to save.\n\nSubmit again — this time search for "'+hospitalName+'" instead of using "Account not listed," since it already exists now.\n\n'+_saveErrDetail);}else{alert('Save error:\n\n'+_saveErrDetail+'\n\nPlease try again.');}return;}
     if(!saveData._isDuplicateSubmission){
     try{
       await fetch(WORKER+'/save-actions',{
