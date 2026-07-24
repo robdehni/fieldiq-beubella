@@ -209,11 +209,17 @@ audio{width:100%;border-radius:8px;margin:8px 0;display:none}
 <div class="processing-overlay" id="processingOverlay"><div class="spinner"></div><p id="processingText">Analysing your visit...</p></div>
 <div class="success-card" id="successCard"><div class="tick"><i data-lucide="check-circle"></i></div><h3>Visit Logged Successfully</h3><div id="reportContent"></div><button class="btn btn-primary" id="doneBtn" type="button" style="width:100%;margin-top:16px;font-size:16px;padding:16px">Done</button><button class="btn btn-secondary" style="margin-top:10px" onclick="location.reload()">Log Another Visit</button></div>
 
-<div class="footer">FieldIQ v2.1 · 2026</div>
+<div class="footer">FieldIQ v2.1 · 2026 <span id="workerBuildDisplay" style="opacity:0.6"></span></div>
 </div>
 
 <script>
 var WORKER='https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
+(function(){
+  fetch(WORKER+'/build').then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById('workerBuildDisplay');
+    if(el&&d&&d.workerBuild)el.textContent='· '+d.workerBuild;
+  }).catch(function(){});
+})();
 window.onerror=function(msg){document.getElementById('status').textContent='Error: '+msg;};
 var currentUserId=localStorage.getItem('fieldiq_user_id');
 var currentUserName=localStorage.getItem('fieldiq_user_name');
