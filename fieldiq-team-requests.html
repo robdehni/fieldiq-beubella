@@ -256,7 +256,13 @@ async function loadFieldWorkflowInProgress(forceFresh){
     var allActions=data.records||[];
     _fwInProgressCache=allActions.filter(function(r){
       var f=r.fields||{};
-      return f['Field Workflow ID']&&f['Assigned Rep']&&f['Assigned Rep'].length&&f['Status']==='Open';
+      // 'Requested Role' is only ever set on the genuine Field Workflow
+      // request itself (written once at /start-field-workflow, preserved
+      // through /assign-field-workflow and /reassign-field-workflow). The
+      // rep-side tracking action /start-field-workflow also creates never
+      // has this field at all, which is what previously let it pass this
+      // same filter and appear as a second, duplicate card here.
+      return f['Field Workflow ID']&&f['Assigned Rep']&&f['Assigned Rep'].length&&f['Status']==='Open'&&f['Requested Role'];
     });
     if(!_fwInProgressCache.length){section.style.display='none';section.innerHTML='';return;}
     var allUsers=await _fwGetUsersHome();
