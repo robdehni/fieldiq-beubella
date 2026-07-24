@@ -9,11 +9,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
-
 .shell{display:flex;min-height:100vh}
 .sidebar{display:none}
 .main{flex:1;min-width:0;padding:20px 18px 90px}
-
 .header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:22px}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-cloud{font-size:24px;line-height:1}
@@ -26,20 +24,16 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .exit-manager-btn:hover{background:#fff0f0}
 .home-btn{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#2f8fff;font-size:13px;font-weight:700;text-decoration:none;padding:9px 16px;border-radius:30px;margin-bottom:16px;border:1px solid #e3ebf5;box-shadow:0 2px 8px rgba(11,31,58,0.05)}
 .home-btn:hover{border-color:#2f8fff}
-
 .section-label{font-size:11px;color:#8a9bb3;text-transform:uppercase;letter-spacing:1.1px;font-weight:800;margin:32px 0 12px}
 .section-label:first-of-type{margin-top:0}
-
 .greeting{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;margin-bottom:4px}
 .greeting-sub{font-size:12.5px;color:#7a8aa3;font-weight:600;margin-bottom:24px}
-
 .command-strip{display:flex;background:#fff;border:1px solid #e8edf5;border-radius:14px;padding:14px 4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
 .command-stat{flex:1;text-align:center;padding:0 4px;border-right:1px solid #eef2f8}
 .command-stat:last-child{border-right:none}
 .command-stat-value{font-size:20px;font-weight:800;color:#0b1f3a;letter-spacing:-0.4px;line-height:1}
 .command-stat-value.alert{color:#b9711f}
 .command-stat-label{font-size:9px;color:#8a9bb3;text-transform:uppercase;letter-spacing:0.5px;font-weight:800;margin-top:4px}
-
 .attention-panel{background:#fff;border:1px solid #ffe0a3;border-radius:16px;padding:4px;margin-bottom:22px;box-shadow:0 4px 14px rgba(11,31,58,0.05);overflow:hidden}
 .attention-panel.all-clear{border-color:#cdeedb}
 .attention-panel-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#b9711f;text-transform:uppercase;letter-spacing:0.6px;padding:12px 14px 8px}
@@ -52,7 +46,6 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .attention-name{font-size:13px;font-weight:800;color:#0b1f3a}
 .attention-reason{font-size:11px;color:#8a9bb3;margin-top:1px}
 .attention-arrow{color:#aab8cc;font-size:15px;flex-shrink:0}
-
 .ask-card{background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(11,31,58,0.04)}
 .ask-card-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .ask-card-icon{font-size:20px;line-height:1;display:inline-flex}
@@ -93,7 +86,6 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .ask-error{margin-top:12px;background:#fff3e0;border:1px solid #ffe0a3;border-radius:12px;padding:12px 14px;font-size:12.5px;color:#7a6000;font-weight:600}
 .ask-retry-btn{margin-top:8px;border:none;background:#2f8fff;color:#fff;padding:8px 14px;border-radius:8px;font-weight:800;font-size:11.5px;cursor:pointer}
 .ask-again-link{margin-top:10px;font-size:11.5px;color:#2f8fff;font-weight:700;cursor:pointer;text-decoration:underline;display:inline-block}
-
 .primary-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:20px}
 .primary-tile{display:flex;flex-direction:column;align-items:center;gap:9px;background:#fff;border:1px solid #e8edf5;border-radius:16px;padding:18px 6px;text-decoration:none;box-shadow:0 2px 8px rgba(11,31,58,0.03)}
 .primary-tile.primary{background:linear-gradient(135deg,#3d9bff,#1f6fe0);border:none}
@@ -102,18 +94,13 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .primary-tile-icon [data-lucide]{width:20px;height:20px;stroke-width:1.9;color:#2f8fff}
 .primary-tile-label{font-size:12px;font-weight:800;color:#0b1f3a;text-align:center}
 .primary-tile.primary .primary-tile-label{color:#fff}
-
 .more-toggle{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:none;border:none;padding:10px;font-size:11.5px;font-weight:800;color:#7a8aa3;text-transform:uppercase;letter-spacing:0.6px;cursor:pointer}
 .more-toggle svg{width:13px;height:13px;transition:transform 0.15s}
 .more-toggle.open svg{transform:rotate(180deg)}
 .more-tools-collapsible{display:none}
 .more-tools-collapsible.open{display:block}
-
 .home-columns{display:block}
-
-
 .summary-empty{font-size:12.5px;color:#aab8cc;font-weight:600;padding:8px 2px}
-
 .quick-actions{display:flex;flex-direction:column;gap:10px}
 .quick-action{
   display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e8edf5;border-radius:14px;
@@ -128,9 +115,7 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 .qa-title{font-size:13.5px;font-weight:800;color:#0b1f3a}
 .qa-arrow{margin-left:auto;color:#aab8cc}
 .quick-action.primary .qa-arrow{color:#fff}
-
 .footer{text-align:center;color:#aab8cc;font-size:11px;margin-top:32px;font-weight:600}
-
 @media(min-width:1100px){
   .sidebar{
     display:flex;flex-direction:column;width:240px;flex-shrink:0;background:#fff;
@@ -153,7 +138,6 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
   .sidebar-badge{margin-left:auto;min-width:20px;height:20px;border-radius:999px;background:#e0344a;color:#fff;display:none;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;padding:0 6px;box-shadow:0 3px 8px rgba(224,52,74,0.25);flex-shrink:0}
   .sidebar-badge.visible{display:inline-flex}
   .sidebar-badge.badge-blue{background:#2f8fff;box-shadow:0 3px 8px rgba(47,143,255,0.25)}
-
   .main{padding:32px 40px 60px;max-width:1120px}
   .header{margin-bottom:32px}
   .command-strip{max-width:640px}
@@ -170,13 +154,10 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
 </head>
 <body>
 <div class="shell">
-
   <nav class="sidebar">
     <div class="sidebar-brand"><span class="brand-cloud">☁️</span><h1 data-brand-name>Beu Bella Cosmetics</h1></div>
     <div class="sidebar-eyebrow" data-brand-tagline>by FieldIQ</div>
-
     <a href="./fieldiq.html" class="sidebar-link"><i data-lucide="home"></i> Manager Home</a>
-
     <div class="sidebar-group-label">Management</div>
     <a href="./dashboard.html" class="sidebar-link"><i data-lucide="layout-dashboard"></i> Dashboard<span class="sidebar-badge" id="sbDashboardBadge"></span></a>
     <a href="./fieldiq-operations.html" class="sidebar-link"><i data-lucide="activity"></i> Operations</a>
@@ -184,16 +165,13 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
     <a href="./fieldiq-manager-calendar.html" class="sidebar-link"><i data-lucide="calendar-days"></i> Manager Calendar<span class="sidebar-badge" id="sbCalendarBadge"></span></a>
     <a href="./fieldiq-team-requests.html" class="sidebar-link current"><i data-lucide="users"></i> Team Requests<span class="sidebar-badge" id="sbTeamRequestsBadge"></span></a>
     <a href="./fieldiq-accounts.html" class="sidebar-link"><i data-lucide="building-2"></i> Account Directory</a>
-
     <div class="sidebar-group-label">Intelligence</div>
     <a href="./fieldiq-insights.html" class="sidebar-link"><i data-lucide="brain-circuit"></i> AI Insights</a>
     <a href="./fieldiq-visits-map.html" class="sidebar-link"><i data-lucide="map-pin"></i> Visit Map<span class="sidebar-badge badge-blue" id="sbVisitMapBadge"></span></a>
-
     <div class="sidebar-group-label">Field &amp; Help</div>
     <a href="./fieldiq-visit-history.html?source=manager-home" class="sidebar-link"><i data-lucide="clock"></i> Visit History</a>
     <a href="./fieldiq-guide.html" class="sidebar-link"><i data-lucide="book-open"></i> Quick Start Guide</a>
   </nav>
-
   <div class="main">
     <div class="header">
       <div class="brand">
@@ -205,35 +183,27 @@ body{background:#f7f9fc;color:#0b1f3a;font-family:-apple-system,BlinkMacSystemFo
         </div>
       </div>
     </div>
-
     <a href="./fieldiq.html" class="home-btn" id="homeBtn">← Manager Home</a>
-
     <div class="greeting" id="greetingText">Team Requests</div>
     <div class="greeting-sub">Trainer support requests, from pending through completion.</div>
-
     <div id="fieldWorkflowQueueSection" style="display:none">
       <button type="button" class="more-toggle" style="margin-top:0">
         Field Workflow — Pending Requests (<span id="fwQueueCount">0</span>)
       </button>
       <div id="fieldWorkflowQueueBody" style="margin-top:10px"></div>
     </div>
-
     <div id="fieldWorkflowInProgressSection" style="display:none;margin-top:16px"></div>
-
-
     <div class="footer">FieldIQ v2.1 · Team Requests · 2026</div>
   </div>
 </div>
 <script>
 var currentSessionToken = localStorage.getItem('fieldiq_session_token');
 var WORKER_URL_HOME = 'https://fieldiq-beubella-proxy.rdehni1979.workers.dev';
-
 function escapeHtmlHome(str){
   return String(str||'').replace(/[&<>"']/g,function(m){
     return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);
   });
 }
-
 function clearActiveSession(){
   localStorage.removeItem('fieldiq_user_id');
   localStorage.removeItem('fieldiq_user_name');
@@ -289,7 +259,6 @@ async function loadFieldWorkflowInProgress(forceFresh){
       return f['Field Workflow ID']&&f['Assigned Rep']&&f['Assigned Rep'].length&&f['Status']==='Open';
     });
     if(!_fwInProgressCache.length){section.style.display='none';section.innerHTML='';return;}
-
     var allUsers=await _fwGetUsersHome();
     function nameFor(recordId){
       var u=allUsers.find(function(u){return u.id===recordId;});
@@ -302,7 +271,6 @@ async function loadFieldWorkflowInProgress(forceFresh){
       var role=u.fields['Role']||'';
       return role?(name+' ('+role+')'):name;
     }
-
     var html='<button type="button" class="more-toggle" style="margin-top:0">Field Workflow — In Progress ('+_fwInProgressCache.length+')</button><div style="margin-top:10px">';
     _fwInProgressCache.forEach(function(r){
       var f=r.fields||{};
@@ -316,6 +284,7 @@ async function loadFieldWorkflowInProgress(forceFresh){
         +'<div id="fw-mgr-controls-'+r.id+'" style="display:flex;gap:8px">'
           +'<button type="button" onclick="_fwShowReassignHome(\''+r.id+'\')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Reassign</button>'
           +'<button type="button" onclick="_fwShowChangeDateHome(\''+r.id+'\')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;background:#fff;color:#3d4f6b;font-weight:700;font-size:12.5px;cursor:pointer">Change Date</button>'
+          +'<button type="button" onclick="_fwConfirmCancelHome(\''+r.id+'\')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid #f5c2c2;background:#fff5f5;color:#c43048;font-weight:700;font-size:12.5px;cursor:pointer">Cancel</button>'
         +'</div>'
         +'<div id="fw-mgr-expand-'+r.id+'"></div>'
         +'</div>';
@@ -326,7 +295,6 @@ async function loadFieldWorkflowInProgress(forceFresh){
     if(typeof lucide!=='undefined')lucide.createIcons();
   }catch(e){console.error('Could not load in-progress Field Workflow items:',e);section.style.display='none';}
 }
-
 async function _fwShowReassignHome(actionId){
   console.log('[FW TIMING] Reassign button clicked at', performance.now().toFixed(1), 'for actionId', actionId);
   var expand=document.getElementById('fw-mgr-expand-'+actionId);
@@ -358,7 +326,6 @@ async function _fwShowReassignHome(actionId){
     +'</div>';
   document.getElementById('fw-mgr-reassign-confirm-'+actionId).addEventListener('click',function(){_fwConfirmReassignHome(actionId);});
 }
-
 async function _fwConfirmReassignHome(actionId){
   var _tClick=performance.now();
   console.log('[FW TIMING] Confirm Reassign clicked at', _tClick.toFixed(1), 'for actionId', actionId);
@@ -390,7 +357,6 @@ async function _fwConfirmReassignHome(actionId){
     });
   }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Confirm Reassign';}
 }
-
 function _fwShowChangeDateHome(actionId){
   var expand=document.getElementById('fw-mgr-expand-'+actionId);
   var action=_fwInProgressCache.find(function(r){return r.id===actionId;});
@@ -405,7 +371,6 @@ function _fwShowChangeDateHome(actionId){
     +'</div>';
   document.getElementById('fw-mgr-date-confirm-'+actionId).addEventListener('click',function(){_fwConfirmChangeDateHome(actionId);});
 }
-
 async function _fwConfirmChangeDateHome(actionId){
   var input=document.getElementById('fw-mgr-date-input-'+actionId);
   var errEl=document.getElementById('fw-mgr-date-err-'+actionId);
@@ -420,12 +385,15 @@ async function _fwConfirmChangeDateHome(actionId){
     _fwReloadAll();
   }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Save Date';}
 }
-
-// ── Sidebar nav badges (Dashboard/Open Actions/Manager Calendar/Team
-// Requests only — Operations and Ask FieldIQ intentionally excluded).
-// Team Requests' own badge is set separately, in loadFieldWorkflowQueue()
-// below, reusing that call's own records.length rather than a second
-// fetch here. Load-time only, matching this page's existing refresh model.
+async function _fwConfirmCancelHome(actionId){
+  if(!confirm('Cancel this Team Request? This cannot be undone.'))return;
+  fetch(WORKER_URL_HOME+'/cancel-field-workflow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify({actionId:actionId})})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});})
+    .then(function(res){
+      if(!res.ok){alert('Could not cancel: '+(res.data.error||'please try again.'));return;}
+      _fwReloadAll();
+    }).catch(function(e){alert('Error: '+e.message);});
+}
 function setSidebarBadge(id, count){
   var el = document.getElementById(id);
   if (!el) return;
@@ -434,10 +402,6 @@ function setSidebarBadge(id, count){
   el.classList.add('visible');
 }
 function loadSidebarNavBadges(){
-  // Dashboard badge — same priorityReview definition dashboard.html's own
-  // Priority Review counter uses (high+medium+low from /get-dashboard).
-  // This page doesn't otherwise call /get-dashboard, so this is one new,
-  // minimal read-only fetch.
   fetch(WORKER_URL_HOME + '/get-dashboard', { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
     .then(function(res){ return res.ok ? res.json() : null; })
     .then(function(agg){
@@ -446,10 +410,6 @@ function loadSidebarNavBadges(){
       setSidebarBadge('sbDashboardBadge', priorityCount);
     })
     .catch(function(err){ console.error('Could not load Dashboard sidebar badge:', err); });
-
-  // Open Actions + Manager Calendar share one fetch: the same
-  // /get-actions?role=Manager&status=Open response each of those pages'
-  // own counters are independently built from.
   fetch(WORKER_URL_HOME + '/get-actions?role=Manager&status=Open', { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
     .then(function(res){ return res.ok ? res.json() : null; })
     .then(function(data){
@@ -464,14 +424,13 @@ function loadSidebarNavBadges(){
     })
     .catch(function(err){ console.error('Could not load Open Actions/Calendar sidebar badges:', err); });
 }
-
 function loadVisitMapBadge(){
   fetch(WORKER_URL_HOME + '/get-visits', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } })
     .then(function(res){ return res.ok ? res.json() : null; })
     .then(function(data){
       if (!data) return;
-      var DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000; // UTC+4, fixed — Dubai has no DST
-      var GPS_ACCURACY_THRESHOLD_METERS = 500;   // same threshold as fieldiq-visits-map.html's own gate
+      var DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000;
+      var GPS_ACCURACY_THRESHOLD_METERS = 500;
       var dubaiNow = new Date(Date.now() + DUBAI_OFFSET_MS);
       var y = dubaiNow.getUTCFullYear(), m = dubaiNow.getUTCMonth(), d = dubaiNow.getUTCDate();
       var startUTC = Date.UTC(y, m, d, 0, 0, 0) - DUBAI_OFFSET_MS;
@@ -489,7 +448,6 @@ function loadVisitMapBadge(){
     })
     .catch(function(err){ console.error('Could not load Visit Map sidebar badge:', err); });
 }
-
 async function loadFieldWorkflowQueue(){
   try{
     var res = await fetch(WORKER_URL_HOME + '/get-field-workflow-queue', { headers: { 'Authorization': 'Bearer ' + currentSessionToken } });
@@ -516,10 +474,10 @@ async function loadFieldWorkflowQueue(){
         + '<div style="font-size:12px;color:#3d4f6b;margin-bottom:10px">' + escapeHtmlHome(f['Action Text'] || '') + '</div>'
         + '<select class="fw-specialist-select" data-action-id="' + r.id + '" data-role="' + escapeHtmlHome(roleLabel) + '" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #dde8f5;margin-bottom:8px;font-size:13px"><option value="">Select a ' + escapeHtmlHome(roleLabel.toLowerCase()) + '…</option></select>'
         + '<button type="button" class="fw-assign-btn" data-action-id="' + r.id + '" style="width:100%;padding:10px;background:linear-gradient(135deg,#3d9bff,#1f6fe0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer">Assign Team Member</button>'
+        + '<button type="button" class="fw-cancel-btn" data-action-id="' + r.id + '" style="width:100%;margin-top:8px;padding:9px;border-radius:8px;border:1.5px solid #f5c2c2;background:#fff5f5;color:#c43048;font-weight:700;font-size:12.5px;cursor:pointer">Cancel Request</button>'
         + '</div>';
     });
     body.innerHTML = html;
-
     var allUsers = await _fwGetUsersHome();
     body.querySelectorAll('.fw-specialist-select').forEach(function(sel){
       var neededRole = sel.getAttribute('data-role');
@@ -536,7 +494,6 @@ async function loadFieldWorkflowQueue(){
       var requester = allUsers.find(function(u){ return u.id === requesterId; });
       el.textContent = 'Requested by: ' + (requester ? (requester.fields['Display Name'] || requester.fields['User ID'] || 'Unknown') : 'Unknown');
     });
-
     body.querySelectorAll('.fw-assign-btn').forEach(function(btn){
       btn.addEventListener('click', async function(){
         var actionId = btn.getAttribute('data-action-id');
@@ -562,6 +519,12 @@ async function loadFieldWorkflowQueue(){
           alert('Error: ' + e.message);
           btn.disabled = false; btn.textContent = 'Assign Team Member';
         }
+      });
+    });
+    body.querySelectorAll('.fw-cancel-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var actionId = btn.getAttribute('data-action-id');
+        _fwConfirmCancelHome(actionId);
       });
     });
   }catch(e){
@@ -602,7 +565,6 @@ function validateAndInit(){
     });
 }
 document.addEventListener('DOMContentLoaded', validateAndInit);
-
 window.addEventListener('pageshow', function(event){
   if (event.persisted) {
     window.location.reload();
