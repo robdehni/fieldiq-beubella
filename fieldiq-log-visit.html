@@ -840,7 +840,28 @@ submitBtn.addEventListener('click',async function(){
 
     var saveRes=await fetch(WORKER+'/save-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSessionToken},body:JSON.stringify(savePayload)});
     var saveData=await saveRes.json();
-    if(!saveRes.ok){processingOverlay.style.display='none';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';transcriptText.disabled=false;if(isNewAccount){alert('The account'+(newContactName?' and contact were':' was')+' created successfully, but the visit itself failed to save.\n\nSubmit again — this time search for "'+hospitalName+'" instead of using "Account not listed," since it already exists now.\n\nSave error '+saveRes.status+'.');}else{alert('Save error '+saveRes.status+'. Please try again.');}return;}
+    if(!saveRes.ok){processingOverlay.style.display='none';submitBtn.disabled=false;submitBtn.textContent='Process Visit Log';transcriptText.disabled=false;
+      // Safe extraction only — specific named fields (type/message), never
+      // the raw detail/retryFailureDetail object dumped wholesale, and
+      // nothing from headers, tokens, or request bodies is touched here.
+      function _safeErrText(errObj){
+        if(!errObj||typeof errObj!=='object')return'';
+        var t=(typeof errObj.type==='string')?errObj.type:'';
+        var m=(typeof errObj.message==='string')?errObj.message:'';
+        if(t&&m)return t+': '+m;
+        return t||m||'';
+      }
+      var _saveErrDetail=(saveData&&saveData.error)?saveData.error:('HTTP '+saveRes.status);
+      var _origDetail=(saveData&&saveData.detail&&saveData.detail.error)?_safeErrText(saveData.detail.error):'';
+      var _airtableType=(saveData&&typeof saveData.airtableErrorType==='string')?saveData.airtableErrorType:'';
+      if(_origDetail)_saveErrDetail=_origDetail;
+      else if(_airtableType)_saveErrDetail+=' ('+_airtableType+')';
+      if(saveData&&saveData.retryAttempted){
+        var _retryDetail=(saveData.retryFailureDetail&&saveData.retryFailureDetail.error)?_safeErrText(saveData.retryFailureDetail.error):'';
+        _saveErrDetail+='\n\nA retry without the optional AI fields was also attempted and failed.';
+        if(_retryDetail)_saveErrDetail+='\nRetry error: '+_retryDetail;
+      }
+      if(isNewAccount){alert('The account'+(newContactName?' and contact were':' was')+' created successfully, but the visit itself failed to save.\n\nSubmit again — this time search for "'+hospitalName+'" instead of using "Account not listed," since it already exists now.\n\nSave error: '+_saveErrDetail);}else{alert('Save error: '+_saveErrDetail+'\n\nPlease try again.');}return;}
     if(!saveData._isDuplicateSubmission){
     try{
       await fetch(WORKER+'/save-actions',{
