@@ -828,8 +828,7 @@ submitBtn.addEventListener('click',async function(){
       document.getElementById('processingText').textContent = 'Saving visit...';
     }
 
-    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDateTimeISO,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':resultForDisplay,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':nextStepsForDisplay,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId,'AI Extraction Version':AI_EXTRACTION_VERSION,'AI Extraction Status':extractionResult.status};
-    if(extractionResult.extraction){savePayload['AI Structured Data']=JSON.stringify(extractionResult.extraction);}
+    var savePayload={'Customer Name':hospitalName,'Visit Date':visitDateTimeISO,'Territory':territory,'Visit Type':visitType,'User Name':repName,'User ID':userId,'User Role':userRole,'Display Name':repName,'Raw Transcript':transcript,'AI Summary':resultForDisplay,'Outcome':getOutcome(parsed.sentiment),'Meeting Notes':parsed.summary,'Action Items':nextStepsForDisplay,'Priority':priority,'New Account':isNewAccount,'Pending Review':isNewAccount,'submissionId':tempId};
     var _fwUrlParamsForSave=new URLSearchParams(window.location.search);
     var _fwSourceVisitIdForSave=fwSourceVisitId||_fwUrlParamsForSave.get('fwSourceVisitId')||'';
     var _fwWorkflowIdForSave=fwWorkflowId||_fwUrlParamsForSave.get('fwWorkflowId')||'';
